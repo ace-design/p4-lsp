@@ -8,4 +8,5 @@ edition = "2021"
 [dependencies]
 tokio = { version = "1.25.0", features = ["full"] }
 tower-lsp = "0.18.0"
+tree-sitter = "0.20.9"
 tree-sitter-p4 = {git = "ssh://git@github.com/ace-design/tree-sitter-p4.git"}
