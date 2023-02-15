@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
@@ -7,22 +8,23 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
-use tree_sitter::{Parser, Point, Tree};
+use tree_sitter::{InputEdit, Parser, Point, Tree};
+
+mod utils;
 
 struct File {
-    path: PathBuf,
     content: String,
     tree: Option<Tree>,
 }
 
-struct State {
-    parser: Parser,
+struct ServerState {
+    parser: RefCell<Parser>,
     files: HashMap<Url, File>,
 }
 
 struct Backend {
     client: Client,
-    state: Mutex<State>,
+    state: Mutex<ServerState>,
 }
 
 #[tower_lsp::async_trait]
@@ -45,14 +47,13 @@ impl LanguageServer for Backend {
             {
                 let file_path = dir_entry.unwrap().path();
                 let file_content = fs::read_to_string(file_path.clone()).unwrap();
-                let tree = state.parser.parse(file_content.clone(), None);
+                let tree = state.parser.borrow_mut().parse(file_content.clone(), None);
 
                 state.files.insert(
                     Url::from_file_path(file_path.clone()).unwrap(),
                     File {
-                        path: file_path.into(),
                         content: file_content,
-                        tree,
+                        tree: tree.into(),
                     },
                 );
             }
@@ -90,15 +91,13 @@ impl LanguageServer for Backend {
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let state = self.state.lock().unwrap();
+
         let file_uri = params.text_document_position_params.text_document.uri;
-        let tree: &Tree = state.files.get(&file_uri).unwrap().tree.as_ref().unwrap();
+        let file = state.files.get(&file_uri).unwrap();
 
-        let pos = params.text_document_position_params.position;
-        let point = Point {
-            row: pos.line as usize,
-            column: pos.character as usize,
-        };
+        let tree: &Tree = file.tree.as_ref().unwrap();
 
+        let point = utils::pos_to_point(params.text_document_position_params.position);
         let info: String = tree
             .root_node()
             .named_descendant_for_point_range(point, point)
@@ -112,10 +111,33 @@ impl LanguageServer for Backend {
         }))
     }
 
-    async fn did_change(&self, _: DidChangeTextDocumentParams) -> () {
-        self.client
-            .log_message(MessageType::INFO, "document changed!")
-            .await;
+    async fn did_change(&self, params: DidChangeTextDocumentParams) -> () {
+        let mut state = self.state.lock().unwrap();
+
+        let file_uri = params.text_document.uri;
+
+        for change in params.content_changes {
+            match change.range {
+                Some(range) => {
+                    let file = state.files.get_mut(&file_uri).unwrap();
+                    let edit = InputEdit {
+                        start_byte: utils::pos_to_byte(range.start, &change.text),
+                        old_end_byte: todo!(),
+                        new_end_byte: utils::pos_to_byte(range.end, &change.text),
+                        start_position: utils::pos_to_point(range.start),
+                        old_end_position: todo!(),
+                        new_end_position: utils::pos_to_point(range.end),
+                    };
+
+                    file.tree.as_mut().unwrap().edit(&edit);
+                }
+                None => {
+                    let new_tree = state.parser.borrow_mut().parse(change.text, None);
+                    state.files.get_mut(&file_uri).unwrap().tree = new_tree;
+                }
+            }
+        }
+
         ()
     }
 }
@@ -130,8 +152,8 @@ async fn main() {
 
     let (service, socket) = LspService::new(|client| Backend {
         client,
-        state: Mutex::new(State {
-            parser,
+        state: Mutex::new(ServerState {
+            parser: parser.into(),
             files: HashMap::new(),
         }),
     });
