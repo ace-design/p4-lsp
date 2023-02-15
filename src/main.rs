@@ -7,7 +7,7 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
-use tree_sitter::{Parser, Tree};
+use tree_sitter::{Parser, Point, Tree};
 
 struct File {
     path: PathBuf,
@@ -91,9 +91,20 @@ impl LanguageServer for Backend {
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let state = self.state.lock().unwrap();
         let file_uri = params.text_document_position_params.text_document.uri;
+        let tree: &Tree = state.files.get(&file_uri).unwrap().tree.as_ref().unwrap();
 
-        let file = state.files.get(&file_uri).unwrap();
-        let info: String = file.tree.as_ref().unwrap().root_node().kind().to_string();
+        let pos = params.text_document_position_params.position;
+        let point = Point {
+            row: pos.line as usize,
+            column: pos.character as usize,
+        };
+
+        let info: String = tree
+            .root_node()
+            .named_descendant_for_point_range(point, point)
+            .unwrap()
+            .kind()
+            .to_string();
 
         Ok(Some(Hover {
             contents: HoverContents::Scalar(MarkedString::String(info)),
