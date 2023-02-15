@@ -1,5 +1,7 @@
+use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
@@ -13,37 +15,48 @@ struct File {
     tree: Option<Tree>,
 }
 
+struct State {
+    parser: Parser,
+    files: HashMap<Url, File>,
+}
+
 struct Backend {
     client: Client,
-    parser: Parser,
-    files: Option<Vec<File>>,
+    state: Mutex<State>,
 }
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
-        let path = params.root_uri.unwrap().to_file_path().unwrap();
+        let mut state = self.state.lock().unwrap();
 
+        let path = params.root_uri.unwrap().to_file_path().unwrap();
         let paths = fs::read_dir(path).unwrap();
 
-        let p4_files = paths
-            .into_iter()
-            .filter(|file| file.as_ref().unwrap().path().extension().unwrap() == "p4")
-            .map(|file| {
-                let file_path = file.unwrap().path();
+        for dir_entry in paths {
+            if dir_entry
+                .as_ref()
+                .unwrap()
+                .path()
+                .extension()
+                .unwrap()
+                .to_ascii_lowercase()
+                == "p4"
+            {
+                let file_path = dir_entry.unwrap().path();
                 let file_content = fs::read_to_string(file_path.clone()).unwrap();
+                let tree = state.parser.parse(file_content.clone(), None);
 
-                File {
-                    path: file_path,
-                    content: file_content,
-                    tree: None,
-                }
-            })
-            .collect::<Vec<File>>();
-
-        self.client
-            .log_message(MessageType::INFO, p4_files.len())
-            .await;
+                state.files.insert(
+                    Url::parse(file_path.to_str().unwrap()).unwrap(),
+                    File {
+                        path: file_path.into(),
+                        content: file_content,
+                        tree,
+                    },
+                );
+            }
+        }
 
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
@@ -75,9 +88,15 @@ impl LanguageServer for Backend {
         ])))
     }
 
-    async fn hover(&self, _: HoverParams) -> Result<Option<Hover>> {
+    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
+        let state = self.state.lock().unwrap();
+        let file_uri = params.text_document_position_params.text_document.uri;
+
+        let file = state.files.get(&file_uri).unwrap();
+        let info: String = file.tree.as_ref().unwrap().root_node().kind().to_string();
+
         Ok(Some(Hover {
-            contents: HoverContents::Scalar(MarkedString::String("You're hovering!".to_string())),
+            contents: HoverContents::Scalar(MarkedString::String(info)),
             range: None,
         }))
     }
@@ -100,8 +119,10 @@ async fn main() {
 
     let (service, socket) = LspService::new(|client| Backend {
         client,
-        parser,
-        files: None,
+        state: Mutex::new(State {
+            parser,
+            files: HashMap::new(),
+        }),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
