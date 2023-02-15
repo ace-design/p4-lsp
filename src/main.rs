@@ -30,8 +30,8 @@ impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         let mut state = self.state.lock().unwrap();
 
-        let path = params.root_uri.unwrap().to_file_path().unwrap();
-        let paths = fs::read_dir(path).unwrap();
+        let uri = params.root_uri.unwrap();
+        let paths = fs::read_dir(PathBuf::from(uri.path())).unwrap();
 
         for dir_entry in paths {
             if dir_entry
@@ -48,7 +48,7 @@ impl LanguageServer for Backend {
                 let tree = state.parser.parse(file_content.clone(), None);
 
                 state.files.insert(
-                    Url::parse(file_path.to_str().unwrap()).unwrap(),
+                    Url::from_file_path(file_path.clone()).unwrap(),
                     File {
                         path: file_path.into(),
                         content: file_content,
