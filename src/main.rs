@@ -153,10 +153,10 @@ impl LanguageServer for Backend {
 fn new_end_point(start: Point, new_content: &str) -> Point {
     let new_lines: Vec<&str> = new_content.lines().collect();
 
-    let column = if new_lines.len() == 1 {
-        start.column + new_content.len()
-    } else {
-        new_lines.last().unwrap().len()
+    let column = match new_lines.len() {
+        0 => 0,
+        1 => start.column + new_content.len(),
+        _ => new_lines.last().unwrap().len(),
     };
 
     Point {
