@@ -111,6 +111,8 @@ impl LanguageServer for Backend {
         let file_path = file_uri.to_file_path().unwrap();
         let new_file_content = fs::read_to_string(file_path).unwrap();
 
+        println!("Number of changes: {}", params.content_changes.len());
+
         for change in params.content_changes {
             let mut old_tree: Option<&Tree> = None;
             let text: &str;
@@ -143,6 +145,7 @@ impl LanguageServer for Backend {
                 }
             }
 
+            dbg!(change.range);
             files.get_mut(&file_uri).unwrap().tree = parser.parse(text, old_tree);
         }
 
@@ -154,7 +157,7 @@ fn new_end_point(start: Point, new_content: &str) -> Point {
     let new_lines: Vec<&str> = new_content.lines().collect();
 
     let column = match new_lines.len() {
-        0 => 0,
+        0 => start.column,
         1 => start.column + new_content.len(),
         _ => new_lines.last().unwrap().len(),
     };
