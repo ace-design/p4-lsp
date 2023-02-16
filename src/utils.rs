@@ -13,7 +13,7 @@ pub fn pos_to_byte(pos: Position, text: &str) -> usize {
     let lines = &text.lines().collect::<Vec<&str>>()[..(pos.line as usize)];
 
     for line in lines {
-        total_bytes += line.len() + 1;
+        total_bytes += line.len() + 1; // WARNING: Could break if line break char is not 1 byte
     }
     total_bytes + pos.character as usize
 }
