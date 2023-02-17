@@ -5,7 +5,7 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
-use tree_sitter::{InputEdit, Node, Parser, Point, Tree};
+use tree_sitter::{InputEdit, Node, Parser, Tree};
 
 mod utils;
 
@@ -132,7 +132,7 @@ impl LanguageServer for Backend {
                         new_end_byte: start_byte + &change.text.len(),
                         start_position,
                         old_end_position: utils::pos_to_point(range.end),
-                        new_end_position: new_end_point(start_position, &change.text),
+                        new_end_position: utils::calculate_end_point(start_position, &change.text),
                     };
 
                     file.content
@@ -150,30 +150,9 @@ impl LanguageServer for Backend {
             }
 
             files.get_mut(&file_uri).unwrap().tree = parser.parse(text, old_tree);
-            dbg!(change);
         }
 
         ()
-    }
-}
-
-fn new_end_point(start: Point, new_content: &str) -> Point {
-    let new_lines: Vec<&str> = new_content.lines().collect();
-    let nb_lines = if new_lines.len() == 0 {
-        1
-    } else {
-        new_lines.len()
-    };
-
-    let column = match new_lines.len() {
-        0 => start.column,
-        1 => start.column + new_content.len(),
-        _ => new_lines.last().unwrap().len(),
-    };
-
-    Point {
-        column,
-        row: start.row + nb_lines,
     }
 }
 

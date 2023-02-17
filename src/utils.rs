@@ -18,6 +18,26 @@ pub fn pos_to_byte(pos: Position, text: &str) -> usize {
     total_bytes + pos.character as usize
 }
 
+pub fn calculate_end_point(start: Point, new_content: &str) -> Point {
+    let new_lines: Vec<&str> = new_content.lines().collect();
+    let nb_lines = if new_lines.len() == 0 {
+        1
+    } else {
+        new_lines.len()
+    };
+
+    let column = match new_lines.len() {
+        0 => start.column,
+        1 => start.column + new_content.len(),
+        _ => new_lines.last().unwrap().len(),
+    };
+
+    Point {
+        column,
+        row: start.row + nb_lines,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use tower_lsp::lsp_types::Position;
