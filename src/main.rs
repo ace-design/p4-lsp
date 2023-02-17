@@ -1,12 +1,11 @@
 use std::collections::HashMap;
-use std::fs;
 use std::sync::Mutex;
 
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
-use tree_sitter::{InputEdit, Parser, Point, Tree};
+use tree_sitter::{InputEdit, Node, Parser, Point, Tree};
 
 mod utils;
 
@@ -72,15 +71,20 @@ impl LanguageServer for Backend {
         let tree: &Tree = file.tree.as_ref().unwrap();
 
         let point = utils::pos_to_point(params.text_document_position_params.position);
-        let info: String = tree
+
+        let mut node: Node = tree
             .root_node()
             .named_descendant_for_point_range(point, point)
-            .unwrap()
-            .kind()
-            .to_string();
+            .unwrap();
+
+        let mut node_hierarchy = node.kind().to_string();
+        while node.kind() != "source_file" {
+            node = node.parent().unwrap();
+            node_hierarchy = [node.kind().into(), node_hierarchy].join(" > ");
+        }
 
         Ok(Some(Hover {
-            contents: HoverContents::Scalar(MarkedString::String(info)),
+            contents: HoverContents::Scalar(MarkedString::String(node_hierarchy)),
             range: None,
         }))
     }
@@ -108,20 +112,18 @@ impl LanguageServer for Backend {
         let mut parser = self.state.parser.lock().unwrap();
 
         let file_uri = params.text_document.uri;
-        let file_path = file_uri.to_file_path().unwrap();
-        let new_file_content = fs::read_to_string(file_path).unwrap();
-
-        println!("Number of changes: {}", params.content_changes.len());
 
         for change in params.content_changes {
             let mut old_tree: Option<&Tree> = None;
-            let text: &str;
+            let text: String;
 
             match change.range {
                 Some(range) => {
-                    let file = files.get(&file_uri).unwrap();
+                    let file = files.get_mut(&file_uri).unwrap();
 
                     let start_byte = utils::pos_to_byte(range.start, &file.content);
+                    let old_end_byte = utils::pos_to_byte(range.end, &file.content);
+
                     let start_position = utils::pos_to_point(range.start);
 
                     let edit = InputEdit {
@@ -133,20 +135,22 @@ impl LanguageServer for Backend {
                         new_end_position: new_end_point(start_position, &change.text),
                     };
 
-                    text = &new_file_content;
+                    file.content
+                        .replace_range(start_byte..old_end_byte, &change.text);
 
+                    text = file.content.clone();
                     let tree = files.get_mut(&file_uri).unwrap().tree.as_mut().unwrap();
                     tree.edit(&edit);
                     old_tree = Some(tree);
                 }
                 None => {
                     // If change.range is None, change.text represents the whole file
-                    text = &change.text;
+                    text = change.text.clone();
                 }
             }
 
-            dbg!(change.range);
             files.get_mut(&file_uri).unwrap().tree = parser.parse(text, old_tree);
+            dbg!(change);
         }
 
         ()
@@ -155,6 +159,11 @@ impl LanguageServer for Backend {
 
 fn new_end_point(start: Point, new_content: &str) -> Point {
     let new_lines: Vec<&str> = new_content.lines().collect();
+    let nb_lines = if new_lines.len() == 0 {
+        1
+    } else {
+        new_lines.len()
+    };
 
     let column = match new_lines.len() {
         0 => start.column,
@@ -164,7 +173,7 @@ fn new_end_point(start: Point, new_content: &str) -> Point {
 
     Point {
         column,
-        row: start.row + new_lines.len() - 1,
+        row: start.row + nb_lines,
     }
 }
 
