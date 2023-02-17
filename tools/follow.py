@@ -19,7 +19,7 @@ while True:
         if output and "write" in output.decode('utf-8'):
             line = output.decode('utf-8').strip()
             line = re.sub(r"write\([0-9], \"", "", line)
-            line = re.sub(r"\", [0-9]\).*", "", line)
+            line = re.sub(r"\", [0-9]+\).*", "", line)
             
             line = line.replace("\\n", "\n")
             print(line, end='')
