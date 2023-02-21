@@ -20,7 +20,7 @@ pub fn pos_to_byte(pos: Position, text: &str) -> usize {
 
 pub fn calculate_end_point(start: Point, new_content: &str) -> Point {
     let new_lines: Vec<&str> = new_content.lines().collect();
-    let nb_lines = if new_lines.len() == 0 {
+    let nb_lines = if new_lines.is_empty() {
         1
     } else {
         new_lines.len()

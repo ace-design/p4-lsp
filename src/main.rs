@@ -9,7 +9,7 @@ use tree_sitter::{InputEdit, Node, Parser, Tree};
 
 mod utils;
 
-const LANGUAGE_ID: &str = "p4";
+const LANGUAGE_IDS: [&str; 2] = ["p4", "P4"];
 
 struct File {
     content: String,
@@ -94,7 +94,7 @@ impl LanguageServer for Backend {
         let mut files = self.state.files.lock().unwrap();
 
         let doc = params.text_document;
-        if doc.language_id == LANGUAGE_ID {
+        if LANGUAGE_IDS.contains(&doc.language_id.as_str()) {
             let tree = parser.parse(&doc.text, None);
 
             files.insert(
@@ -129,7 +129,7 @@ impl LanguageServer for Backend {
                     let edit = InputEdit {
                         start_byte,
                         old_end_byte: utils::pos_to_byte(range.end, &file.content),
-                        new_end_byte: start_byte + &change.text.len(),
+                        new_end_byte: start_byte + change.text.len(),
                         start_position,
                         old_end_position: utils::pos_to_point(range.end),
                         new_end_position: utils::calculate_end_point(start_position, &change.text),
@@ -151,8 +151,6 @@ impl LanguageServer for Backend {
 
             files.get_mut(&file_uri).unwrap().tree = parser.parse(text, old_tree);
         }
-
-        ()
     }
 }
 
@@ -167,7 +165,7 @@ async fn main() {
     let (service, socket) = LspService::new(|client| Backend {
         client,
         state: ServerState {
-            parser: Mutex::new(parser.into()),
+            parser: Mutex::new(parser),
             files: Mutex::new(HashMap::new()),
         },
     });
