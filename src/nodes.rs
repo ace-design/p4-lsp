@@ -4,24 +4,24 @@ use std::collections::HashMap;
 
 use tree_sitter_p4::NODE_TYPES as NODE_TYPES_JSON;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Type {
     #[serde(rename = "type")]
     pub kind: String,
     pub named: bool,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Children {
     pub multiple: bool,
     pub required: bool,
     pub types: Vec<Type>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct NodeType {
     #[serde(rename = "type")]
-    kind: String,
+    pub kind: String,
     pub named: bool,
     pub fields: Option<HashMap<String, Children>>,
     pub children: Option<Children>,
@@ -43,10 +43,31 @@ lazy_static! {
 
 #[cfg(test)]
 mod tests {
-    use super::NODE_TYPES;
+    use super::{Children, NodeType, Type, NODE_TYPES};
+    use std::collections::HashMap;
 
     #[test]
-    fn test_node_types() {
+    fn test_node_types_parsed() {
         assert_ne!(NODE_TYPES.len(), 0);
+    }
+
+    #[test]
+    fn test_node_types_parsed_correctly() {
+        assert_eq!(
+            NODE_TYPES.get("return_statement").unwrap(),
+            &NodeType {
+                kind: "return_statement".into(),
+                named: true,
+                fields: Some(HashMap::new()),
+                children: Some(Children {
+                    multiple: false,
+                    required: false,
+                    types: vec![Type {
+                        kind: "expression".into(),
+                        named: true,
+                    }]
+                }),
+            }
+        );
     }
 }
