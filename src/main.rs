@@ -6,7 +6,9 @@ use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
 use tree_sitter::{InputEdit, Node, Parser, Tree};
+use tree_sitter_p4::language;
 
+mod nodes;
 mod utils;
 
 const LANGUAGE_IDS: [&str; 2] = ["p4", "P4"];
@@ -107,7 +109,7 @@ impl LanguageServer for Backend {
         }
     }
 
-    async fn did_change(&self, params: DidChangeTextDocumentParams) -> () {
+    async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let mut files = self.state.files.lock().unwrap();
         let mut parser = self.state.parser.lock().unwrap();
 
@@ -160,7 +162,7 @@ async fn main() {
     let stdout = tokio::io::stdout();
 
     let mut parser = Parser::new();
-    parser.set_language(tree_sitter_p4::language()).unwrap();
+    parser.set_language(language()).unwrap();
 
     let (service, socket) = LspService::new(|client| Backend {
         client,
