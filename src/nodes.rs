@@ -7,24 +7,24 @@ use tree_sitter_p4::NODE_TYPES as NODE_TYPES_JSON;
 #[derive(Serialize, Deserialize)]
 pub struct Type {
     #[serde(rename = "type")]
-    kind: String,
-    named: bool,
+    pub kind: String,
+    pub named: bool,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Children {
-    multiple: bool,
-    required: bool,
-    types: Vec<Type>,
+    pub multiple: bool,
+    pub required: bool,
+    pub types: Vec<Type>,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct NodeType {
     #[serde(rename = "type")]
     kind: String,
-    named: bool,
-    fields: Option<HashMap<String, Children>>,
-    children: Option<Children>,
+    pub named: bool,
+    pub fields: Option<HashMap<String, Children>>,
+    pub children: Option<Children>,
 }
 
 lazy_static! {

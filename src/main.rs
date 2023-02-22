@@ -9,6 +9,8 @@ use tree_sitter::{InputEdit, Node, Parser, Tree};
 use tree_sitter_p4::language;
 
 mod nodes;
+use nodes::NODE_TYPES;
+
 mod utils;
 
 const LANGUAGE_IDS: [&str; 2] = ["p4", "P4"];
