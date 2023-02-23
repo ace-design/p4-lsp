@@ -9,7 +9,10 @@ use tree_sitter::{InputEdit, Node, Parser, Tree};
 use tree_sitter_p4::language;
 
 mod nodes;
-use nodes::NODE_TYPES;
+//use nodes::NODE_TYPES;
+
+mod scopes;
+use scopes::ScopeNode;
 
 mod utils;
 
@@ -18,6 +21,7 @@ const LANGUAGE_IDS: [&str; 2] = ["p4", "P4"];
 struct File {
     content: String,
     tree: Option<Tree>,
+    scopes: Option<ScopeNode>,
 }
 
 struct ServerState {
@@ -87,8 +91,19 @@ impl LanguageServer for Backend {
             node_hierarchy = [node.kind().into(), node_hierarchy].join(" > ");
         }
 
+        let mut variables_text = String::from("Variables in scope:\n");
+        let variables = file.scopes.as_ref().unwrap().variables_in_scope();
+
+        for var in variables {
+            variables_text.push_str("- ");
+            variables_text.push_str(var.as_str());
+            variables_text.push_str("\n");
+        }
+
         Ok(Some(Hover {
-            contents: HoverContents::Scalar(MarkedString::String(node_hierarchy)),
+            contents: HoverContents::Scalar(MarkedString::String(
+                [node_hierarchy, variables_text].join("\n\n"),
+            )),
             range: None,
         }))
     }
@@ -104,8 +119,9 @@ impl LanguageServer for Backend {
             files.insert(
                 doc.uri,
                 File {
-                    content: doc.text,
-                    tree,
+                    content: doc.text.clone(),
+                    tree: tree.clone(),
+                    scopes: ScopeNode::new(tree, doc.text),
                 },
             );
         }
