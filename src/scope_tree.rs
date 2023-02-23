@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use tree_sitter::Tree;
+use tree_sitter::{Node, Tree};
 
 pub struct ScopeNode {
     pub scope: Scope,
@@ -9,7 +9,7 @@ pub struct ScopeNode {
 }
 
 impl ScopeNode {
-    pub fn new(tree: Option<Tree>, content: String) -> Option<ScopeNode> {
+    pub fn new(tree: Option<Tree>, content: &str) -> Option<ScopeNode> {
         if tree.is_none() {
             return None;
         }
@@ -39,6 +39,8 @@ impl ScopeNode {
             parent: None,
         })
     }
+
+    fn parse_scope(node: Node, content: &str) {}
 
     pub fn variables_in_scope(&self) -> Vec<String> {
         self.scope.variables.clone()

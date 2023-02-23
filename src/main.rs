@@ -11,18 +11,15 @@ use tree_sitter_p4::language;
 mod nodes;
 //use nodes::NODE_TYPES;
 
-mod scopes;
-use scopes::ScopeNode;
+mod scope_tree;
+use scope_tree::ScopeNode;
+
+mod file;
+use file::File;
 
 mod utils;
 
 const LANGUAGE_IDS: [&str; 2] = ["p4", "P4"];
-
-struct File {
-    content: String,
-    tree: Option<Tree>,
-    scopes: Option<ScopeNode>,
-}
 
 struct ServerState {
     parser: Mutex<Parser>,
@@ -63,7 +60,12 @@ impl LanguageServer for Backend {
         Ok(())
     }
 
-    async fn completion(&self, _: CompletionParams) -> Result<Option<CompletionResponse>> {
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        let files = self.state.files.lock().unwrap();
+
+        let file_uri = params.text_document_position.text_document.uri;
+        let file = files.get(&file_uri).unwrap();
+
         Ok(Some(CompletionResponse::Array(vec![
             CompletionItem::new_simple("Hello".to_string(), "Some detail".to_string()),
             CompletionItem::new_simple("Bye".to_string(), "More detail".to_string()),
@@ -121,7 +123,7 @@ impl LanguageServer for Backend {
                 File {
                     content: doc.text.clone(),
                     tree: tree.clone(),
-                    scopes: ScopeNode::new(tree, doc.text),
+                    scopes: ScopeNode::new(tree, &doc.text),
                 },
             );
         }
