@@ -62,10 +62,17 @@ impl LanguageServer for Backend {
         let file_uri = params.text_document_position.text_document.uri;
         let file = files.get(&file_uri).unwrap();
 
-        Ok(Some(CompletionResponse::Array(vec![
-            CompletionItem::new_simple("Hello".to_string(), "Some detail".to_string()),
-            CompletionItem::new_simple("Bye".to_string(), "More detail".to_string()),
-        ])))
+        let completion_variable_list: Vec<CompletionItem> = file
+            .get_variables_at_pos(params.text_document_position.position)
+            .iter()
+            .map(|var| CompletionItem {
+                label: var.to_string(),
+                kind: Some(CompletionItemKind::VARIABLE),
+                ..Default::default()
+            })
+            .collect();
+
+        Ok(Some(CompletionResponse::Array(completion_variable_list)))
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
@@ -90,7 +97,7 @@ impl LanguageServer for Backend {
         }
 
         let mut variables_text = String::from("Variables in scope:\n");
-        let variables = file.scopes.as_ref().unwrap().variables_in_scope();
+        let variables = file.get_variables_at_pos(params.text_document_position_params.position);
 
         for var in variables {
             variables_text.push_str("- ");

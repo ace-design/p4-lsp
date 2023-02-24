@@ -1,6 +1,6 @@
 use std::sync::MutexGuard;
 
-use tower_lsp::lsp_types::DidChangeTextDocumentParams;
+use tower_lsp::lsp_types::{DidChangeTextDocumentParams, Position};
 use tree_sitter::{InputEdit, Parser, Tree};
 
 use crate::utils;
@@ -58,6 +58,15 @@ impl File {
             }
 
             self.tree = parser.parse(text, old_tree);
+        }
+    }
+
+    pub fn get_variables_at_pos(&self, _position: Position) -> Vec<String> {
+        let scopes = self.scopes.as_ref();
+
+        match scopes {
+            Some(scopes) => scopes.variables_in_scope(),
+            None => vec![],
         }
     }
 }
