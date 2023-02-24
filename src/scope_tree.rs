@@ -27,10 +27,14 @@ impl ScopeNode {
     }
 }
 
-fn parse_scope(parent_node: Option<ScopeNode>, current_node: Node, content: &str) -> ScopeNode {
-    let cursor = &mut current_node.walk();
+fn parse_scope(
+    parent_node: Option<ScopeNode>,
+    current_syntax_node: Node,
+    content: &str,
+) -> ScopeNode {
+    let cursor = &mut current_syntax_node.walk();
     let mut variables: Vec<String> = vec![];
-    for child in current_node.named_children(cursor) {
+    for child in current_syntax_node.named_children(cursor) {
         match child.kind() {
             "constant_declaration" => {
                 let name_node = child.child_by_field_name("name").unwrap();
