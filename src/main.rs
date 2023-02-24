@@ -5,19 +5,15 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
-use tree_sitter::{InputEdit, Node, Parser, Tree};
+use tree_sitter::{Node, Parser, Tree};
 use tree_sitter_p4::language;
 
-mod nodes;
-//use nodes::NODE_TYPES;
-
-mod scope_tree;
-use scope_tree::ScopeNode;
-
 mod file;
-use file::File;
-
+mod nodes;
+mod scope_tree;
 mod utils;
+
+use file::File;
 
 const LANGUAGE_IDS: [&str; 2] = ["p4", "P4"];
 
@@ -118,61 +114,17 @@ impl LanguageServer for Backend {
         if LANGUAGE_IDS.contains(&doc.language_id.as_str()) {
             let tree = parser.parse(&doc.text, None);
 
-            files.insert(
-                doc.uri,
-                File {
-                    content: doc.text.clone(),
-                    tree: tree.clone(),
-                    scopes: ScopeNode::new(tree, &doc.text),
-                },
-            );
+            files.insert(doc.uri, File::new(doc.text, tree));
         }
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
         let mut files = self.state.files.lock().unwrap();
-        let mut parser = self.state.parser.lock().unwrap();
+        let parser = self.state.parser.lock().unwrap();
 
-        let file_uri = params.text_document.uri;
+        let file = files.get_mut(&params.text_document.uri).unwrap();
 
-        for change in params.content_changes {
-            let mut old_tree: Option<&Tree> = None;
-            let text: String;
-
-            match change.range {
-                Some(range) => {
-                    let file = files.get_mut(&file_uri).unwrap();
-
-                    let start_byte = utils::pos_to_byte(range.start, &file.content);
-                    let old_end_byte = utils::pos_to_byte(range.end, &file.content);
-
-                    let start_position = utils::pos_to_point(range.start);
-
-                    let edit = InputEdit {
-                        start_byte,
-                        old_end_byte: utils::pos_to_byte(range.end, &file.content),
-                        new_end_byte: start_byte + change.text.len(),
-                        start_position,
-                        old_end_position: utils::pos_to_point(range.end),
-                        new_end_position: utils::calculate_end_point(start_position, &change.text),
-                    };
-
-                    file.content
-                        .replace_range(start_byte..old_end_byte, &change.text);
-
-                    text = file.content.clone();
-                    let tree = files.get_mut(&file_uri).unwrap().tree.as_mut().unwrap();
-                    tree.edit(&edit);
-                    old_tree = Some(tree);
-                }
-                None => {
-                    // If change.range is None, change.text represents the whole file
-                    text = change.text.clone();
-                }
-            }
-
-            files.get_mut(&file_uri).unwrap().tree = parser.parse(text, old_tree);
-        }
+        file.update(params, parser);
     }
 }
 
