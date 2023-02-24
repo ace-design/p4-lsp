@@ -27,34 +27,31 @@ impl File {
             let mut old_tree: Option<&Tree> = None;
             let text: String;
 
-            match change.range {
-                Some(range) => {
-                    let start_byte = utils::pos_to_byte(range.start, &self.content);
-                    let old_end_byte = utils::pos_to_byte(range.end, &self.content);
+            if let Some(range) = change.range {
+                let start_byte = utils::pos_to_byte(range.start, &self.content);
+                let old_end_byte = utils::pos_to_byte(range.end, &self.content);
 
-                    let start_position = utils::pos_to_point(range.start);
+                let start_position = utils::pos_to_point(range.start);
 
-                    let edit = InputEdit {
-                        start_byte,
-                        old_end_byte: utils::pos_to_byte(range.end, &self.content),
-                        new_end_byte: start_byte + change.text.len(),
-                        start_position,
-                        old_end_position: utils::pos_to_point(range.end),
-                        new_end_position: utils::calculate_end_point(start_position, &change.text),
-                    };
+                let edit = InputEdit {
+                    start_byte,
+                    old_end_byte: utils::pos_to_byte(range.end, &self.content),
+                    new_end_byte: start_byte + change.text.len(),
+                    start_position,
+                    old_end_position: utils::pos_to_point(range.end),
+                    new_end_position: utils::calculate_end_point(start_position, &change.text),
+                };
 
-                    self.content
-                        .replace_range(start_byte..old_end_byte, &change.text);
+                self.content
+                    .replace_range(start_byte..old_end_byte, &change.text);
 
-                    text = self.content.clone();
-                    let tree = self.tree.as_mut().unwrap();
-                    tree.edit(&edit);
-                    old_tree = Some(tree);
-                }
-                None => {
-                    // If change.range is None, change.text represents the whole file
-                    text = change.text.clone();
-                }
+                text = self.content.clone();
+                let tree = self.tree.as_mut().unwrap();
+                tree.edit(&edit);
+                old_tree = Some(tree);
+            } else {
+                // If change.range is None, change.text represents the whole file
+                text = change.text.clone();
             }
 
             self.tree = parser.parse(text, old_tree);
@@ -64,9 +61,10 @@ impl File {
     pub fn get_variables_at_pos(&self, _position: Position) -> Vec<String> {
         let scopes = self.scopes.as_ref();
 
-        match scopes {
-            Some(scopes) => scopes.variables_in_scope(),
-            None => vec![],
+        if let Some(scopes) = scopes {
+            scopes.variables_in_scope()
+        } else {
+            vec![]
         }
     }
 }
