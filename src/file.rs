@@ -5,12 +5,12 @@ use tree_sitter::{InputEdit, Parser, Tree};
 
 use crate::utils;
 
-use crate::scope_tree::ScopeNode;
+use crate::scope_tree::ScopeTree;
 
 pub struct File {
     pub content: String,
     pub tree: Option<Tree>,
-    pub scopes: Option<ScopeNode>,
+    pub scopes: Option<ScopeTree>,
 }
 
 impl File {
@@ -18,7 +18,7 @@ impl File {
         File {
             content: content.clone(),
             tree: tree.clone(),
-            scopes: ScopeNode::new(tree, &content),
+            scopes: ScopeTree::new(tree, &content),
         }
     }
 
@@ -58,11 +58,11 @@ impl File {
         }
     }
 
-    pub fn get_variables_at_pos(&self, _position: Position) -> Vec<String> {
+    pub fn get_variables_at_pos(&self, position: Position) -> Vec<String> {
         let scopes = self.scopes.as_ref();
 
         if let Some(scopes) = scopes {
-            scopes.variables_in_scope()
+            scopes.variables_in_scope(position)
         } else {
             vec![]
         }

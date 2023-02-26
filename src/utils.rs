@@ -1,3 +1,5 @@
+use std::ops::Range;
+
 use tower_lsp::lsp_types::Position;
 use tree_sitter::Point;
 
@@ -36,6 +38,10 @@ pub fn calculate_end_point(start: Point, new_content: &str) -> Point {
         column,
         row: start.row + nb_lines,
     }
+}
+
+pub fn ts_range_to_std_range(range: tree_sitter::Range) -> Range<usize> {
+    return range.start_byte..range.end_byte;
 }
 
 #[cfg(test)]

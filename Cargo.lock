@@ -195,6 +195,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "indextree"
+version = "4.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "497f036ac2fae75c34224648a77802e5dd4e9cfb56f4713ab6b12b7160a0523b"
+
+[[package]]
 name = "itoa"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -282,6 +288,7 @@ checksum = "b7e5500299e16ebb147ae15a00a942af264cf3688f47923b8fc2cd5858f23ad3"
 name = "p4_lsp"
 version = "0.1.0"
 dependencies = [
+ "indextree",
  "lazy_static",
  "serde",
  "serde_json",
@@ -510,9 +517,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "1.0.108"
+version = "1.0.109"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d56e159d99e6c2b93995d171050271edb50ecc5288fbc7cc17de8fdce4e58c14"
+checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -684,7 +691,7 @@ dependencies = [
 [[package]]
 name = "tree-sitter-p4"
 version = "0.0.1"
-source = "git+ssh://git@github.com/ace-design/tree-sitter-p4.git#7105bab55c11854ca0310b13915bc55539628030"
+source = "git+ssh://git@github.com/ace-design/tree-sitter-p4.git#62a97453b27e442dd515125428e34f5bbc108e07"
 dependencies = [
  "cc",
  "tree-sitter",

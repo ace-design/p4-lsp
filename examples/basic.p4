@@ -52,6 +52,8 @@ parser MyParser(packet_in packet,
                 inout metadata meta,
                 inout standard_metadata_t standard_metadata) {
 
+    int test = 1;
+
     state start {
         transition parse_ethernet;
     }
