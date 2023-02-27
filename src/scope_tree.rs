@@ -1,5 +1,5 @@
 use indextree::{Arena, NodeId};
-use tree_sitter::{Range, Tree};
+use tree_sitter::{Node, Range, Tree};
 
 struct Scope {
     range: Range,
@@ -66,12 +66,20 @@ impl ScopeTree {
             range: body_node.range(),
         };
 
+        if current_syntax_node.kind() == "parser_declaration" {
+            if let Some(mut variables) =
+                get_parser_declaration_params(current_syntax_node, content, offset)
+            {
+                scope.variables.append(&mut variables);
+            }
+        }
+
         let mut children: Vec<NodeId> = vec![];
 
         let cursor = &mut current_syntax_node.walk();
         for child in body_node.named_children(cursor) {
             match child.kind() {
-                "constant_declaration" | "variable_declaration" => {
+                "constant_declaration" => {
                     let name_node = child.child_by_field_name("name").unwrap();
                     let name_range = name_node.range();
 
@@ -81,6 +89,17 @@ impl ScopeTree {
 
                     scope.variables.push(name);
                 }
+                "variable_declaration" => {
+                    let name_node = child.child_by_field_name("name").unwrap();
+                    let name_range = name_node.range();
+
+                    let name: String = content
+                        [(name_range.start_byte - offset)..(name_range.end_byte - offset)]
+                        .to_string();
+
+                    scope.variables.push(name);
+                }
+
                 "parser_declaration" => children.push(self.parse_scopes(
                     child,
                     &content[child.range().start_byte..child.range().end_byte],
@@ -98,4 +117,24 @@ impl ScopeTree {
 
         node_id
     }
+}
+
+fn get_parser_declaration_params(node: Node, content: &str, offset: usize) -> Option<Vec<String>> {
+    let mut variables: Vec<String> = vec![];
+
+    let parameters = node
+        .child_by_field_name("declaration")?
+        .child_by_field_name("parameters")?;
+
+    let mut cursor = parameters.walk();
+    for param in parameters.named_children(&mut cursor) {
+        let name_node = param.child_by_field_name("name").unwrap();
+        let name_range = name_node.range();
+
+        let name: String =
+            content[(name_range.start_byte - offset)..(name_range.end_byte - offset)].to_string();
+        variables.push(name);
+    }
+
+    Some(variables)
 }
