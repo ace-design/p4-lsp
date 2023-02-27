@@ -62,7 +62,7 @@ impl File {
         let scopes = self.scopes.as_ref();
 
         if let Some(scopes) = scopes {
-            scopes.variables_in_scope(position)
+            scopes.variables_in_scope(utils::pos_to_byte(position, &self.content))
         } else {
             vec![]
         }

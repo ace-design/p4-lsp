@@ -8,6 +8,10 @@ use tower_lsp::{Client, LanguageServer, LspService, Server};
 use tree_sitter::{Node, Parser, Tree};
 use tree_sitter_p4::language;
 
+#[macro_use]
+extern crate simple_log;
+use simple_log::LogConfigBuilder;
+
 mod file;
 mod nodes;
 mod scope_tree;
@@ -30,6 +34,23 @@ struct Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+        let config = LogConfigBuilder::builder()
+            .path("/tmp/p4-lsp.log")
+            .size(100)
+            .roll_count(10)
+            .time_format("%Y-%m-%d %H:%M:%S.%f") //E.g:%H:%M:%S.%f
+            .level("debug")
+            .output_file()
+            .output_console()
+            .build();
+
+        if simple_log::new(config).is_err() {
+            self.client
+                .log_message(MessageType::ERROR, "Log file couldn't be created.")
+                .await;
+        }
+
+        info!("Initializing lsp");
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
@@ -44,15 +65,11 @@ impl LanguageServer for Backend {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        self.client
-            .log_message(MessageType::INFO, "server initialized!")
-            .await;
+        info!("Lsp initialized");
     }
 
     async fn shutdown(&self) -> Result<()> {
-        self.client
-            .log_message(MessageType::INFO, "server stopped!")
-            .await;
+        info!("Lsp stopped");
         Ok(())
     }
 
@@ -102,7 +119,7 @@ impl LanguageServer for Backend {
         for var in variables {
             variables_text.push_str("- ");
             variables_text.push_str(var.as_str());
-            variables_text.push_str("\n");
+            variables_text.push('\n');
         }
 
         Ok(Some(Hover {

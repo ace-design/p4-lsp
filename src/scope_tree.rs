@@ -1,10 +1,5 @@
-use std::sync::{Arc, Mutex};
-
 use indextree::{Arena, NodeId};
-use tower_lsp::lsp_types::Position;
 use tree_sitter::{Range, Tree};
-
-use crate::utils;
 
 struct Scope {
     range: Range,
@@ -18,32 +13,48 @@ pub struct ScopeTree {
 
 impl ScopeTree {
     pub fn new(tree: Option<Tree>, content: &str) -> Option<ScopeTree> {
-        if tree.is_none() {
-            return None;
-        }
-        let tree = tree.unwrap();
-
         let arena = Arena::new();
         let mut scope_tree = ScopeTree {
             arena,
             root_id: None,
         };
 
-        scope_tree.root_id = Some(scope_tree.parse_scopes(tree.root_node(), content));
+        scope_tree.root_id = Some(scope_tree.parse_scopes(tree?.root_node(), content, 0));
 
         Some(scope_tree)
     }
 
-    pub fn variables_in_scope(&self, position: Position) -> Vec<String> {
-        self.scope_at_position(position).variables.clone()
+    pub fn variables_in_scope(&self, byte_pos: usize) -> Vec<String> {
+        let mut variables: Vec<String> = vec![];
+
+        let mut id = self.root_id.unwrap();
+
+        let mut subscope_exists = true;
+        while subscope_exists {
+            subscope_exists = false;
+
+            variables.append(&mut self.arena.get(id).unwrap().get().variables.clone());
+
+            let children = id.children(&self.arena);
+            for child in children {
+                let range = self.arena.get(child).unwrap().get().range;
+                if range.start_byte <= byte_pos && byte_pos <= range.end_byte {
+                    id = child;
+                    subscope_exists = true;
+                    break;
+                }
+            }
+        }
+
+        variables
     }
 
-    fn scope_at_position(&self, _position: Position) -> &Scope {
-        // TODO: Complete implementation
-        self.arena.get(self.root_id.unwrap()).unwrap().get()
-    }
-
-    fn parse_scopes(&mut self, current_syntax_node: tree_sitter::Node, content: &str) -> NodeId {
+    fn parse_scopes(
+        &mut self,
+        current_syntax_node: tree_sitter::Node,
+        content: &str,
+        offset: usize,
+    ) -> NodeId {
         let body_node = match current_syntax_node.kind() {
             "source_file" => current_syntax_node,
             "parser_declaration" => current_syntax_node.child_by_field_name("body").unwrap(),
@@ -64,14 +75,17 @@ impl ScopeTree {
                     let name_node = child.child_by_field_name("name").unwrap();
                     let name_range = name_node.range();
 
-                    let name: String =
-                        content[utils::ts_range_to_std_range(name_range)].to_string();
+                    let name: String = content
+                        [(name_range.start_byte - offset)..(name_range.end_byte - offset)]
+                        .to_string();
 
                     scope.variables.push(name);
                 }
-                // "parser_declaration" => children.push(
-                //     self.parse_scopes(child, &content[utils::ts_range_to_std_range(child.range())]),
-                // ),
+                "parser_declaration" => children.push(self.parse_scopes(
+                    child,
+                    &content[child.range().start_byte..child.range().end_byte],
+                    child.range().start_byte,
+                )),
                 _ => {}
             }
         }
