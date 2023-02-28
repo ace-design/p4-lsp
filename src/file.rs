@@ -58,13 +58,15 @@ impl File {
         }
     }
 
-    pub fn get_variables_at_pos(&self, position: Position) -> Vec<String> {
+    pub fn get_variables_at_pos(&self, position: Position) -> (Vec<String>, Vec<String>) {
         let scopes = self.scopes.as_ref();
 
         if let Some(scopes) = scopes {
-            scopes.variables_in_scope(utils::pos_to_byte(position, &self.content))
+            scopes
+                .variables_in_scope(utils::pos_to_byte(position, &self.content))
+                .get_names()
         } else {
-            vec![]
+            (vec![], vec![])
         }
     }
 }

@@ -79,8 +79,10 @@ impl LanguageServer for Backend {
         let file_uri = params.text_document_position.text_document.uri;
         let file = files.get(&file_uri).unwrap();
 
-        let completion_variable_list: Vec<CompletionItem> = file
-            .get_variables_at_pos(params.text_document_position.position)
+        let (var_names, const_names) =
+            file.get_variables_at_pos(params.text_document_position.position);
+
+        let mut completion_list: Vec<CompletionItem> = var_names
             .iter()
             .map(|var| CompletionItem {
                 label: var.to_string(),
@@ -89,7 +91,18 @@ impl LanguageServer for Backend {
             })
             .collect();
 
-        Ok(Some(CompletionResponse::Array(completion_variable_list)))
+        completion_list.append(
+            &mut const_names
+                .iter()
+                .map(|var| CompletionItem {
+                    label: var.to_string(),
+                    kind: Some(CompletionItemKind::CONSTANT),
+                    ..Default::default()
+                })
+                .collect(),
+        );
+
+        Ok(Some(CompletionResponse::Array(completion_list)))
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
@@ -113,18 +126,26 @@ impl LanguageServer for Backend {
             node_hierarchy = [node.kind().into(), node_hierarchy].join(" > ");
         }
 
-        let mut variables_text = String::from("Variables in scope:\n");
-        let variables = file.get_variables_at_pos(params.text_document_position_params.position);
+        let (var_names, const_names) =
+            file.get_variables_at_pos(params.text_document_position_params.position);
 
-        for var in variables {
+        let mut variables_text = String::from("Variables in scope:\n");
+        for var in var_names {
             variables_text.push_str("- ");
             variables_text.push_str(var.as_str());
             variables_text.push('\n');
         }
 
+        let mut constant_text = String::from("Constants in scope:\n");
+        for var in const_names {
+            constant_text.push_str("- ");
+            constant_text.push_str(var.as_str());
+            constant_text.push('\n');
+        }
+
         Ok(Some(Hover {
             contents: HoverContents::Scalar(MarkedString::String(
-                [node_hierarchy, variables_text].join("\n\n"),
+                [node_hierarchy, variables_text, constant_text].join("\n\n"),
             )),
             range: None,
         }))

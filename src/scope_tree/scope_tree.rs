@@ -1,9 +1,11 @@
 use indextree::{Arena, NodeId};
 use tree_sitter::{Node, Range, Tree};
 
+use super::variables::NamedDataItems;
+
 struct Scope {
     range: Range,
-    variables: Vec<String>,
+    variables: NamedDataItems,
 }
 
 pub struct ScopeTree {
@@ -24,8 +26,8 @@ impl ScopeTree {
         Some(scope_tree)
     }
 
-    pub fn variables_in_scope(&self, byte_pos: usize) -> Vec<String> {
-        let mut variables: Vec<String> = vec![];
+    pub fn variables_in_scope(&self, byte_pos: usize) -> NamedDataItems {
+        let mut variables = NamedDataItems::new();
 
         let mut id = self.root_id.unwrap();
 
@@ -33,7 +35,7 @@ impl ScopeTree {
         while subscope_exists {
             subscope_exists = false;
 
-            variables.append(&mut self.arena.get(id).unwrap().get().variables.clone());
+            variables.add(self.arena.get(id).unwrap().get().variables.clone());
 
             let children = id.children(&self.arena);
             for child in children {
@@ -58,15 +60,15 @@ impl ScopeTree {
         let body_node = get_body_node(current_syntax_node);
 
         let mut scope = Scope {
-            variables: vec![],
+            variables: NamedDataItems::new(),
             range: body_node.range(),
         };
 
         if current_syntax_node.kind() == "parser_declaration" {
-            if let Some(mut variables) =
+            if let Some(variables) =
                 get_parser_declaration_params(current_syntax_node, content, offset)
             {
-                scope.variables.append(&mut variables);
+                scope.variables.add(variables);
             }
         }
 
@@ -83,7 +85,7 @@ impl ScopeTree {
                         [(name_range.start_byte - offset)..(name_range.end_byte - offset)]
                         .to_string();
 
-                    scope.variables.push(name);
+                    scope.variables.add_constant(name, vec![name_range]);
                 }
                 "variable_declaration" => {
                     let name_node = child.child_by_field_name("name").unwrap();
@@ -93,7 +95,7 @@ impl ScopeTree {
                         [(name_range.start_byte - offset)..(name_range.end_byte - offset)]
                         .to_string();
 
-                    scope.variables.push(name);
+                    scope.variables.add_variable(name, vec![name_range]);
                 }
 
                 "parser_declaration" => children.push(self.parse_scopes(
@@ -123,8 +125,12 @@ fn get_body_node(node: Node) -> Node {
     }
 }
 
-fn get_parser_declaration_params(node: Node, content: &str, offset: usize) -> Option<Vec<String>> {
-    let mut variables: Vec<String> = vec![];
+fn get_parser_declaration_params(
+    node: Node,
+    content: &str,
+    offset: usize,
+) -> Option<NamedDataItems> {
+    let mut variables = NamedDataItems::new();
 
     let parameters = node
         .child_by_field_name("declaration")?
@@ -137,7 +143,7 @@ fn get_parser_declaration_params(node: Node, content: &str, offset: usize) -> Op
 
         let name: String =
             content[(name_range.start_byte - offset)..(name_range.end_byte - offset)].to_string();
-        variables.push(name);
+        variables.add_variable(name, vec![name_range]);
     }
 
     Some(variables)
