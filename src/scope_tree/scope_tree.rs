@@ -55,11 +55,7 @@ impl ScopeTree {
         content: &str,
         offset: usize,
     ) -> NodeId {
-        let body_node = match current_syntax_node.kind() {
-            "source_file" => current_syntax_node,
-            "parser_declaration" => current_syntax_node.child_by_field_name("body").unwrap(),
-            _ => current_syntax_node,
-        };
+        let body_node = get_body_node(current_syntax_node);
 
         let mut scope = Scope {
             variables: vec![],
@@ -116,6 +112,14 @@ impl ScopeTree {
         }
 
         node_id
+    }
+}
+
+fn get_body_node(node: Node) -> Node {
+    match node.kind() {
+        "source_file" => node,
+        "parser_declaration" => node.child_by_field_name("body").unwrap(),
+        _ => node,
     }
 }
 
