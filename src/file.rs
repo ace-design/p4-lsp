@@ -18,7 +18,7 @@ impl File {
         File {
             content: content.clone(),
             tree: tree.clone(),
-            scopes: ScopeTree::new(tree, &content),
+            scopes: ScopeTree::new(&tree, &content),
         }
     }
 
@@ -56,6 +56,8 @@ impl File {
 
             self.tree = parser.parse(text, old_tree);
         }
+
+        self.scopes = ScopeTree::new(&self.tree, &self.content);
     }
 
     pub fn get_variables_at_pos(&self, position: Position) -> (Vec<String>, Vec<String>) {

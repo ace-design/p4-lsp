@@ -50,8 +50,7 @@ struct headers {
 parser MyParser(packet_in packet,
                 out headers hdr,
                 inout metadata meta,
-                inout standard_metadata_t standard_metadata) {
-
+                inout standard_metadata_t standard_metadata) {   
     int test = 1;
 
     state start {

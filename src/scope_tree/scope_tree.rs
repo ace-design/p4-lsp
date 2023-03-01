@@ -14,14 +14,14 @@ pub struct ScopeTree {
 }
 
 impl ScopeTree {
-    pub fn new(tree: Option<Tree>, content: &str) -> Option<ScopeTree> {
+    pub fn new(tree: &Option<Tree>, content: &str) -> Option<ScopeTree> {
         let arena = Arena::new();
         let mut scope_tree = ScopeTree {
             arena,
             root_id: None,
         };
 
-        scope_tree.root_id = Some(scope_tree.parse_scopes(tree?.root_node(), content, 0));
+        scope_tree.root_id = Some(scope_tree.parse_scopes(tree.as_ref()?.root_node(), content, 0));
 
         Some(scope_tree)
     }
@@ -35,7 +35,7 @@ impl ScopeTree {
         while subscope_exists {
             subscope_exists = false;
 
-            variables.add(self.arena.get(id).unwrap().get().variables.clone());
+            variables.add_subscope(self.arena.get(id).unwrap().get().variables.clone());
 
             let children = id.children(&self.arena);
             for child in children {
@@ -68,7 +68,7 @@ impl ScopeTree {
             if let Some(variables) =
                 get_parser_declaration_params(current_syntax_node, content, offset)
             {
-                scope.variables.add(variables);
+                scope.variables.add_subscope(variables);
             }
         }
 
@@ -85,7 +85,7 @@ impl ScopeTree {
                         [(name_range.start_byte - offset)..(name_range.end_byte - offset)]
                         .to_string();
 
-                    scope.variables.add_constant(name, vec![name_range]);
+                    scope.variables.add_constant(name, name_range);
                 }
                 "variable_declaration" => {
                     let name_node = child.child_by_field_name("name").unwrap();
@@ -95,7 +95,7 @@ impl ScopeTree {
                         [(name_range.start_byte - offset)..(name_range.end_byte - offset)]
                         .to_string();
 
-                    scope.variables.add_variable(name, vec![name_range]);
+                    scope.variables.add_variable(name, name_range);
                 }
 
                 "parser_declaration" => children.push(self.parse_scopes(
@@ -143,7 +143,7 @@ fn get_parser_declaration_params(
 
         let name: String =
             content[(name_range.start_byte - offset)..(name_range.end_byte - offset)].to_string();
-        variables.add_variable(name, vec![name_range]);
+        variables.add_variable(name, name_range);
     }
 
     Some(variables)
