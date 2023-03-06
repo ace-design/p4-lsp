@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
 
+use completion::CompletionBuilder;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -12,6 +13,7 @@ use tree_sitter_p4::language;
 extern crate simple_log;
 use simple_log::LogConfigBuilder;
 
+mod completion;
 mod file;
 mod nodes;
 mod scope_tree;
@@ -82,27 +84,12 @@ impl LanguageServer for Backend {
         let (var_names, const_names) =
             file.get_variables_at_pos(params.text_document_position.position);
 
-        let mut completion_list: Vec<CompletionItem> = var_names
-            .iter()
-            .map(|var| CompletionItem {
-                label: var.to_string(),
-                kind: Some(CompletionItemKind::VARIABLE),
-                ..Default::default()
-            })
-            .collect();
+        let completion = CompletionBuilder::new()
+            .add(var_names, CompletionItemKind::VARIABLE)
+            .add(const_names, CompletionItemKind::CONSTANT)
+            .build();
 
-        completion_list.append(
-            &mut const_names
-                .iter()
-                .map(|var| CompletionItem {
-                    label: var.to_string(),
-                    kind: Some(CompletionItemKind::CONSTANT),
-                    ..Default::default()
-                })
-                .collect(),
-        );
-
-        Ok(Some(CompletionResponse::Array(completion_list)))
+        Ok(Some(CompletionResponse::Array(completion.items)))
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
