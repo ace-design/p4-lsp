@@ -1,9 +1,5 @@
 use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind};
 
-pub struct Completion {
-    pub items: Vec<CompletionItem>,
-}
-
 pub struct CompletionBuilder {
     items: Vec<CompletionItem>,
 }
@@ -32,7 +28,7 @@ impl CompletionBuilder {
         self
     }
 
-    pub fn build(self) -> Completion {
-        Completion { items: self.items }
+    pub fn build(self) -> Vec<CompletionItem> {
+        self.items
     }
 }

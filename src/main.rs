@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 use completion::CompletionBuilder;
+use hover::HoverContentBuilder;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -15,6 +16,7 @@ use simple_log::LogConfigBuilder;
 
 mod completion;
 mod file;
+mod hover;
 mod nodes;
 mod scope_tree;
 mod utils;
@@ -84,12 +86,12 @@ impl LanguageServer for Backend {
         let (var_names, const_names) =
             file.get_variables_at_pos(params.text_document_position.position);
 
-        let completion = CompletionBuilder::new()
+        let completion_list = CompletionBuilder::new()
             .add(var_names, CompletionItemKind::VARIABLE)
             .add(const_names, CompletionItemKind::CONSTANT)
             .build();
 
-        Ok(Some(CompletionResponse::Array(completion.items)))
+        Ok(Some(CompletionResponse::Array(completion_list)))
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
@@ -116,24 +118,14 @@ impl LanguageServer for Backend {
         let (var_names, const_names) =
             file.get_variables_at_pos(params.text_document_position_params.position);
 
-        let mut variables_text = String::from("Variables in scope:\n");
-        for var in var_names {
-            variables_text.push_str("- ");
-            variables_text.push_str(var.as_str());
-            variables_text.push('\n');
-        }
-
-        let mut constant_text = String::from("Constants in scope:\n");
-        for var in const_names {
-            constant_text.push_str("- ");
-            constant_text.push_str(var.as_str());
-            constant_text.push('\n');
-        }
+        let hover_content = HoverContentBuilder::new()
+            .add_text(node_hierarchy)
+            .add_list(var_names, Some("Variables in scope".to_string()))
+            .add_list(const_names, Some("Constants in scope".to_string()))
+            .build();
 
         Ok(Some(Hover {
-            contents: HoverContents::Scalar(MarkedString::String(
-                [node_hierarchy, variables_text, constant_text].join("\n\n"),
-            )),
+            contents: hover_content,
             range: None,
         }))
     }
