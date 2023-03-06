@@ -1,11 +1,11 @@
 use indextree::{Arena, NodeId};
 use tree_sitter::{Node, Range, Tree};
 
-use super::variables::NamedDataItems;
+use super::items::NamedItems;
 
 struct Scope {
     range: Range,
-    variables: NamedDataItems,
+    variables: NamedItems,
 }
 
 pub struct ScopeTree {
@@ -26,8 +26,8 @@ impl ScopeTree {
         Some(scope_tree)
     }
 
-    pub fn variables_in_scope(&self, byte_pos: usize) -> NamedDataItems {
-        let mut variables = NamedDataItems::new();
+    pub fn variables_in_scope(&self, byte_pos: usize) -> NamedItems {
+        let mut variables = NamedItems::new();
 
         let mut id = self.root_id.unwrap();
 
@@ -60,7 +60,7 @@ impl ScopeTree {
         let body_node = get_body_node(current_syntax_node);
 
         let mut scope = Scope {
-            variables: NamedDataItems::new(),
+            variables: NamedItems::new(),
             range: body_node.range(),
         };
 
@@ -125,12 +125,8 @@ fn get_body_node(node: Node) -> Node {
     }
 }
 
-fn get_parser_declaration_params(
-    node: Node,
-    content: &str,
-    offset: usize,
-) -> Option<NamedDataItems> {
-    let mut variables = NamedDataItems::new();
+fn get_parser_declaration_params(node: Node, content: &str, offset: usize) -> Option<NamedItems> {
+    let mut variables = NamedItems::new();
 
     let parameters = node
         .child_by_field_name("declaration")?

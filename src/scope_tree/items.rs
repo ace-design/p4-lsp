@@ -1,27 +1,29 @@
 use tree_sitter::Range;
 
 #[derive(Debug, Clone)]
-pub struct NamedDataItem {
+pub struct NamedItem {
     name: String,
     name_def: Range,
     usages: Vec<Range>,
 }
 
 #[derive(Debug, Clone)]
-pub struct NamedDataItems {
-    pub variables: Vec<NamedDataItem>,
-    pub constants: Vec<NamedDataItem>,
+pub struct NamedItems {
+    pub variables: Vec<NamedItem>,
+    pub constants: Vec<NamedItem>,
+    pub functions: Vec<NamedItem>,
 }
 
-impl NamedDataItems {
-    pub fn new() -> NamedDataItems {
-        NamedDataItems {
+impl NamedItems {
+    pub fn new() -> NamedItems {
+        NamedItems {
             variables: vec![],
             constants: vec![],
+            functions: vec![],
         }
     }
 
-    pub fn add_subscope(&mut self, mut items: NamedDataItems) {
+    pub fn add_subscope(&mut self, mut items: NamedItems) {
         for new_var in items.variables.iter().chain(&items.constants) {
             self.variables.retain(|var| var.name != new_var.name);
             self.constants.retain(|var| var.name != new_var.name);
@@ -32,7 +34,7 @@ impl NamedDataItems {
     }
 
     pub fn add_constant(&mut self, name: String, name_def: Range) {
-        self.constants.push(NamedDataItem {
+        self.constants.push(NamedItem {
             name,
             name_def,
             usages: vec![],
@@ -40,7 +42,7 @@ impl NamedDataItems {
     }
 
     pub fn add_variable(&mut self, name: String, name_def: Range) {
-        self.variables.push(NamedDataItem {
+        self.variables.push(NamedItem {
             name,
             name_def,
             usages: vec![],
