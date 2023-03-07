@@ -1,3 +1,4 @@
+use tower_lsp::lsp_types::Position;
 use tree_sitter::Range;
 
 #[derive(Debug, Clone)]
@@ -8,59 +9,55 @@ pub struct NamedItem {
 }
 
 #[derive(Debug, Clone)]
+pub struct NamedItemList {
+    items: Vec<NamedItem>,
+}
+
+impl NamedItemList {
+    pub fn new() -> NamedItemList {
+        NamedItemList { items: vec![] }
+    }
+
+    pub fn add(&mut self, name: String, name_def: Range) {
+        self.items.push(NamedItem {
+            name,
+            name_def,
+            usages: vec![],
+        });
+    }
+
+    pub fn add_list(&mut self, mut list: NamedItemList) {
+        self.items.append(&mut list.items);
+    }
+
+    pub fn get_names(&self, position: Position) -> Vec<String> {
+        self.items
+            .iter()
+            .filter(|item| (position.line as usize) > item.name_def.end_point.row)
+            .map(|item| item.name.clone())
+            .collect()
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct NamedItems {
-    pub variables: Vec<NamedItem>,
-    pub constants: Vec<NamedItem>,
-    pub functions: Vec<NamedItem>,
+    pub variables: NamedItemList,
+    pub constants: NamedItemList,
+    pub functions: NamedItemList,
 }
 
 impl NamedItems {
     pub fn new() -> NamedItems {
         NamedItems {
-            variables: vec![],
-            constants: vec![],
-            functions: vec![],
+            variables: NamedItemList::new(),
+            constants: NamedItemList::new(),
+            functions: NamedItemList::new(),
         }
     }
 
-    pub fn add_subscope(&mut self, mut items: NamedItems) {
-        for new_var in items.variables.iter().chain(&items.constants) {
-            self.variables.retain(|var| var.name != new_var.name);
-            self.constants.retain(|var| var.name != new_var.name);
-        }
-
-        self.variables.append(&mut items.variables);
-        self.constants.append(&mut items.constants);
-    }
-
-    pub fn add_constant(&mut self, name: String, name_def: Range) {
-        self.constants.push(NamedItem {
-            name,
-            name_def,
-            usages: vec![],
-        });
-    }
-
-    pub fn add_variable(&mut self, name: String, name_def: Range) {
-        self.variables.push(NamedItem {
-            name,
-            name_def,
-            usages: vec![],
-        });
-    }
-
-    pub fn get_names(&self) -> (Vec<String>, Vec<String>) {
-        let variable_names = self
-            .variables
-            .iter()
-            .map(|item| item.name.clone())
-            .collect();
-        let constant_names = self
-            .constants
-            .iter()
-            .map(|item| item.name.clone())
-            .collect();
-
-        (variable_names, constant_names)
+    pub fn add_subscope(&mut self, new_items: NamedItems) {
+        self.variables.add_list(new_items.variables);
+        self.constants.add_list(new_items.constants);
+        self.functions.add_list(new_items.functions);
     }
 }

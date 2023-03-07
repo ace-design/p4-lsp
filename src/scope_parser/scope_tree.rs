@@ -5,7 +5,7 @@ use super::items::NamedItems;
 
 struct Scope {
     range: Range,
-    variables: NamedItems,
+    items: NamedItems,
 }
 
 pub struct ScopeTree {
@@ -26,8 +26,8 @@ impl ScopeTree {
         Some(scope_tree)
     }
 
-    pub fn variables_in_scope(&self, byte_pos: usize) -> NamedItems {
-        let mut variables = NamedItems::new();
+    pub fn items_in_scope(&self, byte_pos: usize) -> NamedItems {
+        let mut items = NamedItems::new();
 
         let mut id = self.root_id.unwrap();
 
@@ -35,7 +35,8 @@ impl ScopeTree {
         while subscope_exists {
             subscope_exists = false;
 
-            variables.add_subscope(self.arena.get(id).unwrap().get().variables.clone());
+            let subscope_items = self.arena.get(id).unwrap().get().items.clone();
+            items.add_subscope(subscope_items);
 
             let children = id.children(&self.arena);
             for child in children {
@@ -48,7 +49,7 @@ impl ScopeTree {
             }
         }
 
-        variables
+        items
     }
 
     fn parse_scopes(
@@ -60,15 +61,14 @@ impl ScopeTree {
         let body_node = get_body_node(current_syntax_node);
 
         let mut scope = Scope {
-            variables: NamedItems::new(),
+            items: NamedItems::new(),
             range: body_node.range(),
         };
 
         if current_syntax_node.kind() == "parser_declaration" {
-            if let Some(variables) =
-                get_parser_declaration_params(current_syntax_node, content, offset)
+            if let Some(items) = get_parser_declaration_params(current_syntax_node, content, offset)
             {
-                scope.variables.add_subscope(variables);
+                scope.items.add_subscope(items);
             }
         }
 
@@ -85,7 +85,7 @@ impl ScopeTree {
                         [(name_range.start_byte - offset)..(name_range.end_byte - offset)]
                         .to_string();
 
-                    scope.variables.add_constant(name, name_range);
+                    scope.items.constants.add(name, name_range);
                 }
                 "variable_declaration" => {
                     let name_node = child.child_by_field_name("name").unwrap();
@@ -95,7 +95,7 @@ impl ScopeTree {
                         [(name_range.start_byte - offset)..(name_range.end_byte - offset)]
                         .to_string();
 
-                    scope.variables.add_variable(name, name_range);
+                    scope.items.variables.add(name, name_range);
                 }
 
                 "parser_declaration" => children.push(self.parse_scopes(
@@ -129,7 +129,7 @@ fn get_parser_declaration_params(
     content: &str,
     offset: usize,
 ) -> Option<NamedItems> {
-    let mut variables = NamedItems::new();
+    let mut items = NamedItems::new();
 
     let parameters = node
         .child_by_field_name("declaration")?
@@ -142,8 +142,8 @@ fn get_parser_declaration_params(
 
         let name: String =
             content[(name_range.start_byte - offset)..(name_range.end_byte - offset)].to_string();
-        variables.add_variable(name, name_range);
+        items.variables.add(name, name_range);
     }
 
-    Some(variables)
+    Some(items)
 }
