@@ -1,5 +1,5 @@
 use indextree::{Arena, NodeId};
-use tree_sitter::{Node, Range, Tree};
+use tree_sitter::{Range, Tree};
 
 use super::items::NamedItems;
 
@@ -117,7 +117,7 @@ impl ScopeTree {
     }
 }
 
-fn get_body_node(node: Node) -> Node {
+fn get_body_node(node: tree_sitter::Node) -> tree_sitter::Node {
     match node.kind() {
         "source_file" => node,
         "parser_declaration" => node.child_by_field_name("body").unwrap(),
@@ -125,7 +125,11 @@ fn get_body_node(node: Node) -> Node {
     }
 }
 
-fn get_parser_declaration_params(node: Node, content: &str, offset: usize) -> Option<NamedItems> {
+fn get_parser_declaration_params(
+    node: tree_sitter::Node,
+    content: &str,
+    offset: usize,
+) -> Option<NamedItems> {
     let mut variables = NamedItems::new();
 
     let parameters = node
