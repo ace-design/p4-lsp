@@ -18,7 +18,7 @@ mod completion;
 mod file;
 mod hover;
 mod nodes;
-mod scope_tree;
+mod scope_parser;
 mod utils;
 
 use file::File;

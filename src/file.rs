@@ -5,7 +5,7 @@ use tree_sitter::{InputEdit, Parser, Tree};
 
 use crate::utils;
 
-use crate::scope_tree::ScopeTree;
+use crate::scope_parser::ScopeTree;
 
 pub struct File {
     pub content: String,
