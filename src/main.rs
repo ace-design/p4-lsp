@@ -87,8 +87,8 @@ impl LanguageServer for Backend {
             file.get_variables_at_pos(params.text_document_position.position);
 
         let completion_list = CompletionBuilder::new()
-            .add(var_names, CompletionItemKind::VARIABLE)
-            .add(const_names, CompletionItemKind::CONSTANT)
+            .add(&var_names, CompletionItemKind::VARIABLE)
+            .add(&const_names, CompletionItemKind::CONSTANT)
             .build();
 
         Ok(Some(CompletionResponse::Array(completion_list)))
@@ -119,7 +119,7 @@ impl LanguageServer for Backend {
             file.get_variables_at_pos(params.text_document_position_params.position);
 
         let hover_content = HoverContentBuilder::new()
-            .add_text(node_hierarchy)
+            .add_text(&node_hierarchy)
             .add_list(var_names, Some("Variables in scope".to_string()))
             .add_list(const_names, Some("Constants in scope".to_string()))
             .build();
@@ -138,7 +138,7 @@ impl LanguageServer for Backend {
         if LANGUAGE_IDS.contains(&doc.language_id.as_str()) {
             let tree = parser.parse(&doc.text, None);
 
-            files.insert(doc.uri, File::new(doc.text, tree));
+            files.insert(doc.uri, File::new(&doc.text, &tree));
         }
     }
 

@@ -9,8 +9,8 @@ impl HoverContentBuilder {
         HoverContentBuilder { items: vec![] }
     }
 
-    pub fn add_text(mut self, text: String) -> HoverContentBuilder {
-        self.items.push(MarkedString::String(format!("{}\n", text)));
+    pub fn add_text(mut self, text: &str) -> HoverContentBuilder {
+        self.items.push(MarkedString::String(format!("{text}\n")));
 
         self
     }
@@ -21,7 +21,7 @@ impl HoverContentBuilder {
         title: Option<String>,
     ) -> HoverContentBuilder {
         let mut text: String = if let Some(title) = title {
-            format!("{}:\n", title)
+            format!("{title}:\n")
         } else {
             String::new()
         };

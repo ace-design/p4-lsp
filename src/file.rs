@@ -14,11 +14,11 @@ pub struct File {
 }
 
 impl File {
-    pub fn new(content: String, tree: Option<Tree>) -> File {
+    pub fn new(content: &str, tree: &Option<Tree>) -> File {
         File {
-            content: content.clone(),
+            content: content.to_string(),
             tree: tree.clone(),
-            scopes: ScopeTree::new(&tree, &content),
+            scopes: ScopeTree::new(tree, content),
         }
     }
 

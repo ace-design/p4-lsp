@@ -11,7 +11,7 @@ impl CompletionBuilder {
 
     pub fn add(
         mut self,
-        new_items: Vec<String>,
+        new_items: &[String],
         completion_type: CompletionItemKind,
     ) -> CompletionBuilder {
         self.items.append(
