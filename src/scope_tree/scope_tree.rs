@@ -119,7 +119,6 @@ impl ScopeTree {
 
 fn get_body_node(node: tree_sitter::Node) -> tree_sitter::Node {
     match node.kind() {
-        "source_file" => node,
         "parser_declaration" => node.child_by_field_name("body").unwrap(),
         _ => node,
     }
