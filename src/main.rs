@@ -14,6 +14,7 @@ use tree_sitter_p4::language;
 extern crate simple_log;
 use simple_log::LogConfigBuilder;
 
+mod ast;
 mod completion;
 mod file;
 mod hover;
