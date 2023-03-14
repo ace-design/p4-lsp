@@ -16,7 +16,6 @@ use simple_log::LogConfigBuilder;
 
 mod ast;
 mod completion;
-mod content;
 mod file;
 mod hover;
 mod nodes;

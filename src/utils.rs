@@ -52,7 +52,7 @@ pub fn calculate_end_point(start: Point, new_content: &str) -> Point {
     }
 }
 
-pub fn get_node_text(node: tree_sitter::Node, source_code: &str) -> String {
+pub fn get_node_text(node: &tree_sitter::Node, source_code: &str) -> String {
     node.utf8_text(source_code.as_bytes()).unwrap().to_string()
 }
 

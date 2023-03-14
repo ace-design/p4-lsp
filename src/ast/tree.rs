@@ -28,17 +28,18 @@ pub enum NodeKind {
     ParserDec,
     Type(Type),
     Expression,
+    Name,
 }
 
 pub struct Node {
-    kind: NodeKind,
-    range: Range,
-    content: String,
+    pub kind: NodeKind,
+    pub range: Range,
+    pub content: String,
 }
 
 pub struct Ast {
-    arena: Arena<Node>,
-    root_id: Option<NodeId>,
+    pub arena: Arena<Node>,
+    pub root_id: Option<NodeId>,
 }
 
 impl Ast {

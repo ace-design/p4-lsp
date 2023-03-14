@@ -3,6 +3,7 @@ use std::sync::MutexGuard;
 use tower_lsp::lsp_types::{DidChangeTextDocumentParams, Position};
 use tree_sitter::{InputEdit, Parser, Tree};
 
+use crate::ast::Ast;
 use crate::utils;
 
 use crate::scope_parser::ScopeTree;
@@ -11,6 +12,7 @@ pub struct File {
     pub content: String,
     pub tree: Option<Tree>,
     pub scopes: Option<ScopeTree>,
+    pub ast: Option<Ast>,
 }
 
 impl File {
@@ -19,6 +21,7 @@ impl File {
             content: content.to_string(),
             tree: tree.clone(),
             scopes: ScopeTree::new(tree, content),
+            ast: Ast::new(tree.to_owned().unwrap(), content),
         }
     }
 
