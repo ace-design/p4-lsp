@@ -1,20 +1,39 @@
 use indextree::{Arena, NodeId};
-use tree_sitter::Range;
+use tower_lsp::lsp_types::Range;
 
-struct NamedItem {
-    name: String,
-    name_def: Range,
-    usages: Vec<Range>,
+use super::translator::TreesitterTranslator;
+
+pub enum BaseType {
+    Bool,
+    Error,
+    MatchKind,
+    String,
+    Int,
+    Bit,
+    Varbit,
 }
 
-struct ControlBlock {}
+pub enum Type {
+    Base(BaseType),
+    Name,
+    Specialized,
+    Header,
+    Tuple,
+}
 
-enum Node {
-    Variable(NamedItem),
-    Variable_Dec,
-    Constant(NamedItem),
-    Constant_Dec,
-    Parser_Dec(ControlBlock),
+pub enum NodeKind {
+    Root,
+    ConstantDec,
+    VariableDec,
+    ParserDec,
+    Type(Type),
+    Expression,
+}
+
+pub struct Node {
+    kind: NodeKind,
+    range: Range,
+    content: String,
 }
 
 pub struct Ast {
@@ -23,18 +42,9 @@ pub struct Ast {
 }
 
 impl Ast {
-    pub fn new(syntax_tree: tree_sitter::Tree, content: &str) -> Option<Ast> {
-        let mut tree = Ast {
-            arena: Arena::new(),
-            root_id: None,
-        };
-
-        tree.root_id = tree.parse_syntax_tree(syntax_tree, content);
+    pub fn new(syntax_tree: tree_sitter::Tree, source_code: &str) -> Option<Ast> {
+        let tree = TreesitterTranslator::translate(source_code.to_string(), syntax_tree);
 
         Some(tree)
-    }
-
-    fn parse_syntax_tree(&self, syntax_tree: tree_sitter::Tree, content: &str) -> Option<NodeId> {
-        todo!()
     }
 }

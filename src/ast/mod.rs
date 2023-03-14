@@ -1,2 +1,3 @@
+mod translator;
 mod tree;
 
