@@ -28,10 +28,6 @@ impl TreesitterTranslator {
         }
     }
 
-    fn add_child_node(&mut self, parent_node_id: NodeId, node: NodeId) {
-        parent_node_id.append(node, &mut self.arena);
-    }
-
     fn parse_root(&mut self) -> NodeId {
         let ast_root = self.arena.new_node(Node {
             kind: NodeKind::Root,

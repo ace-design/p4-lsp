@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use indextree::{Arena, NodeId};
 use tower_lsp::lsp_types::Range;
 
@@ -44,8 +46,9 @@ pub struct Ast {
 
 impl Ast {
     pub fn new(syntax_tree: tree_sitter::Tree, source_code: &str) -> Option<Ast> {
-        let tree = TreesitterTranslator::translate(source_code.to_string(), syntax_tree);
-
-        Some(tree)
+        Some(TreesitterTranslator::translate(
+            source_code.to_string(),
+            syntax_tree,
+        ))
     }
 }
