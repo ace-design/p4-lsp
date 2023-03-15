@@ -28,6 +28,11 @@ impl TreesitterTranslator {
         }
     }
 
+    fn new_error_node(&mut self, node: &tree_sitter::Node) -> NodeId {
+        self.arena
+            .new_node(Node::new(NodeKind::Error, node, &self.source_code))
+    }
+
     fn parse_root(&mut self) -> NodeId {
         let root_syntax_node = self.tree.root_node();
         let ast_root = self.arena.new_node(Node::new(
@@ -59,16 +64,17 @@ impl TreesitterTranslator {
                 .new_node(Node::new(NodeKind::ConstantDec, node, &self.source_code));
 
         // Add type node
+        let type_node = node.child_by_field_name("type").unwrap();
         node_id.append(
-            self.parse_type(&node.child_by_field_name("type").unwrap())
-                .unwrap(),
+            self.parse_type(&type_node)
+                .unwrap_or_else(|| self.new_error_node(&type_node)),
             &mut self.arena,
         );
 
         // Add name node
         node_id.append(
             self.parse_name(&node.child_by_field_name("name").unwrap())
-                .unwrap(),
+                .unwrap_or_else(|| self.new_error_node(node)),
             &mut self.arena,
         );
         // TODO: Add value node
@@ -84,22 +90,22 @@ impl TreesitterTranslator {
     }
 
     fn parse_type(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
-        let child = node.named_child(0).unwrap();
+        let child = node.named_child(0)?;
         let type_type: Type = match child.kind() {
-            "base_type" => Type::Base(self.parse_base_type(&child).unwrap()),
+            "base_type" => Type::Base(self.parse_base_type(&child)?),
             "type_name" => {
-                todo!()
+                return None;
             }
             "specialized_type" => {
-                todo!()
+                return None;
             }
             "header_stack_type" => {
-                todo!()
+                return None;
             }
             "tuple_type" => {
-                todo!()
+                return None;
             }
-            _ => panic!("{}", node.kind()),
+            _ => return None,
         };
 
         Some(self.arena.new_node(Node::new(
@@ -109,18 +115,18 @@ impl TreesitterTranslator {
         )))
     }
 
-    fn parse_base_type(&self, node: &tree_sitter::Node) -> Result<BaseType, &'static str> {
+    fn parse_base_type(&self, node: &tree_sitter::Node) -> Option<BaseType> {
         let node_text = utils::get_node_text(node, &self.source_code);
         let text = node_text.as_str().trim();
 
         match text {
-            "bool" => Ok(BaseType::Bool),
-            "int" => Ok(BaseType::Int),
-            "bit" => Ok(BaseType::Bit),
-            "string" => Ok(BaseType::String),
-            "varbit" => Ok(BaseType::Varbit),
-            "error" => Ok(BaseType::Error),
-            "match_kind" => Ok(BaseType::MatchKind),
+            "bool" => Some(BaseType::Bool),
+            "int" => Some(BaseType::Int),
+            "bit" => Some(BaseType::Bit),
+            "string" => Some(BaseType::String),
+            "varbit" => Some(BaseType::Varbit),
+            "error" => Some(BaseType::Error),
+            "match_kind" => Some(BaseType::MatchKind),
             _ => {
                 let child = node.named_child(0).unwrap();
                 let size = if child.kind() == "integer" {
@@ -134,13 +140,13 @@ impl TreesitterTranslator {
                 };
 
                 if text.starts_with("int") {
-                    Ok(BaseType::SizedInt(size))
+                    Some(BaseType::SizedInt(size))
                 } else if text.starts_with("bit") {
-                    Ok(BaseType::SizedBit(size))
+                    Some(BaseType::SizedBit(size))
                 } else if text.starts_with("varbit") {
-                    Ok(BaseType::SizedVarbit(size))
+                    Some(BaseType::SizedVarbit(size))
                 } else {
-                    Err("Invalid type")
+                    None
                 }
             }
         }
@@ -161,6 +167,18 @@ mod tests {
         let mut parser = Parser::new();
         parser.set_language(language()).unwrap();
         parser.parse(source_code, None).unwrap()
+    }
+
+    fn print_arenas(expected: &Arena<Node>, actual: &Arena<Node>) {
+        println!("Expected:");
+        for node in expected.iter() {
+            println!("{:?}", node.get());
+        }
+        println!();
+        println!("Actual:");
+        for node in actual.iter() {
+            println!("{:?}", node.get());
+        }
     }
 
     #[test]
@@ -196,6 +214,40 @@ mod tests {
 
         constant_dec.append(name_dec, &mut arena);
 
+        print_arenas(&arena, &translated_ast.arena);
+        assert!(translated_ast.arena.eq(&arena))
+    }
+
+    #[test]
+    fn test_const_declaration_error() {
+        let source_code = r#"
+            const bi<16> TYPE_IPV4 = 10;
+        "#;
+        let syntax_tree = get_syntax_tree(source_code);
+        let translated_ast =
+            TreesitterTranslator::translate(source_code.to_string(), syntax_tree.clone());
+
+        let mut arena: Arena<Node> = Arena::new();
+        let mut syntax_node = syntax_tree.root_node();
+        let root = arena.new_node(Node::new(NodeKind::Root, &syntax_node, source_code));
+
+        syntax_node = syntax_node.named_child(0).unwrap();
+        let constant_syntax_node = syntax_node;
+        let constant_dec =
+            arena.new_node(Node::new(NodeKind::ConstantDec, &syntax_node, source_code));
+        root.append(constant_dec, &mut arena);
+
+        syntax_node = constant_syntax_node.child_by_field_name("type").unwrap();
+        let type_dec = arena.new_node(Node::new(NodeKind::Error, &syntax_node, source_code));
+
+        constant_dec.append(type_dec, &mut arena);
+
+        syntax_node = constant_syntax_node.child_by_field_name("name").unwrap();
+        let name_dec = arena.new_node(Node::new(NodeKind::Name, &syntax_node, source_code));
+
+        constant_dec.append(name_dec, &mut arena);
+
+        print_arenas(&arena, &translated_ast.arena);
         assert!(translated_ast.arena.eq(&arena))
     }
 }

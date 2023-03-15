@@ -49,6 +49,7 @@ pub enum NodeKind {
     Type(Type),
     Expression,
     Name,
+    Error,
 }
 
 #[derive(Debug, PartialEq)]
