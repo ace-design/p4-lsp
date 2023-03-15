@@ -86,8 +86,9 @@ impl TreesitterTranslator {
     }
 
     fn parse_type(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
-        let type_type: Type = match node.kind() {
-            "base_type" => Type::Base(BaseType::Int),
+        let child = node.named_child(0).unwrap();
+        let type_type: Type = match child.kind() {
+            "base_type" => Type::Base(self.parse_base_type(&child).unwrap()),
             "type_name" => {
                 todo!()
             }
@@ -100,7 +101,7 @@ impl TreesitterTranslator {
             "tuple_type" => {
                 todo!()
             }
-            _ => panic!(),
+            _ => panic!("{}", node.kind()),
         };
 
         Some(self.arena.new_node(Node {
@@ -108,5 +109,107 @@ impl TreesitterTranslator {
             range: utils::ts_range_to_lsp_range(node.range()),
             content: utils::get_node_text(&node, &self.source_code),
         }))
+    }
+
+    fn parse_base_type(&self, node: &tree_sitter::Node) -> Result<BaseType, &'static str> {
+        let node_text = utils::get_node_text(node, &self.source_code);
+        let text = node_text.as_str().trim();
+
+        match text {
+            "bool" => Ok(BaseType::Bool),
+            "int" => Ok(BaseType::Int),
+            "bit" => Ok(BaseType::Bit),
+            "string" => Ok(BaseType::String),
+            "varbit" => Ok(BaseType::Varbit),
+            "error" => Ok(BaseType::Error),
+            "match_kind" => Ok(BaseType::MatchKind),
+            _ => {
+                let child = node.named_child(0).unwrap();
+                let size = if child.kind() == "integer" {
+                    Some(
+                        utils::get_node_text(&child, &self.source_code)
+                            .parse::<u32>()
+                            .unwrap(),
+                    )
+                } else {
+                    None
+                };
+
+                if text.starts_with("int") {
+                    Ok(BaseType::SizedInt(size))
+                } else if text.starts_with("bit") {
+                    Ok(BaseType::SizedBit(size))
+                } else if text.starts_with("varbit") {
+                    Ok(BaseType::SizedVarbit(size))
+                } else {
+                    Err("Invalid type")
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use indextree::Arena;
+    use tree_sitter::{Parser, Tree};
+    use tree_sitter_p4::language;
+
+    use crate::{
+        ast::tree::{BaseType, Node, NodeKind, Type},
+        utils,
+    };
+
+    use super::TreesitterTranslator;
+
+    fn get_syntax_tree(source_code: &str) -> Tree {
+        let mut parser = Parser::new();
+        parser.set_language(language()).unwrap();
+        parser.parse(source_code, None).unwrap()
+    }
+
+    #[test]
+    fn test_const_declaration() {
+        let source_code = r#"
+            const bit<16> TYPE_IPV4 = 10;
+        "#;
+        let syntax_tree = get_syntax_tree(source_code);
+        let translated_ast =
+            TreesitterTranslator::translate(source_code.to_string(), syntax_tree.clone());
+
+        let mut arena: Arena<Node> = Arena::new();
+        let mut syntax_node = syntax_tree.root_node();
+        let root = arena.new_node(Node {
+            kind: NodeKind::Root,
+            range: utils::ts_range_to_lsp_range(syntax_node.range()),
+            content: utils::get_node_text(&syntax_node, source_code),
+        });
+
+        syntax_node = syntax_node.named_child(0).unwrap();
+        let constant_syntax_node = syntax_node;
+        let constant_dec = arena.new_node(Node {
+            kind: NodeKind::ConstantDec,
+            range: utils::ts_range_to_lsp_range(syntax_node.range()),
+            content: utils::get_node_text(&syntax_node, source_code),
+        });
+        root.append(constant_dec, &mut arena);
+
+        syntax_node = constant_syntax_node.child_by_field_name("type").unwrap();
+        let type_dec = arena.new_node(Node {
+            kind: NodeKind::Type(Type::Base(BaseType::SizedBit(Some(16)))),
+            range: utils::ts_range_to_lsp_range(syntax_node.range()),
+            content: utils::get_node_text(&syntax_node, source_code),
+        });
+        constant_dec.append(type_dec, &mut arena);
+
+        syntax_node = constant_syntax_node.child_by_field_name("name").unwrap();
+        let type_dec = arena.new_node(Node {
+            kind: NodeKind::Name,
+            range: utils::ts_range_to_lsp_range(syntax_node.range()),
+            content: utils::get_node_text(&syntax_node, source_code),
+        });
+        constant_dec.append(type_dec, &mut arena);
+
+        assert!(translated_ast.arena.eq(&arena))
     }
 }
