@@ -67,6 +67,13 @@ impl Node {
             content: utils::get_node_text(syntax_node, source_code),
         }
     }
+
+    pub fn get_error_msg(&self) -> Option<String> {
+        match &self.kind {
+            NodeKind::Error(Some(msg)) => Some(msg.clone()),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug)]

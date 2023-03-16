@@ -69,7 +69,10 @@ impl File {
 
         error_nodes
             .into_iter()
-            .map(|node| Diagnostic::new_simple(node.range, "Error".into()))
+            .map(|node| {
+                let err_msg = node.get_error_msg().unwrap_or("Error".into());
+                Diagnostic::new_simple(node.range, err_msg)
+            })
             .collect()
     }
 

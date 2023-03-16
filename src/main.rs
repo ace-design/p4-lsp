@@ -136,7 +136,7 @@ impl LanguageServer for Backend {
 
             let diagnotics = self.files.get(&doc.uri).unwrap().get_diagnotics();
             self.client
-                .publish_diagnostics(doc.uri, diagnotics, Some(1))
+                .publish_diagnostics(doc.uri, diagnotics, None)
                 .await;
         }
     }
@@ -151,9 +151,7 @@ impl LanguageServer for Backend {
         }
 
         let diagnotics = file.get_diagnotics();
-        self.client
-            .publish_diagnostics(uri, diagnotics, Some(2))
-            .await;
+        self.client.publish_diagnostics(uri, diagnotics, None).await;
     }
 }
 
