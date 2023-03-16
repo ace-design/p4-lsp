@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use std::sync::Mutex;
 
 use completion::CompletionBuilder;
+use dashmap::DashMap;
 use hover::HoverContentBuilder;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
@@ -26,14 +26,10 @@ use file::File;
 
 const LANGUAGE_IDS: [&str; 2] = ["p4", "P4"];
 
-struct ServerState {
-    parser: Mutex<Parser>,
-    files: Mutex<HashMap<Url, File>>,
-}
-
 struct Backend {
     client: Client,
-    state: ServerState,
+    parser: Mutex<Parser>,
+    files: DashMap<Url, File>,
 }
 
 #[tower_lsp::async_trait]
@@ -79,10 +75,8 @@ impl LanguageServer for Backend {
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
-        let files = self.state.files.lock().unwrap();
-
         let file_uri = params.text_document_position.text_document.uri;
-        let file = files.get(&file_uri).unwrap();
+        let file = self.files.get(&file_uri).unwrap();
 
         let (var_names, const_names) =
             file.get_variables_at_pos(params.text_document_position.position);
@@ -96,10 +90,8 @@ impl LanguageServer for Backend {
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        let files = self.state.files.lock().unwrap();
-
         let file_uri = params.text_document_position_params.text_document.uri;
-        let file = files.get(&file_uri).unwrap();
+        let file = self.files.get(&file_uri).unwrap();
 
         let tree: &Tree = file.tree.as_ref().unwrap();
 
@@ -132,24 +124,34 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let mut parser = self.state.parser.lock().unwrap();
-        let mut files = self.state.files.lock().unwrap();
-
         let doc = params.text_document;
         if LANGUAGE_IDS.contains(&doc.language_id.as_str()) {
-            let tree = parser.parse(&doc.text, None);
+            let tree = {
+                let mut parser = self.parser.lock().unwrap();
+                parser.parse(&doc.text, None)
+            };
 
-            files.insert(doc.uri, File::new(&doc.text, &tree));
+            self.files
+                .insert(doc.uri.clone(), File::new(&doc.text, &tree));
+
+            let diagnotics = self.files.get(&doc.uri).unwrap().get_diagnotics();
+            self.client
+                .publish_diagnostics(doc.uri, diagnotics, None)
+                .await;
         }
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let mut files = self.state.files.lock().unwrap();
-        let parser = self.state.parser.lock().unwrap();
+        let uri = params.text_document.uri.clone();
+        let mut file = self.files.get_mut(&uri).unwrap();
 
-        let file = files.get_mut(&params.text_document.uri).unwrap();
+        {
+            let parser = self.parser.lock().unwrap();
+            file.update(params, parser);
+        }
 
-        file.update(params, parser);
+        let diagnotics = file.get_diagnotics();
+        self.client.publish_diagnostics(uri, diagnotics, None).await;
     }
 }
 
@@ -163,10 +165,8 @@ async fn main() {
 
     let (service, socket) = LspService::new(|client| Backend {
         client,
-        state: ServerState {
-            parser: Mutex::new(parser),
-            files: Mutex::new(HashMap::new()),
-        },
+        parser: Mutex::new(parser),
+        files: DashMap::new(),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }

@@ -7,7 +7,7 @@ use crate::utils;
 
 use super::translator::TreesitterTranslator;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
     Add,
     Subtract,
@@ -17,7 +17,7 @@ pub enum Operator {
     //...
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum BaseType {
     Bool,
     Error,
@@ -31,7 +31,7 @@ pub enum BaseType {
     SizedBit(Option<u32>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Type {
     Base(BaseType),
     Name,
@@ -40,7 +40,7 @@ pub enum Type {
     Tuple,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum NodeKind {
     Root,
     ConstantDec,
@@ -49,10 +49,10 @@ pub enum NodeKind {
     Type(Type),
     Expression,
     Name,
-    Error,
+    Error(Option<String>),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Node {
     pub kind: NodeKind,
     pub range: Range,
@@ -81,5 +81,17 @@ impl Ast {
             source_code.to_string(),
             syntax_tree,
         ))
+    }
+
+    pub fn get_error_nodes(&self) -> Vec<Node> {
+        let mut errors: Vec<Node> = vec![];
+        for node in self.arena.iter() {
+            let node = node.get();
+            match node.kind {
+                NodeKind::Error(_) => errors.push(node.clone()),
+                _ => {}
+            }
+        }
+        errors
     }
 }

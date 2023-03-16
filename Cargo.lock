@@ -571,6 +571,7 @@ dependencies = [
 name = "p4_lsp"
 version = "0.1.0"
 dependencies = [
+ "dashmap",
  "indextree",
  "lazy_static",
  "serde",

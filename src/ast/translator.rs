@@ -28,9 +28,9 @@ impl TreesitterTranslator {
         }
     }
 
-    fn new_error_node(&mut self, node: &tree_sitter::Node) -> NodeId {
+    fn new_error_node(&mut self, node: &tree_sitter::Node, message: Option<String>) -> NodeId {
         self.arena
-            .new_node(Node::new(NodeKind::Error, node, &self.source_code))
+            .new_node(Node::new(NodeKind::Error(message), node, &self.source_code))
     }
 
     fn parse_root(&mut self) -> NodeId {
@@ -67,14 +67,14 @@ impl TreesitterTranslator {
         let type_node = node.child_by_field_name("type").unwrap();
         node_id.append(
             self.parse_type(&type_node)
-                .unwrap_or_else(|| self.new_error_node(&type_node)),
+                .unwrap_or_else(|| self.new_error_node(&type_node, Some("Invalid type.".into()))),
             &mut self.arena,
         );
 
         // Add name node
         node_id.append(
             self.parse_name(&node.child_by_field_name("name").unwrap())
-                .unwrap_or_else(|| self.new_error_node(node)),
+                .unwrap_or_else(|| self.new_error_node(node, Some("Invalid name.".into()))),
             &mut self.arena,
         );
         // TODO: Add value node

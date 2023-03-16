@@ -1,6 +1,6 @@
 use std::sync::MutexGuard;
 
-use tower_lsp::lsp_types::{DidChangeTextDocumentParams, Position};
+use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, DidChangeTextDocumentParams, Position};
 use tree_sitter::{InputEdit, Parser, Tree};
 
 use crate::ast::Ast;
@@ -61,6 +61,26 @@ impl File {
         }
 
         self.scopes = ScopeTree::new(&self.tree, &self.content);
+        self.ast = Ast::new(self.tree.to_owned().unwrap(), &self.content);
+    }
+
+    pub fn get_diagnotics(&self) -> Vec<Diagnostic> {
+        let error_nodes = self.ast.as_ref().unwrap().get_error_nodes();
+
+        error_nodes
+            .into_iter()
+            .map(|node| Diagnostic {
+                range: node.range,
+                severity: Some(DiagnosticSeverity::ERROR),
+                code: None,
+                code_description: None,
+                source: None,
+                message: "Error".into(),
+                related_information: None,
+                tags: None,
+                data: None,
+            })
+            .collect()
     }
 
     pub fn get_variables_at_pos(&self, position: Position) -> (Vec<String>, Vec<String>) {
