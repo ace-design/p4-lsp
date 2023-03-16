@@ -45,10 +45,16 @@ impl TreesitterTranslator {
         let tree = self.tree.clone();
         let mut cursor = tree.walk();
         for child in tree.root_node().children(&mut cursor) {
-            let new_child = match child.kind() {
-                "constant_declaration" => self.parse_const_dec(&child),
-                _ => None,
-            };
+            let new_child;
+
+            if child.is_error() {
+                new_child = Some(self.new_error_node(&child, Some("Couldn't parse.".into())));
+            } else {
+                new_child = match child.kind() {
+                    "constant_declaration" => self.parse_const_dec(&child),
+                    _ => None,
+                };
+            }
 
             if let Some(new_child) = new_child {
                 ast_root.append(new_child, &mut self.arena);

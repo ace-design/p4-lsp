@@ -1,6 +1,6 @@
 use std::sync::MutexGuard;
 
-use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, DidChangeTextDocumentParams, Position};
+use tower_lsp::lsp_types::{Diagnostic, DidChangeTextDocumentParams, Position};
 use tree_sitter::{InputEdit, Parser, Tree};
 
 use crate::ast::Ast;
@@ -69,17 +69,7 @@ impl File {
 
         error_nodes
             .into_iter()
-            .map(|node| Diagnostic {
-                range: node.range,
-                severity: Some(DiagnosticSeverity::ERROR),
-                code: None,
-                code_description: None,
-                source: None,
-                message: "Error".into(),
-                related_information: None,
-                tags: None,
-                data: None,
-            })
+            .map(|node| Diagnostic::new_simple(node.range, "Error".into()))
             .collect()
     }
 
