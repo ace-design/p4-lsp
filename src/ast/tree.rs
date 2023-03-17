@@ -94,10 +94,9 @@ impl Ast {
         let mut errors: Vec<Node> = vec![];
         for node in self.arena.iter() {
             let node = node.get();
-            match node.kind {
-                NodeKind::Error(_) => errors.push(node.clone()),
-                _ => {}
-            }
+            if let NodeKind::Error(_) = node.kind {
+                errors.push(node.clone())
+            };
         }
         errors
     }
