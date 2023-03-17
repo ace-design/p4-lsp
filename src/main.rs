@@ -1,4 +1,4 @@
-use std::sync::Mutex;
+use std::sync::{Mutex, RwLock};
 
 use completion::CompletionBuilder;
 use dashmap::DashMap;
@@ -10,6 +10,8 @@ use tower_lsp::{Client, LanguageServer, LspService, Server};
 use tree_sitter::{Node, Parser, Tree};
 use tree_sitter_p4::language;
 
+use serde_json::Value;
+
 #[macro_use]
 extern crate simple_log;
 use simple_log::LogConfigBuilder;
@@ -20,16 +22,29 @@ mod file;
 mod hover;
 mod nodes;
 mod scope_parser;
+mod settings;
 mod utils;
 
 use file::File;
+use settings::Settings;
 
 const LANGUAGE_IDS: [&str; 2] = ["p4", "P4"];
 
 struct Backend {
     client: Client,
+    settings: RwLock<Settings>,
     parser: Mutex<Parser>,
     files: DashMap<Url, File>,
+}
+
+impl Backend {
+    async fn update_settings(&self, settings: Value) {
+        self.client
+            .log_message(MessageType::INFO, format!("{:?}", settings))
+            .await;
+        let mut options = self.settings.write().unwrap();
+        *options = Settings::parse(settings);
+    }
 }
 
 #[tower_lsp::async_trait]
@@ -72,6 +87,11 @@ impl LanguageServer for Backend {
     async fn shutdown(&self) -> Result<()> {
         info!("Lsp stopped");
         Ok(())
+    }
+
+    async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
+        self.update_settings(params.settings).await;
+        info!("Settings: {:?}", self.settings.read().unwrap());
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
@@ -165,6 +185,7 @@ async fn main() {
 
     let (service, socket) = LspService::new(|client| Backend {
         client,
+        settings: Settings::default().into(),
         parser: Mutex::new(parser),
         files: DashMap::new(),
     });
