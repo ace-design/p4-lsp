@@ -65,8 +65,12 @@ impl File {
         self.ast = Ast::new(self.tree.to_owned().unwrap(), &self.content);
     }
 
-    pub fn get_diagnotics(&self) -> Vec<Diagnostic> {
-        analysis::get_ordered_diagnostics(self)
+    pub fn get_quick_diagnostics(&self) -> Vec<Diagnostic> {
+        analysis::get_quick_diagnostics(self)
+    }
+
+    pub fn get_full_diagnostics(&self) -> Vec<Diagnostic> {
+        analysis::get_full_diagnostics(self)
     }
 
     pub fn get_variables_at_pos(&self, position: Position) -> (Vec<String>, Vec<String>) {

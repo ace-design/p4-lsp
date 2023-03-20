@@ -72,8 +72,14 @@ impl LanguageServer for Backend {
             capabilities: ServerCapabilities {
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(CompletionOptions::default()),
-                text_document_sync: Some(TextDocumentSyncCapability::Kind(
-                    TextDocumentSyncKind::INCREMENTAL,
+                text_document_sync: Some(TextDocumentSyncCapability::Options(
+                    TextDocumentSyncOptions {
+                        open_close: Some(true),
+                        change: Some(TextDocumentSyncKind::INCREMENTAL),
+                        will_save: Some(true),
+                        will_save_wait_until: Some(true),
+                        save: Some(TextDocumentSyncSaveOptions::Supported(true)),
+                    },
                 )),
                 ..Default::default()
             },
@@ -93,6 +99,15 @@ impl LanguageServer for Backend {
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
         self.update_settings(params.settings).await;
         info!("Settings: {:?}", self.settings.read().unwrap());
+    }
+
+    async fn will_save(&self, params: WillSaveTextDocumentParams) {
+        let doc_uri = params.text_document.uri;
+        let diagnotics = self.files.get(&doc_uri).unwrap().get_full_diagnostics();
+        debug!("Save diags: {:?}", diagnotics);
+        self.client
+            .publish_diagnostics(doc_uri, diagnotics, None)
+            .await;
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
@@ -155,7 +170,7 @@ impl LanguageServer for Backend {
             self.files
                 .insert(doc.uri.clone(), File::new(&doc.text, &tree));
 
-            let diagnotics = self.files.get(&doc.uri).unwrap().get_diagnotics();
+            let diagnotics = self.files.get(&doc.uri).unwrap().get_quick_diagnostics();
             self.client
                 .publish_diagnostics(doc.uri, diagnotics, None)
                 .await;
@@ -171,7 +186,7 @@ impl LanguageServer for Backend {
             file.update(params, parser);
         }
 
-        let diagnotics = file.get_diagnotics();
+        let diagnotics = file.get_quick_diagnostics();
         self.client.publish_diagnostics(uri, diagnotics, None).await;
     }
 }
