@@ -3,6 +3,7 @@ use std::sync::MutexGuard;
 use tower_lsp::lsp_types::{Diagnostic, DidChangeTextDocumentParams, Position};
 use tree_sitter::{InputEdit, Parser, Tree};
 
+use crate::analysis;
 use crate::ast::Ast;
 use crate::utils;
 
@@ -65,15 +66,7 @@ impl File {
     }
 
     pub fn get_diagnotics(&self) -> Vec<Diagnostic> {
-        let error_nodes = self.ast.as_ref().unwrap().get_error_nodes();
-
-        error_nodes
-            .into_iter()
-            .map(|node| {
-                let err_msg = node.get_error_msg().unwrap_or("Error".into());
-                Diagnostic::new_simple(node.range, err_msg)
-            })
-            .collect()
+        analysis::get_ordered_diagnostics(self)
     }
 
     pub fn get_variables_at_pos(&self, position: Position) -> (Vec<String>, Vec<String>) {

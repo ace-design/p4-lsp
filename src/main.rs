@@ -16,6 +16,7 @@ use serde_json::Value;
 extern crate simple_log;
 use simple_log::LogConfigBuilder;
 
+mod analysis;
 mod ast;
 mod completion;
 mod file;

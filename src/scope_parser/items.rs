@@ -5,7 +5,7 @@ use tree_sitter::Range;
 pub struct NamedItem {
     name: String,
     name_def: Range,
-    usages: Vec<Range>,
+    _usages: Vec<Range>,
 }
 
 #[derive(Debug, Clone)]
@@ -22,7 +22,7 @@ impl NamedItemList {
         self.items.push(NamedItem {
             name,
             name_def,
-            usages: vec![],
+            _usages: vec![],
         });
     }
 
