@@ -242,7 +242,11 @@ mod tests {
         root.append(constant_dec, &mut arena);
 
         syntax_node = constant_syntax_node.child_by_field_name("type").unwrap();
-        let type_dec = arena.new_node(Node::new(NodeKind::Error, &syntax_node, source_code));
+        let type_dec = arena.new_node(Node::new(
+            NodeKind::Error(Some("Invalid type.".into())),
+            &syntax_node,
+            source_code,
+        ));
 
         constant_dec.append(type_dec, &mut arena);
 
