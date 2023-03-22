@@ -170,7 +170,7 @@ impl LanguageServer for Backend {
             self.files
                 .insert(doc.uri.clone(), File::new(&doc.text, &tree));
 
-            let diagnotics = self.files.get(&doc.uri).unwrap().get_quick_diagnostics();
+            let diagnotics = self.files.get(&doc.uri).unwrap().get_full_diagnostics();
             self.client
                 .publish_diagnostics(doc.uri, diagnotics, None)
                 .await;

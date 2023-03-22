@@ -15,7 +15,9 @@ pub fn get_quick_diagnostics(file: &File) -> Vec<Diagnostic> {
 }
 
 pub fn get_full_diagnostics(file: &File) -> Vec<Diagnostic> {
-    let diagnotics = P4Test::get_diagnostics(file);
+    let mut diagnotics = P4Test::get_diagnostics(file);
+
+    diagnotics.append(&mut Parse::get_diagnostics(file));
 
     diagnotics
 }
