@@ -24,8 +24,10 @@ pub enum NodeKind {
     VariableDec,
     ParserDec,
     Type,
+    TypeDec,
     Expression,
     Name,
+    Params,
     Error(Option<String>),
 }
 

@@ -48,6 +48,8 @@ impl TreesitterTranslator {
             } else {
                 match child.kind() {
                     "constant_declaration" => self.parse_const_dec(&child),
+                    "parser_declaration" => self.parse_parser(&child),
+                    "type_declaration" => self.parse_type_dec(&child),
                     _ => None,
                 }
             };
@@ -64,6 +66,79 @@ impl TreesitterTranslator {
         let node_id =
             self.arena
                 .new_node(Node::new(NodeKind::ConstantDec, node, &self.source_code));
+
+        // Add type node
+        let type_node = self.arena.new_node(Node::new(
+            NodeKind::Type,
+            &node.child_by_field_name("type").unwrap(),
+            &self.source_code,
+        ));
+        node_id.append(type_node, &mut self.arena);
+
+        // Add name node
+        let name_node = self.arena.new_node(Node::new(
+            NodeKind::Name,
+            &node.child_by_field_name("name").unwrap(),
+            &self.source_code,
+        ));
+        node_id.append(name_node, &mut self.arena);
+
+        // TODO: Add value node
+
+        Some(node_id)
+    }
+
+    fn parse_parser(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        let node_id = self
+            .arena
+            .new_node(Node::new(NodeKind::ParserDec, node, &self.source_code));
+
+        let (name_node_id, parameters_node_id) =
+            self.parse_parser_type_dec(&node.child_by_field_name("declaration")?)?;
+        node_id.append(name_node_id, &mut self.arena);
+        node_id.append(parameters_node_id, &mut self.arena);
+
+        // TODO: Parse body
+
+        Some(node_id)
+    }
+
+    fn parse_parser_type_dec(&mut self, node: &tree_sitter::Node) -> Option<(NodeId, NodeId)> {
+        let name_node_id = self.arena.new_node(Node::new(
+            NodeKind::Name,
+            &node.child_by_field_name("name")?,
+            &self.source_code,
+        ));
+
+        let parameters_node_id = self.arena.new_node(Node::new(
+            NodeKind::Params,
+            &node.child_by_field_name("parameters")?,
+            &self.source_code,
+        ));
+
+        Some((name_node_id, parameters_node_id))
+    }
+
+    fn parse_type_dec(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        let node_id = self
+            .arena
+            .new_node(Node::new(NodeKind::TypeDec, node, &self.source_code));
+
+        let type_kind_node = node.child_by_field_name("type_kind")?;
+        let name_node_id = self.arena.new_node(Node::new(
+            NodeKind::Name,
+            &type_kind_node.child_by_field_name("name")?,
+            &self.source_code,
+        ));
+        node_id.append(name_node_id, &mut self.arena);
+
+        Some(node_id)
+    }
+
+    fn parse_var_dec(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        let node_id =
+            self.arena
+                .new_node(Node::new(NodeKind::VariableDec, node, &self.source_code));
 
         // Add type node
         let type_node = self.arena.new_node(Node::new(
