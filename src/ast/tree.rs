@@ -18,35 +18,12 @@ pub enum Operator {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub enum BaseType {
-    Bool,
-    Error,
-    MatchKind,
-    String,
-    Int,
-    Bit,
-    Varbit,
-    SizedInt(Option<u32>),
-    SizedVarbit(Option<u32>),
-    SizedBit(Option<u32>),
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Type {
-    Base(BaseType),
-    Name,
-    Specialized,
-    Header,
-    Tuple,
-}
-
-#[derive(Debug, PartialEq, Clone)]
 pub enum NodeKind {
     Root,
     ConstantDec,
     VariableDec,
     ParserDec,
-    Type(Type),
+    Type,
     Expression,
     Name,
     Error(Option<String>),

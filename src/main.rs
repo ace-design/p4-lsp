@@ -24,6 +24,7 @@ mod hover;
 mod nodes;
 mod scope_parser;
 mod settings;
+mod symbols;
 mod utils;
 
 use file::File;
