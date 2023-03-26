@@ -2,7 +2,7 @@ use indextree::{Arena, NodeId};
 
 use crate::utils;
 
-use super::tree::{Ast, BaseType, Node, NodeKind, Type};
+use super::tree::{Ast, BaseType, Node, NodeKind, Type, TypeDecType};
 
 pub struct TreesitterTranslator {
     arena: Arena<Node>,
@@ -72,7 +72,7 @@ impl TreesitterTranslator {
         // Add type node
         let type_node = node.child_by_field_name("type").unwrap();
         node_id.append(
-            self.parse_type(&type_node)
+            self.parse_type_ref(&type_node)
                 .unwrap_or_else(|| self.new_error_node(&type_node, Some("Invalid type.".into()))),
             &mut self.arena,
         );
@@ -90,7 +90,48 @@ impl TreesitterTranslator {
         Some(node_id)
     }
 
-    fn parse_type(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+    fn parse_type_dec(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        let type_kind_node = node.child_by_field_name("type_kind")?;
+
+        let type_type = match type_kind_node.kind() {
+            "typedef_declaration" => TypeDecType::TypeDef,
+            "header_type_declaration" => TypeDecType::HeaderType,
+            "header_union_declaration" => TypeDecType::HeaderUnion,
+            "struct_type_declaration" => TypeDecType::Struct,
+            "enum_declaration" => TypeDecType::Enum,
+            "parser_type_declaration" => TypeDecType::Parser,
+            "control_type_declaration" => TypeDecType::Control,
+            "package_type_declaration" => TypeDecType::Package,
+            _ => return None,
+        };
+
+        let node_id = self.arena.new_node(Node::new(
+            NodeKind::TypeDec(type_type.clone()),
+            &node,
+            &self.source_code,
+        ));
+
+        let name_node = self.arena.new_node(Node::new(
+            NodeKind::Name,
+            &type_kind_node.child_by_field_name("name")?,
+            &self.source_code,
+        ));
+        node_id.append(name_node, &mut self.arena);
+
+        match type_type {
+            TypeDecType::TypeDef => {
+                let type_node =
+                    self.parse_type_ref(&type_kind_node.child_by_field_name("type")?)?;
+                node_id.append(type_node, &mut self.arena);
+            }
+            // TODO: Implement other types
+            _ => {}
+        }
+
+        Some(node_id)
+    }
+
+    fn parse_type_ref(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let child = node.named_child(0)?;
         let type_type: Type = match child.kind() {
             "base_type" => Type::Base(self.parse_base_type(&child)?),
@@ -184,22 +225,6 @@ impl TreesitterTranslator {
         Some((name_node_id, parameters_node_id))
     }
 
-    fn parse_type_dec(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
-        let node_id = self
-            .arena
-            .new_node(Node::new(NodeKind::TypeDec, node, &self.source_code));
-
-        let type_kind_node = node.child_by_field_name("type_kind")?;
-        let name_node_id = self.arena.new_node(Node::new(
-            NodeKind::Name,
-            &type_kind_node.child_by_field_name("name")?,
-            &self.source_code,
-        ));
-        node_id.append(name_node_id, &mut self.arena);
-
-        Some(node_id)
-    }
-
     fn parse_var_dec(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let node_id =
             self.arena
@@ -208,7 +233,7 @@ impl TreesitterTranslator {
         // Add type node
         let type_node = node.child_by_field_name("type").unwrap();
         node_id.append(
-            self.parse_type(&type_node)
+            self.parse_type_ref(&type_node)
                 .unwrap_or_else(|| self.new_error_node(&type_node, Some("Invalid type.".into()))),
             &mut self.arena,
         );
@@ -234,7 +259,7 @@ mod tests {
     use tree_sitter_p4::language;
 
     use super::TreesitterTranslator;
-    use crate::ast::tree::{BaseType, Node, NodeKind, Type};
+    use crate::ast::tree::{BaseType, Node, NodeKind, Type, TypeDecType};
 
     fn get_syntax_tree(source_code: &str) -> Tree {
         let mut parser = Parser::new();
@@ -286,6 +311,52 @@ mod tests {
         let name_dec = arena.new_node(Node::new(NodeKind::Name, &syntax_node, source_code));
 
         constant_dec.append(name_dec, &mut arena);
+
+        print_arenas(&arena, &translated_ast.arena);
+        assert!(translated_ast.arena.eq(&arena))
+    }
+
+    #[test]
+    fn test_typedec_typedef() {
+        let source_code = r#"
+            typedef bit<9> egressSpec_t;
+        "#;
+        let syntax_tree = get_syntax_tree(source_code);
+        let translated_ast =
+            TreesitterTranslator::translate(source_code.to_string(), syntax_tree.clone());
+
+        let mut arena: Arena<Node> = Arena::new();
+        let mut syntax_node = syntax_tree.root_node();
+        let root = arena.new_node(Node::new(NodeKind::Root, &syntax_node, source_code));
+
+        syntax_node = syntax_node.named_child(0).unwrap();
+        let typedec_syntax_node = syntax_node;
+        let type_dec = arena.new_node(Node::new(
+            NodeKind::TypeDec(TypeDecType::TypeDef),
+            &syntax_node,
+            source_code,
+        ));
+        root.append(type_dec, &mut arena);
+
+        syntax_node = typedec_syntax_node
+            .child(0)
+            .unwrap()
+            .child_by_field_name("name")
+            .unwrap();
+        let name_dec = arena.new_node(Node::new(NodeKind::Name, &syntax_node, source_code));
+        type_dec.append(name_dec, &mut arena);
+
+        syntax_node = typedec_syntax_node
+            .child(0)
+            .unwrap()
+            .child_by_field_name("type")
+            .unwrap();
+        let type_type_dec = arena.new_node(Node::new(
+            NodeKind::Type(Type::Base(BaseType::SizedBit(Some(9)))),
+            &syntax_node,
+            source_code,
+        ));
+        type_dec.append(type_type_dec, &mut arena);
 
         print_arenas(&arena, &translated_ast.arena);
         assert!(translated_ast.arena.eq(&arena))

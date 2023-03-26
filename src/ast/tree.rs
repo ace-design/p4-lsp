@@ -41,13 +41,25 @@ pub enum Type {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum TypeDecType {
+    TypeDef,
+    HeaderType,
+    HeaderUnion,
+    Struct,
+    Enum,
+    Parser,
+    Control,
+    Package,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum NodeKind {
     Root,
     ConstantDec,
     VariableDec,
     ParserDec,
     Type(Type),
-    TypeDec,
+    TypeDec(TypeDecType),
     Expression,
     Name,
     Params,
