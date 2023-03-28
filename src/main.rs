@@ -17,14 +17,13 @@ extern crate simple_log;
 use simple_log::LogConfigBuilder;
 
 mod analysis;
-mod ast;
 mod completion;
 mod file;
 mod hover;
+mod metadata;
 mod nodes;
 mod scope_parser;
 mod settings;
-mod symbol_table;
 mod utils;
 
 use file::File;

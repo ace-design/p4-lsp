@@ -4,7 +4,7 @@ use tower_lsp::lsp_types::{Diagnostic, DidChangeTextDocumentParams, Position};
 use tree_sitter::{InputEdit, Parser, Tree};
 
 use crate::analysis;
-use crate::ast::Ast;
+use crate::metadata::Metadata;
 use crate::utils;
 
 use crate::scope_parser::ScopeTree;
@@ -13,7 +13,7 @@ pub struct File {
     pub content: String,
     pub tree: Option<Tree>,
     pub scopes: Option<ScopeTree>,
-    pub ast: Option<Ast>,
+    pub metadata: Option<Metadata>,
 }
 
 impl File {
@@ -22,7 +22,7 @@ impl File {
             content: content.to_string(),
             tree: tree.clone(),
             scopes: ScopeTree::new(tree, content),
-            ast: Ast::new(tree.to_owned().unwrap(), content),
+            metadata: Metadata::new(content, tree.as_ref().unwrap().clone()),
         }
     }
 
@@ -62,7 +62,7 @@ impl File {
         }
 
         self.scopes = ScopeTree::new(&self.tree, &self.content);
-        self.ast = Ast::new(self.tree.to_owned().unwrap(), &self.content);
+        self.metadata = Metadata::new(&self.content, self.tree.to_owned().unwrap());
     }
 
     pub fn get_quick_diagnostics(&self) -> Vec<Diagnostic> {

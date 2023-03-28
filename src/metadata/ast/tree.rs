@@ -103,7 +103,7 @@ trait Visitable {
 impl Visitable for Ast {}
 
 impl Ast {
-    pub fn new(syntax_tree: tree_sitter::Tree, source_code: &str) -> Option<Ast> {
+    pub fn new(source_code: &str, syntax_tree: tree_sitter::Tree) -> Option<Ast> {
         Some(TreesitterTranslator::translate(
             source_code.to_string(),
             syntax_tree,
