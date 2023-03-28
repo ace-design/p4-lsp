@@ -135,18 +135,10 @@ impl TreesitterTranslator {
         let child = node.named_child(0)?;
         let type_type: Type = match child.kind() {
             "base_type" => Type::Base(self.parse_base_type(&child)?),
-            "type_name" => {
-                return None;
-            }
-            "specialized_type" => {
-                return None;
-            }
-            "header_stack_type" => {
-                return None;
-            }
-            "tuple_type" => {
-                return None;
-            }
+            "type_name" => Type::Name,
+            "specialized_type" => Type::Specialized,
+            "header_stack_type" => Type::Header,
+            "tuple_type" => Type::Tuple,
             _ => return None,
         };
 

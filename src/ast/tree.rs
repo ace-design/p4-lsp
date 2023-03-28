@@ -96,12 +96,32 @@ pub struct Ast {
     pub root_id: Option<NodeId>,
 }
 
+trait Visitable {
+    // add code here
+}
+
+impl Visitable for Ast {}
+
 impl Ast {
     pub fn new(syntax_tree: tree_sitter::Tree, source_code: &str) -> Option<Ast> {
         Some(TreesitterTranslator::translate(
             source_code.to_string(),
             syntax_tree,
         ))
+    }
+
+    pub fn get_node(&self, node_id: NodeId) -> &Node {
+        self.arena.get(node_id).unwrap().get()
+    }
+
+    pub fn get_child_of_kind(&self, node_id: NodeId, node_kind: NodeKind) -> Option<NodeId> {
+        node_id
+            .children(&self.arena)
+            .find(|id| self.arena.get(*id).unwrap().get().kind == node_kind)
+    }
+
+    pub fn get_root_nodes(&self) -> Vec<NodeId> {
+        self.root_id.unwrap().children(&self.arena).collect()
     }
 
     pub fn get_error_nodes(&self) -> Vec<Node> {

@@ -1,4 +1,4 @@
 mod translator;
 mod tree;
 
-pub use tree::Ast;
+pub use tree::{Ast, NodeKind, TypeDecType};
