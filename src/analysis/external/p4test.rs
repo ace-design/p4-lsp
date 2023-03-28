@@ -12,7 +12,7 @@ pub struct P4Test {}
 
 impl Analysis for P4Test {
     fn get_diagnostics(file: &File) -> Vec<Diagnostic> {
-        let output = get_p4test_output(&file.content);
+        let output = get_p4test_output(&file.source_code);
 
         if let Some(output) = output {
             parse_output(output).unwrap_or_default()

@@ -10,19 +10,19 @@ use crate::utils;
 use crate::scope_parser::ScopeTree;
 
 pub struct File {
-    pub content: String,
+    pub source_code: String,
     pub tree: Option<Tree>,
     pub scopes: Option<ScopeTree>,
     pub metadata: Option<Metadata>,
 }
 
 impl File {
-    pub fn new(content: &str, tree: &Option<Tree>) -> File {
+    pub fn new(source_code: &str, tree: &Option<Tree>) -> File {
         File {
-            content: content.to_string(),
+            source_code: source_code.to_string(),
             tree: tree.clone(),
-            scopes: ScopeTree::new(tree, content),
-            metadata: Metadata::new(content, tree.as_ref().unwrap().clone()),
+            scopes: ScopeTree::new(tree, source_code),
+            metadata: Metadata::new(source_code, tree.as_ref().unwrap().clone()),
         }
     }
 
@@ -32,24 +32,24 @@ impl File {
             let text: String;
 
             if let Some(range) = change.range {
-                let start_byte = utils::pos_to_byte(range.start, &self.content);
-                let old_end_byte = utils::pos_to_byte(range.end, &self.content);
+                let start_byte = utils::pos_to_byte(range.start, &self.source_code);
+                let old_end_byte = utils::pos_to_byte(range.end, &self.source_code);
 
                 let start_position = utils::pos_to_point(range.start);
 
                 let edit = InputEdit {
                     start_byte,
-                    old_end_byte: utils::pos_to_byte(range.end, &self.content),
+                    old_end_byte: utils::pos_to_byte(range.end, &self.source_code),
                     new_end_byte: start_byte + change.text.len(),
                     start_position,
                     old_end_position: utils::pos_to_point(range.end),
                     new_end_position: utils::calculate_end_point(start_position, &change.text),
                 };
 
-                self.content
+                self.source_code
                     .replace_range(start_byte..old_end_byte, &change.text);
 
-                text = self.content.clone();
+                text = self.source_code.clone();
                 let tree = self.tree.as_mut().unwrap();
                 tree.edit(&edit);
                 old_tree = Some(tree);
@@ -61,8 +61,8 @@ impl File {
             self.tree = parser.parse(text, old_tree);
         }
 
-        self.scopes = ScopeTree::new(&self.tree, &self.content);
-        self.metadata = Metadata::new(&self.content, self.tree.to_owned().unwrap());
+        self.scopes = ScopeTree::new(&self.tree, &self.source_code);
+        self.metadata = Metadata::new(&self.source_code, self.tree.to_owned().unwrap());
     }
 
     pub fn get_quick_diagnostics(&self) -> Vec<Diagnostic> {
@@ -77,7 +77,7 @@ impl File {
         let scopes = self.scopes.as_ref();
 
         if let Some(scopes) = scopes {
-            let items = scopes.items_in_scope(utils::pos_to_byte(position, &self.content));
+            let items = scopes.items_in_scope(utils::pos_to_byte(position, &self.source_code));
 
             (
                 items.variables.get_names(position),
