@@ -13,26 +13,34 @@ impl SymbolTable {
     pub fn new(ast: &Ast) -> SymbolTable {
         let mut table = SymbolTable::default();
 
-        let root_table = table.parse_scope(ast);
-        debug!("{:?}", root_table);
-        let root_id = table.arena.new_node(root_table);
-
-        table.root_id = Some(root_id);
+        table.root_id = Some(table.parse_scope(ast.get_root_id(), ast));
 
         table
     }
 
-    fn parse_scope(&self, ast: &Ast) -> ScopeSymbolTable {
-        ScopeSymbolTable {
-            types: self.parse_type_decs(ast),
+    fn parse_scope(&mut self, scope_node_id: NodeId, ast: &Ast) -> NodeId {
+        let table = ScopeSymbolTable {
+            types: self.parse_type_decs(scope_node_id, ast),
+        };
+        debug!("{:?}", table);
+        let node_id = self.arena.new_node(table);
+
+        for subscope_id in ast.get_subscope_ids(scope_node_id) {
+            let subtable = self.parse_scope(subscope_id, ast);
+            node_id.append(subtable, &mut self.arena);
         }
+
+        node_id
     }
 
-    fn parse_type_decs(&self, ast: &Ast) -> Vec<Result<Symbol, SymbolError>> {
+    fn parse_type_decs(
+        &self,
+        scope_node_id: NodeId,
+        ast: &Ast,
+    ) -> Vec<Result<Symbol, SymbolError>> {
         let mut types: Vec<Result<Symbol, SymbolError>> = vec![];
 
-        let root_id = ast.get_root_id();
-        for node_id in ast.get_child_ids(root_id) {
+        for node_id in ast.get_child_ids(scope_node_id) {
             let node = ast.get_node(node_id);
 
             if let NodeKind::TypeDec(type_dec_type) = &node.kind {

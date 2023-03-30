@@ -67,7 +67,7 @@ pub enum NodeKind {
     Error(Option<String>),
 }
 
-const SCOPE_NODES: [NodeKind; 2] = [NodeKind::Root, NodeKind::ParserDec];
+const SCOPE_NODES: [NodeKind; 3] = [NodeKind::Root, NodeKind::ParserDec, NodeKind::Body];
 
 impl NodeKind {
     pub fn is_scope_node(&self) -> bool {

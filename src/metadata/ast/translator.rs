@@ -202,6 +202,7 @@ impl TreesitterTranslator {
             body_syntax_node,
             &self.source_code,
         ));
+        node_id.append(body_node_id, &mut self.arena);
 
         let mut cursor = body_syntax_node.walk();
         for syntax_child in body_syntax_node.children(&mut cursor) {
