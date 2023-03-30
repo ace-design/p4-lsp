@@ -1,7 +1,6 @@
-mod symbol_table;
-mod metadata;
 mod ast;
+mod metadata;
+mod symbol_table;
 
-pub use ast::Ast;
+pub use ast::{Ast, Visitable};
 pub use metadata::Metadata;
-

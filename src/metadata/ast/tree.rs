@@ -54,6 +54,7 @@ pub enum TypeDecType {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum NodeKind {
+    Body,
     Root,
     ConstantDec,
     VariableDec,
@@ -64,6 +65,14 @@ pub enum NodeKind {
     Name,
     Params,
     Error(Option<String>),
+}
+
+const SCOPE_NODES: [NodeKind; 2] = [NodeKind::Root, NodeKind::ParserDec];
+
+impl NodeKind {
+    pub fn is_scope_node(&self) -> bool {
+        SCOPE_NODES.contains(&self)
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -90,17 +99,46 @@ impl Node {
     }
 }
 
+pub trait Visitable {
+    fn get_root_id(&self) -> NodeId;
+    fn get_node(&self, node_id: NodeId) -> &Node;
+    fn get_child_ids(&self, node_id: NodeId) -> Vec<NodeId>;
+    fn get_child_of_kind(&self, node_id: NodeId, kind: NodeKind) -> Option<NodeId>;
+    fn get_subscope_ids(&self, node_id: NodeId) -> Vec<NodeId>;
+}
+
 #[derive(Debug)]
 pub struct Ast {
     pub arena: Arena<Node>,
     pub root_id: Option<NodeId>,
 }
 
-trait Visitable {
-    // add code here
-}
+impl Visitable for Ast {
+    fn get_root_id(&self) -> NodeId {
+        self.root_id.unwrap()
+    }
 
-impl Visitable for Ast {}
+    fn get_node(&self, node_id: NodeId) -> &Node {
+        self.arena.get(node_id).unwrap().get()
+    }
+
+    fn get_child_ids(&self, node_id: NodeId) -> Vec<NodeId> {
+        node_id.children(&self.arena).collect()
+    }
+
+    fn get_subscope_ids(&self, node_id: NodeId) -> Vec<NodeId> {
+        self.get_child_ids(node_id)
+            .into_iter()
+            .filter(|id| self.get_node(*id).kind.is_scope_node())
+            .collect::<Vec<NodeId>>()
+    }
+
+    fn get_child_of_kind(&self, node_id: NodeId, node_kind: NodeKind) -> Option<NodeId> {
+        node_id
+            .children(&self.arena)
+            .find(|id| self.arena.get(*id).unwrap().get().kind == node_kind)
+    }
+}
 
 impl Ast {
     pub fn new(source_code: &str, syntax_tree: tree_sitter::Tree) -> Option<Ast> {
@@ -109,21 +147,6 @@ impl Ast {
             syntax_tree,
         ))
     }
-
-    pub fn get_node(&self, node_id: NodeId) -> &Node {
-        self.arena.get(node_id).unwrap().get()
-    }
-
-    pub fn get_child_of_kind(&self, node_id: NodeId, node_kind: NodeKind) -> Option<NodeId> {
-        node_id
-            .children(&self.arena)
-            .find(|id| self.arena.get(*id).unwrap().get().kind == node_kind)
-    }
-
-    pub fn get_root_nodes(&self) -> Vec<NodeId> {
-        self.root_id.unwrap().children(&self.arena).collect()
-    }
-
     pub fn get_error_nodes(&self) -> Vec<Node> {
         let mut errors: Vec<Node> = vec![];
         for node in self.arena.iter() {

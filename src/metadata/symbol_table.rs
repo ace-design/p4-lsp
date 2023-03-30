@@ -1,7 +1,6 @@
-use std::{error, fmt};
-
-use crate::metadata::ast::{Ast, NodeKind, TypeDecType};
+use crate::metadata::ast::{Ast, NodeKind, TypeDecType, Visitable};
 use indextree::{Arena, NodeId};
+use std::{error, fmt};
 use tower_lsp::lsp_types::Range;
 
 #[derive(Debug, Default)]
@@ -32,7 +31,8 @@ impl SymbolTable {
     fn parse_type_decs(&self, ast: &Ast) -> Vec<Result<Symbol, SymbolError>> {
         let mut types: Vec<Result<Symbol, SymbolError>> = vec![];
 
-        for node_id in ast.get_root_nodes() {
+        let root_id = ast.get_root_id();
+        for node_id in ast.get_child_ids(root_id) {
             let node = ast.get_node(node_id);
 
             if let NodeKind::TypeDec(type_dec_type) = &node.kind {

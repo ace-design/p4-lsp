@@ -196,7 +196,26 @@ impl TreesitterTranslator {
         node_id.append(name_node_id, &mut self.arena);
         node_id.append(parameters_node_id, &mut self.arena);
 
-        // TODO: Parse body
+        let body_syntax_node = &node.child_by_field_name("body")?;
+        let body_node_id = self.arena.new_node(Node::new(
+            NodeKind::Body,
+            body_syntax_node,
+            &self.source_code,
+        ));
+
+        let mut cursor = body_syntax_node.walk();
+        for syntax_child in body_syntax_node.children(&mut cursor) {
+            let child_node_id = match syntax_child.kind() {
+                "constant_declaration" => self.parse_const_dec(&syntax_child),
+                "variable_declaration" => self.parse_var_dec(&syntax_child),
+                // TODO: Add instantiation, value_set_declaration and parser_state
+                _ => None,
+            };
+
+            if let Some(id) = child_node_id {
+                body_node_id.append(id, &mut self.arena);
+            }
+        }
 
         Some(node_id)
     }
