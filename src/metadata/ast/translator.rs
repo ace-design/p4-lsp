@@ -1,8 +1,8 @@
 use indextree::{Arena, NodeId};
 
+use super::tree::{Ast, Node, NodeKind, TypeDecType};
+use crate::metadata::types::{BaseType, Type};
 use crate::utils;
-
-use super::tree::{Ast, BaseType, Node, NodeKind, Type, TypeDecType};
 
 pub struct TreesitterTranslator {
     arena: Arena<Node>,

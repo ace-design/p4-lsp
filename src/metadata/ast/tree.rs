@@ -3,6 +3,7 @@
 use indextree::{Arena, NodeId};
 use tower_lsp::lsp_types::Range;
 
+use crate::metadata::types::Type;
 use crate::utils;
 
 use super::translator::TreesitterTranslator;
@@ -15,29 +16,6 @@ pub enum Operator {
     Divide,
     Modulo,
     //...
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum BaseType {
-    Bool,
-    Error,
-    MatchKind,
-    String,
-    Int,
-    Bit,
-    Varbit,
-    SizedInt(Option<u32>),
-    SizedVarbit(Option<u32>),
-    SizedBit(Option<u32>),
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum Type {
-    Base(BaseType),
-    Name,
-    Specialized,
-    Header,
-    Tuple,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -147,6 +125,7 @@ impl Ast {
             syntax_tree,
         ))
     }
+
     pub fn get_error_nodes(&self) -> Vec<Node> {
         let mut errors: Vec<Node> = vec![];
         for node in self.arena.iter() {
@@ -156,5 +135,15 @@ impl Ast {
             };
         }
         errors
+    }
+
+    pub fn get_type(&self, node_id: NodeId) -> Option<Type> {
+        self.get_child_ids(node_id).into_iter().find_map(|id| {
+            if let NodeKind::Type(type_) = self.get_node(id).kind {
+                Some(type_)
+            } else {
+                None
+            }
+        })
     }
 }
