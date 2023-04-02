@@ -52,29 +52,35 @@ impl ScopeSymbolTable {
 
         for node_id in ast.get_child_ids(scope_node_id) {
             let node = ast.get_node(node_id);
-            let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
-            let name = ast.get_node(name_node_id).content.clone();
-
-            let type_ = ast.get_type(node_id);
 
             match &node.kind {
                 NodeKind::ConstantDec => {
-                    table
-                        .constants
-                        .push(Ok(Symbol::new(name, node.range, type_)));
+                    let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
+                    let name = ast.get_node(name_node_id).content.clone();
+
+                    let type_ = ast.get_type(node_id);
+
+                    let symbol = Ok(Symbol::new(name, node.range, type_));
+
+                    table.constants.push(symbol);
                 }
                 NodeKind::VariableDec => {
-                    table
-                        .variables
-                        .push(Ok(Symbol::new(name, node.range, type_)));
-                }
-                NodeKind::TypeDec(type_dec_type) => {
-                    let symbol = match type_dec_type {
-                        TypeDecType::TypeDef => Ok(Symbol::new(name, node.range, type_)),
-                        _ => Err(SymbolError::Unknown),
-                    };
+                    let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
+                    let name = ast.get_node(name_node_id).content.clone();
 
-                    table.types.push(symbol);
+                    let type_ = ast.get_type(node_id);
+
+                    let symbol = Ok(Symbol::new(name, node.range, type_));
+
+                    table.variables.push(symbol);
+                }
+                NodeKind::TypeDec(_type_dec_type) => {
+                    let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
+                    let name = ast.get_node(name_node_id).content.clone();
+
+                    let type_ = ast.get_type(node_id);
+
+                    table.types.push(Ok(Symbol::new(name, node.range, type_)));
                 }
                 _ => {}
             }
