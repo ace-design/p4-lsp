@@ -20,13 +20,8 @@ impl SymbolTable {
     }
 
     fn parse_scope(&mut self, scope_node_id: NodeId, ast: &Ast) -> NodeId {
-        let table = ScopeSymbolTable {
-            range: ast.get_node(scope_node_id).range,
-            types: self.parse_type_decs(scope_node_id, ast),
-            constants: self.parse_consts(scope_node_id, ast),
-            variables: self.parse_vars(scope_node_id, ast),
-            ..Default::default()
-        };
+        let table = ScopeSymbolTable::parse(scope_node_id, ast);
+
         debug!("{:?}", table);
         let node_id = self.arena.new_node(table);
 
@@ -36,88 +31,6 @@ impl SymbolTable {
         }
 
         node_id
-    }
-
-    fn parse_type_decs(
-        &self,
-        scope_node_id: NodeId,
-        ast: &Ast,
-    ) -> Vec<Result<Symbol, SymbolError>> {
-        let mut types: Vec<Result<Symbol, SymbolError>> = vec![];
-
-        for node_id in ast.get_child_ids(scope_node_id) {
-            let node = ast.get_node(node_id);
-
-            if let NodeKind::TypeDec(type_dec_type) = &node.kind {
-                let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
-                let name = ast.get_node(name_node_id).content.clone();
-
-                let type_ = ast.get_type(node_id);
-
-                let symbol = match type_dec_type {
-                    TypeDecType::TypeDef => Ok(Symbol {
-                        name,
-                        def_position: node.range,
-                        type_,
-                    }),
-                    _ => Err(SymbolError::Unknown),
-                };
-
-                types.push(symbol);
-            }
-        }
-
-        types
-    }
-
-    fn parse_vars(&self, scope_node_id: NodeId, ast: &Ast) -> Vec<Result<Symbol, SymbolError>> {
-        let mut variables: Vec<Result<Symbol, SymbolError>> = vec![];
-
-        for node_id in ast.get_child_ids(scope_node_id) {
-            let node = ast.get_node(node_id);
-
-            if NodeKind::VariableDec == node.kind {
-                let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
-                let name = ast.get_node(name_node_id).content.clone();
-
-                let type_ = ast.get_type(node_id);
-
-                let symbol = Ok(Symbol {
-                    name,
-                    def_position: node.range,
-                    type_,
-                });
-
-                variables.push(symbol);
-            }
-        }
-
-        variables
-    }
-
-    fn parse_consts(&self, scope_node_id: NodeId, ast: &Ast) -> Vec<Result<Symbol, SymbolError>> {
-        let mut constants: Vec<Result<Symbol, SymbolError>> = vec![];
-
-        for node_id in ast.get_child_ids(scope_node_id) {
-            let node = ast.get_node(node_id);
-
-            if NodeKind::ConstantDec == node.kind {
-                let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
-                let name = ast.get_node(name_node_id).content.clone();
-
-                let type_ = ast.get_type(node_id);
-
-                let symbol = Ok(Symbol {
-                    name,
-                    def_position: node.range,
-                    type_,
-                });
-
-                constants.push(symbol);
-            }
-        }
-
-        constants
     }
 }
 
@@ -130,11 +43,75 @@ struct ScopeSymbolTable {
     functions: Vec<Result<Symbol, SymbolError>>,
 }
 
+impl ScopeSymbolTable {
+    fn parse(scope_node_id: NodeId, ast: &Ast) -> ScopeSymbolTable {
+        let mut table = ScopeSymbolTable {
+            range: ast.get_node(scope_node_id).range,
+            ..Default::default()
+        };
+
+        for node_id in ast.get_child_ids(scope_node_id) {
+            let node = ast.get_node(node_id);
+
+            match &node.kind {
+                NodeKind::ConstantDec => {
+                    let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
+                    let name = ast.get_node(name_node_id).content.clone();
+
+                    let type_ = ast.get_type(node_id);
+
+                    let symbol = Ok(Symbol::new(name, node.range, type_));
+
+                    table.constants.push(symbol);
+                }
+                NodeKind::VariableDec => {
+                    let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
+                    let name = ast.get_node(name_node_id).content.clone();
+
+                    let type_ = ast.get_type(node_id);
+
+                    let symbol = Ok(Symbol::new(name, node.range, type_));
+
+                    table.variables.push(symbol);
+                }
+                NodeKind::TypeDec(type_dec_type) => {
+                    let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
+                    let name = ast.get_node(name_node_id).content.clone();
+
+                    let type_ = ast.get_type(node_id);
+
+                    let symbol = match type_dec_type {
+                        TypeDecType::TypeDef => Ok(Symbol::new(name, node.range, type_)),
+                        _ => Err(SymbolError::Unknown),
+                    };
+
+                    table.types.push(symbol);
+                }
+                _ => {}
+            }
+        }
+
+        table
+    }
+}
+
 #[derive(Debug)]
 struct Symbol {
     name: String,
     def_position: Range,
     type_: Option<Type>,
+    usages: Vec<Range>,
+}
+
+impl Symbol {
+    pub fn new(name: String, def_position: Range, type_: Option<Type>) -> Symbol {
+        Symbol {
+            name,
+            def_position,
+            type_,
+            usages: vec![],
+        }
+    }
 }
 
 #[derive(Debug)]
