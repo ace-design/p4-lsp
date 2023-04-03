@@ -1,7 +1,7 @@
 use std::sync::{Mutex, RwLock};
 
 use dashmap::DashMap;
-use hover::HoverContentBuilder;
+use features::{completion, hover};
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -16,11 +16,9 @@ extern crate simple_log;
 use simple_log::LogConfigBuilder;
 
 mod analysis;
-mod completion;
+mod features;
 mod file;
-mod hover;
 mod metadata;
-mod nodes;
 mod settings;
 mod utils;
 
@@ -136,7 +134,9 @@ impl LanguageServer for Backend {
             node_hierarchy = [node.kind().into(), node_hierarchy].join(" > ");
         }
 
-        let hover_content = HoverContentBuilder::new().add_text(&node_hierarchy).build();
+        let hover_content = hover::HoverContentBuilder::new()
+            .add_text(&node_hierarchy)
+            .build();
 
         Ok(Some(Hover {
             contents: hover_content,
