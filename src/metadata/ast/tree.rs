@@ -98,7 +98,7 @@ pub struct Ast {
 
 impl fmt::Display for Ast {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        Ok(())
+        fmt.write_str(&self.get_debug_tree())
     }
 }
 
@@ -135,6 +135,40 @@ impl Ast {
             source_code.to_string(),
             syntax_tree,
         ))
+    }
+
+    pub fn get_debug_tree(&self) -> String {
+        let mut result = String::new();
+        self._get_debug_tree(self.root_id.unwrap(), "", true, &mut result);
+        result
+    }
+
+    fn _get_debug_tree(&self, node_id: NodeId, indent: &str, last: bool, result: &mut String) {
+        let node = self.arena.get(node_id).unwrap().get();
+        let line = format!(
+            "{}{} {:?}\n",
+            indent,
+            if last { "+- " } else { "|- " },
+            node.kind
+        );
+
+        result.push_str(&line);
+        let indent = if last {
+            indent.to_string() + "   "
+        } else {
+            indent.to_string() + "|  "
+        };
+
+        let mut i = 0;
+        for child in node_id.children(&self.arena) {
+            self._get_debug_tree(
+                child,
+                &indent,
+                i == node_id.children(&self.arena).collect::<Vec<_>>().len() - 1,
+                result,
+            );
+            i += 1;
+        }
     }
 
     pub fn get_error_nodes(&self) -> Vec<Node> {
