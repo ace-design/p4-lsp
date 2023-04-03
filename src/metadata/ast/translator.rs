@@ -272,11 +272,11 @@ impl TreesitterTranslator {
                     &syntax_child.child_by_field_name("name")?,
                     &self.source_code,
                 ));
-                params_node_id.append(name_node_id, &mut self.arena);
+                param_node_id.append(name_node_id, &mut self.arena);
 
                 // Add type node
                 let type_syntax_node = syntax_child.child_by_field_name("type")?;
-                params_node_id.append(
+                param_node_id.append(
                     self.parse_type_ref(&type_syntax_node)
                         .unwrap_or_else(|| self.new_error_node(&type_syntax_node)),
                     &mut self.arena,
