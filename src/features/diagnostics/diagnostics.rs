@@ -1,10 +1,10 @@
 use crate::File;
 use tower_lsp::lsp_types::Diagnostic;
 
-use crate::analysis::external::P4Test;
-use crate::analysis::internal::Parse;
+use super::external::P4Test;
+use super::internal::Parse;
 
-pub trait Analysis {
+pub trait DiagnosticProvider {
     fn get_diagnostics(file: &File) -> Vec<Diagnostic>;
 }
 

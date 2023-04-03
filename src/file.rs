@@ -3,7 +3,7 @@ use std::sync::MutexGuard;
 use tower_lsp::lsp_types::{Diagnostic, DidChangeTextDocumentParams, Position};
 use tree_sitter::{InputEdit, Parser, Tree};
 
-use crate::analysis;
+use crate::features::diagnostics;
 use crate::metadata::{Metadata, SymbolTableActions, Symbols};
 use crate::utils;
 
@@ -61,11 +61,11 @@ impl File {
     }
 
     pub fn get_quick_diagnostics(&self) -> Vec<Diagnostic> {
-        analysis::get_quick_diagnostics(self)
+        diagnostics::get_quick_diagnostics(self)
     }
 
     pub fn get_full_diagnostics(&self) -> Vec<Diagnostic> {
-        analysis::get_full_diagnostics(self)
+        diagnostics::get_full_diagnostics(self)
     }
 
     pub fn get_symbols_at_pos(&self, position: Position) -> Option<Symbols> {
