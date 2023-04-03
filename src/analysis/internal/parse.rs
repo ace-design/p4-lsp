@@ -13,7 +13,6 @@ impl Analysis for Parse {
             error_nodes
                 .into_iter()
                 .map(|node| {
-                    let err_msg = node.get_error_msg().unwrap_or("Parsing error.".into());
                     Diagnostic::new(
                         node.range,
                         Some(DiagnosticSeverity::ERROR),
@@ -21,7 +20,7 @@ impl Analysis for Parse {
                             "parsing".to_string(),
                         )),
                         Some("AST".to_string()),
-                        err_msg.trim().to_string(),
+                        "Parsing error.".to_string(),
                         None,
                         None,
                     )

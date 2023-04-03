@@ -1,6 +1,6 @@
 use indextree::{Arena, NodeId};
 
-use super::tree::{Ast, Node, NodeKind, TypeDecType};
+use super::tree::{Ast, Direction, Node, NodeKind, TypeDecType};
 use crate::metadata::types::{BaseType, Type};
 use crate::utils;
 
@@ -28,9 +28,9 @@ impl TreesitterTranslator {
         }
     }
 
-    fn new_error_node(&mut self, node: &tree_sitter::Node, message: Option<String>) -> NodeId {
+    fn new_error_node(&mut self, node: &tree_sitter::Node) -> NodeId {
         self.arena
-            .new_node(Node::new(NodeKind::Error(message), node, &self.source_code))
+            .new_node(Node::new(NodeKind::Error, node, &self.source_code))
     }
 
     fn parse_root(&mut self) -> NodeId {
@@ -44,9 +44,9 @@ impl TreesitterTranslator {
         // TODO: REMOVE CLONE
         let tree = self.tree.clone();
         let mut cursor = tree.walk();
-        for child in tree.root_node().children(&mut cursor) {
+        for child in tree.root_node().named_children(&mut cursor) {
             let new_child = if child.is_error() {
-                Some(self.new_error_node(&child, Some("Couldn't parse.".into())))
+                Some(self.new_error_node(&child))
             } else {
                 match child.kind() {
                     "constant_declaration" => self.parse_const_dec(&child),
@@ -73,7 +73,7 @@ impl TreesitterTranslator {
         let type_node = node.child_by_field_name("type").unwrap();
         node_id.append(
             self.parse_type_ref(&type_node)
-                .unwrap_or_else(|| self.new_error_node(&type_node, Some("Invalid type.".into()))),
+                .unwrap_or_else(|| self.new_error_node(&type_node)),
             &mut self.arena,
         );
 
@@ -85,9 +85,22 @@ impl TreesitterTranslator {
         ));
         node_id.append(name_node, &mut self.arena);
 
-        // TODO: Add value node
+        // Add value node
+        let value_node = node.child_by_field_name("value").unwrap();
+        node_id.append(
+            self.parse_value(&value_node)
+                .unwrap_or_else(|| self.new_error_node(&type_node)),
+            &mut self.arena,
+        );
 
         Some(node_id)
+    }
+
+    fn parse_value(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        Some(
+            self.arena
+                .new_node(Node::new(NodeKind::Value, node, &self.source_code)),
+        )
     }
 
     fn parse_type_dec(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -191,8 +204,9 @@ impl TreesitterTranslator {
             .arena
             .new_node(Node::new(NodeKind::ParserDec, node, &self.source_code));
 
-        let (name_node_id, parameters_node_id) =
-            self.parse_parser_type_dec(&node.child_by_field_name("declaration")?)?;
+        let (name_node_id, parameters_node_id) = self
+            .parse_parser_type_dec(&node.child_by_field_name("declaration")?)
+            .unwrap();
         node_id.append(name_node_id, &mut self.arena);
         node_id.append(parameters_node_id, &mut self.arena);
 
@@ -205,7 +219,7 @@ impl TreesitterTranslator {
         node_id.append(body_node_id, &mut self.arena);
 
         let mut cursor = body_syntax_node.walk();
-        for syntax_child in body_syntax_node.children(&mut cursor) {
+        for syntax_child in body_syntax_node.named_children(&mut cursor) {
             let child_node_id = match syntax_child.kind() {
                 "constant_declaration" => self.parse_const_dec(&syntax_child),
                 "variable_declaration" => self.parse_var_dec(&syntax_child),
@@ -228,13 +242,85 @@ impl TreesitterTranslator {
             &self.source_code,
         ));
 
-        let parameters_node_id = self.arena.new_node(Node::new(
-            NodeKind::Params,
-            &node.child_by_field_name("parameters")?,
-            &self.source_code,
-        ));
+        let params_syntax_node = node.child_by_field_name("parameters").unwrap();
+        let params_node_id = self
+            .parse_params(&params_syntax_node)
+            .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
 
-        Some((name_node_id, parameters_node_id))
+        Some((name_node_id, params_node_id))
+    }
+
+    fn parse_params(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        let params_node_id =
+            self.arena
+                .new_node(Node::new(NodeKind::Params, &node, &self.source_code));
+
+        let mut cursor = node.walk();
+        for syntax_child in node.named_children(&mut cursor) {
+            let new_node_id = if syntax_child.is_error() {
+                self.new_error_node(&syntax_child)
+            } else {
+                let param_node_id = self.arena.new_node(Node::new(
+                    NodeKind::Param,
+                    &syntax_child,
+                    &self.source_code,
+                ));
+
+                // Add name node
+                let name_node_id = self.arena.new_node(Node::new(
+                    NodeKind::Name,
+                    &syntax_child.child_by_field_name("name")?,
+                    &self.source_code,
+                ));
+                params_node_id.append(name_node_id, &mut self.arena);
+
+                // Add type node
+                let type_syntax_node = syntax_child.child_by_field_name("type").unwrap();
+                params_node_id.append(
+                    self.parse_type_ref(&type_syntax_node)
+                        .unwrap_or_else(|| self.new_error_node(&type_syntax_node)),
+                    &mut self.arena,
+                );
+
+                // Add direction node
+                if let Some(value_syntax_node) = syntax_child.child_by_field_name("direction") {
+                    param_node_id.append(
+                        self.parse_direction(&value_syntax_node)
+                            .unwrap_or_else(|| self.new_error_node(&value_syntax_node)),
+                        &mut self.arena,
+                    )
+                };
+
+                // Add value node
+                if let Some(value_syntax_node) = syntax_child.child_by_field_name("value") {
+                    param_node_id.append(
+                        self.parse_value(&value_syntax_node)
+                            .unwrap_or_else(|| self.new_error_node(&value_syntax_node)),
+                        &mut self.arena,
+                    );
+                }
+
+                param_node_id
+            };
+
+            params_node_id.append(new_node_id, &mut self.arena);
+        }
+
+        Some(params_node_id)
+    }
+
+    fn parse_direction(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        let dir = match utils::get_node_text(node, &self.source_code).as_str() {
+            "in" => Direction::In,
+            "out" => Direction::Out,
+            "inout" => Direction::InOut,
+            _ => return None,
+        };
+
+        Some(
+            self.arena
+                .new_node(Node::new(NodeKind::Direction(dir), node, &self.source_code)),
+        )
     }
 
     fn parse_var_dec(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -246,7 +332,7 @@ impl TreesitterTranslator {
         let type_node = node.child_by_field_name("type").unwrap();
         node_id.append(
             self.parse_type_ref(&type_node)
-                .unwrap_or_else(|| self.new_error_node(&type_node, Some("Invalid type.".into()))),
+                .unwrap_or_else(|| self.new_error_node(&type_node)),
             &mut self.arena,
         );
 
@@ -258,7 +344,13 @@ impl TreesitterTranslator {
         ));
         node_id.append(name_node, &mut self.arena);
 
-        // TODO: Add value node
+        // Add value node
+        let value_node = node.child_by_field_name("value").unwrap();
+        node_id.append(
+            self.parse_value(&value_node)
+                .unwrap_or_else(|| self.new_error_node(&value_node)),
+            &mut self.arena,
+        );
 
         Some(node_id)
     }
@@ -270,8 +362,9 @@ mod tests {
     use tree_sitter::{Parser, Tree};
     use tree_sitter_p4::language;
 
+    use super::super::tree::{Node, NodeKind, TypeDecType};
     use super::TreesitterTranslator;
-    use crate::ast::tree::{BaseType, Node, NodeKind, Type, TypeDecType};
+    use super::{BaseType, Type};
 
     fn get_syntax_tree(source_code: &str) -> Tree {
         let mut parser = Parser::new();
@@ -316,13 +409,15 @@ mod tests {
             &syntax_node,
             source_code,
         ));
-
         constant_dec.append(type_dec, &mut arena);
 
         syntax_node = constant_syntax_node.child_by_field_name("name").unwrap();
         let name_dec = arena.new_node(Node::new(NodeKind::Name, &syntax_node, source_code));
-
         constant_dec.append(name_dec, &mut arena);
+
+        syntax_node = constant_syntax_node.child_by_field_name("value").unwrap();
+        let value = arena.new_node(Node::new(NodeKind::Value, &syntax_node, source_code));
+        constant_dec.append(value, &mut arena);
 
         print_arenas(&arena, &translated_ast.arena);
         assert!(translated_ast.arena.eq(&arena))

@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use std::fmt;
+
 use indextree::{Arena, NodeId};
 use tower_lsp::lsp_types::Range;
 
@@ -31,6 +33,13 @@ pub enum TypeDecType {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub enum Direction {
+    In,
+    Out,
+    InOut,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum NodeKind {
     Body,
     Root,
@@ -38,11 +47,14 @@ pub enum NodeKind {
     VariableDec,
     ParserDec,
     Type(Type),
+    Direction(Direction),
     TypeDec(TypeDecType),
     Expression,
     Name,
+    Param,
     Params,
-    Error(Option<String>),
+    Error,
+    Value,
 }
 
 const SCOPE_NODES: [NodeKind; 3] = [NodeKind::Root, NodeKind::ParserDec, NodeKind::Body];
@@ -68,13 +80,6 @@ impl Node {
             content: utils::get_node_text(syntax_node, source_code),
         }
     }
-
-    pub fn get_error_msg(&self) -> Option<String> {
-        match &self.kind {
-            NodeKind::Error(Some(msg)) => Some(msg.clone()),
-            _ => None,
-        }
-    }
 }
 
 pub trait Visitable {
@@ -89,6 +94,12 @@ pub trait Visitable {
 pub struct Ast {
     pub arena: Arena<Node>,
     pub root_id: Option<NodeId>,
+}
+
+impl fmt::Display for Ast {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        Ok(())
+    }
 }
 
 impl Visitable for Ast {
@@ -130,7 +141,7 @@ impl Ast {
         let mut errors: Vec<Node> = vec![];
         for node in self.arena.iter() {
             let node = node.get();
-            if let NodeKind::Error(_) = node.kind {
+            if let NodeKind::Error = node.kind {
                 errors.push(node.clone())
             };
         }

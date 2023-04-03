@@ -1,7 +1,6 @@
-use crate::metadata::ast::{Ast, NodeKind, TypeDecType, Visitable};
+use crate::metadata::ast::{Ast, NodeKind, Visitable};
 use crate::metadata::types::Type;
 use indextree::{Arena, NodeId};
-use std::{error, fmt};
 use tower_lsp::lsp_types::Range;
 
 #[derive(Debug, Default)]
@@ -37,10 +36,10 @@ impl SymbolTable {
 #[derive(Debug, Default)]
 struct ScopeSymbolTable {
     range: Range,
-    types: Vec<Result<Symbol, SymbolError>>,
-    constants: Vec<Result<Symbol, SymbolError>>,
-    variables: Vec<Result<Symbol, SymbolError>>,
-    functions: Vec<Result<Symbol, SymbolError>>,
+    types: Vec<Symbol>,
+    constants: Vec<Symbol>,
+    variables: Vec<Symbol>,
+    functions: Vec<Symbol>,
 }
 
 impl ScopeSymbolTable {
@@ -60,7 +59,7 @@ impl ScopeSymbolTable {
 
                     let type_ = ast.get_type(node_id);
 
-                    let symbol = Ok(Symbol::new(name, node.range, type_));
+                    let symbol = Symbol::new(name, node.range, type_);
 
                     table.constants.push(symbol);
                 }
@@ -70,7 +69,7 @@ impl ScopeSymbolTable {
 
                     let type_ = ast.get_type(node_id);
 
-                    let symbol = Ok(Symbol::new(name, node.range, type_));
+                    let symbol = Symbol::new(name, node.range, type_);
 
                     table.variables.push(symbol);
                 }
@@ -80,7 +79,7 @@ impl ScopeSymbolTable {
 
                     let type_ = ast.get_type(node_id);
 
-                    table.types.push(Ok(Symbol::new(name, node.range, type_)));
+                    table.types.push(Symbol::new(name, node.range, type_));
                 }
                 _ => {}
             }
@@ -106,24 +105,5 @@ impl Symbol {
             type_,
             usages: vec![],
         }
-    }
-}
-
-#[derive(Debug)]
-enum SymbolError {
-    InvalidType,
-    Unknown,
-}
-
-impl error::Error for SymbolError {}
-
-impl fmt::Display for SymbolError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let message = match self {
-            SymbolError::InvalidType => "Invalid type.",
-            SymbolError::Unknown => "Unknown error.",
-        };
-
-        write!(f, "{}", message)
     }
 }

@@ -51,7 +51,8 @@ parser MyParser(packet_in packet,
                 out headers hdr,
                 inout metadata meta,
                 inout standard_metadata_t standard_metadata) {
-    bit<1> test = (1 + 2) * 8;
+    bit<2> test2 = 2;
+    bit<2> test = (1 + 2) * test2;
 
     state start {
         transition parse_ethernet;
