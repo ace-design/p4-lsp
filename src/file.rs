@@ -72,6 +72,6 @@ impl File {
         self.metadata
             .as_ref()?
             .symbol_table
-            .symbols_in_scope(position)
+            .get_symbols_in_scope(position)
     }
 }

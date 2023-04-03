@@ -10,11 +10,13 @@ pub struct SymbolTable {
 }
 
 pub trait SymbolTableActions {
-    fn symbols_in_scope(&self, position: Position) -> Option<Symbols>;
+    fn get_symbols_in_scope(&self, position: Position) -> Option<Symbols>;
+    fn get_top_level_symbols(&self) -> Option<Symbols>;
+    fn get_symbol_at_pos(&self) -> Option<Symbol>;
 }
 
 impl SymbolTableActions for SymbolTable {
-    fn symbols_in_scope(&self, position: Position) -> Option<Symbols> {
+    fn get_symbols_in_scope(&self, position: Position) -> Option<Symbols> {
         let mut current_scope_id = self.root_id?;
         let mut symbols = self.arena.get(current_scope_id)?.get().symbols.clone();
 
@@ -34,6 +36,14 @@ impl SymbolTableActions for SymbolTable {
         }
 
         Some(symbols)
+    }
+
+    fn get_top_level_symbols(&self) -> Option<Symbols> {
+        Some(self.arena.get(self.root_id?)?.get().symbols.clone())
+    }
+
+    fn get_symbol_at_pos(&self) -> Option<Symbol> {
+        todo!()
     }
 }
 
