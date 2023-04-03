@@ -96,7 +96,7 @@ impl LanguageServer for Backend {
         info!("Settings: {:?}", self.settings.read().unwrap());
     }
 
-    async fn will_save(&self, params: WillSaveTextDocumentParams) {
+    async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let doc_uri = params.text_document.uri;
         let diagnotics = self.files.get(&doc_uri).unwrap().get_full_diagnostics();
         debug!("Save diags: {:?}", diagnotics);
