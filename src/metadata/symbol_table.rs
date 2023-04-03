@@ -27,7 +27,7 @@ impl SymbolTableActions for SymbolTable {
                 if scope.range.start < position && position < scope.range.end {
                     current_scope_id = child_id;
                     subscope_exists = true;
-                    symbols.append(scope.symbols.clone());
+                    symbols.add(scope.symbols.clone(), position);
                     break;
                 }
             }
@@ -70,7 +70,16 @@ pub struct Symbols {
 }
 
 impl Symbols {
-    pub fn append(&mut self, mut other: Symbols) {
+    fn position_filter(&mut self, position: Position) {
+        self.types.retain(|s| s.def_position.end < position);
+        self.constants.retain(|s| s.def_position.end < position);
+        self.variables.retain(|s| s.def_position.end < position);
+        self.functions.retain(|s| s.def_position.end < position);
+    }
+
+    pub fn add(&mut self, mut other: Symbols, position: Position) {
+        other.position_filter(position);
+
         self.types.append(&mut other.types);
         self.constants.append(&mut other.constants);
         self.variables.append(&mut other.variables);
