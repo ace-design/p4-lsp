@@ -1,12 +1,40 @@
 use crate::metadata::ast::{Ast, NodeKind, Visitable};
 use crate::metadata::types::Type;
 use indextree::{Arena, NodeId};
-use tower_lsp::lsp_types::Range;
+use tower_lsp::lsp_types::{Position, Range};
 
 #[derive(Debug, Default)]
 pub struct SymbolTable {
     arena: Arena<ScopeSymbolTable>,
     root_id: Option<NodeId>,
+}
+
+pub trait SymbolTableActions {
+    fn symbols_in_scope(&self, position: Position) -> Option<Symbols>;
+}
+
+impl SymbolTableActions for SymbolTable {
+    fn symbols_in_scope(&self, position: Position) -> Option<Symbols> {
+        let mut current_scope_id = self.root_id?;
+        let mut symbols = self.arena.get(current_scope_id)?.get().symbols.clone();
+
+        let mut subscope_exists = true;
+        while subscope_exists {
+            subscope_exists = false;
+
+            for child_id in current_scope_id.children(&self.arena) {
+                let scope = self.arena.get(child_id)?.get();
+                if scope.range.start < position && position < scope.range.end {
+                    current_scope_id = child_id;
+                    subscope_exists = true;
+                    symbols.append(scope.symbols.clone());
+                    break;
+                }
+            }
+        }
+
+        Some(symbols)
+    }
 }
 
 impl SymbolTable {
@@ -33,13 +61,27 @@ impl SymbolTable {
     }
 }
 
+#[derive(Debug, Default, Clone)]
+pub struct Symbols {
+    pub types: Vec<Symbol>,
+    pub constants: Vec<Symbol>,
+    pub variables: Vec<Symbol>,
+    pub functions: Vec<Symbol>,
+}
+
+impl Symbols {
+    pub fn append(&mut self, mut other: Symbols) {
+        self.types.append(&mut other.types);
+        self.constants.append(&mut other.constants);
+        self.variables.append(&mut other.variables);
+        self.functions.append(&mut other.functions);
+    }
+}
+
 #[derive(Debug, Default)]
 struct ScopeSymbolTable {
     range: Range,
-    types: Vec<Symbol>,
-    constants: Vec<Symbol>,
-    variables: Vec<Symbol>,
-    functions: Vec<Symbol>,
+    symbols: Symbols,
 }
 
 impl ScopeSymbolTable {
@@ -61,7 +103,7 @@ impl ScopeSymbolTable {
 
                     let symbol = Symbol::new(name, node.range, type_);
 
-                    table.constants.push(symbol);
+                    table.symbols.constants.push(symbol);
                 }
                 NodeKind::VariableDec => {
                     let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
@@ -71,7 +113,7 @@ impl ScopeSymbolTable {
 
                     let symbol = Symbol::new(name, node.range, type_);
 
-                    table.variables.push(symbol);
+                    table.symbols.variables.push(symbol);
                 }
                 NodeKind::TypeDec(_type_dec_type) => {
                     let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
@@ -79,7 +121,10 @@ impl ScopeSymbolTable {
 
                     let type_ = ast.get_type(node_id);
 
-                    table.types.push(Symbol::new(name, node.range, type_));
+                    table
+                        .symbols
+                        .types
+                        .push(Symbol::new(name, node.range, type_));
                 }
                 _ => {}
             }
@@ -89,8 +134,8 @@ impl ScopeSymbolTable {
     }
 }
 
-#[derive(Debug)]
-struct Symbol {
+#[derive(Debug, Clone)]
+pub struct Symbol {
     name: String,
     def_position: Range,
     type_: Option<Type>,
@@ -105,5 +150,9 @@ impl Symbol {
             type_,
             usages: vec![],
         }
+    }
+
+    pub fn get_name(&self) -> String {
+        self.name.clone()
     }
 }

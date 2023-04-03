@@ -1,6 +1,5 @@
 use std::sync::{Mutex, RwLock};
 
-use completion::CompletionBuilder;
 use dashmap::DashMap;
 use hover::HoverContentBuilder;
 use tower_lsp::jsonrpc::Result;
@@ -22,7 +21,6 @@ mod file;
 mod hover;
 mod metadata;
 mod nodes;
-mod scope_parser;
 mod settings;
 mod utils;
 
@@ -114,15 +112,9 @@ impl LanguageServer for Backend {
         let file_uri = params.text_document_position.text_document.uri;
         let file = self.files.get(&file_uri).unwrap();
 
-        let (var_names, const_names) =
-            file.get_variables_at_pos(params.text_document_position.position);
-
-        let completion_list = CompletionBuilder::new()
-            .add(&var_names, CompletionItemKind::VARIABLE)
-            .add(&const_names, CompletionItemKind::CONSTANT)
-            .build();
-
-        Ok(Some(CompletionResponse::Array(completion_list)))
+        Ok(Some(CompletionResponse::Array(
+            completion::get_list(params.text_document_position.position, &file).unwrap_or_default(),
+        )))
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
@@ -144,14 +136,7 @@ impl LanguageServer for Backend {
             node_hierarchy = [node.kind().into(), node_hierarchy].join(" > ");
         }
 
-        let (var_names, const_names) =
-            file.get_variables_at_pos(params.text_document_position_params.position);
-
-        let hover_content = HoverContentBuilder::new()
-            .add_text(&node_hierarchy)
-            .add_list(var_names, Some("Variables in scope".to_string()))
-            .add_list(const_names, Some("Constants in scope".to_string()))
-            .build();
+        let hover_content = HoverContentBuilder::new().add_text(&node_hierarchy).build();
 
         Ok(Some(Hover {
             contents: hover_content,

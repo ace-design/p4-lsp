@@ -4,15 +4,12 @@ use tower_lsp::lsp_types::{Diagnostic, DidChangeTextDocumentParams, Position};
 use tree_sitter::{InputEdit, Parser, Tree};
 
 use crate::analysis;
-use crate::metadata::Metadata;
+use crate::metadata::{Metadata, SymbolTableActions, Symbols};
 use crate::utils;
-
-use crate::scope_parser::ScopeTree;
 
 pub struct File {
     pub source_code: String,
     pub tree: Option<Tree>,
-    pub scopes: Option<ScopeTree>,
     pub metadata: Option<Metadata>,
 }
 
@@ -21,7 +18,6 @@ impl File {
         File {
             source_code: source_code.to_string(),
             tree: tree.clone(),
-            scopes: ScopeTree::new(tree, source_code),
             metadata: Metadata::new(source_code, tree.as_ref().unwrap().clone()),
         }
     }
@@ -61,7 +57,6 @@ impl File {
             self.tree = parser.parse(text, old_tree);
         }
 
-        self.scopes = ScopeTree::new(&self.tree, &self.source_code);
         self.metadata = Metadata::new(&self.source_code, self.tree.to_owned().unwrap());
     }
 
@@ -73,18 +68,10 @@ impl File {
         analysis::get_full_diagnostics(self)
     }
 
-    pub fn get_variables_at_pos(&self, position: Position) -> (Vec<String>, Vec<String>) {
-        let scopes = self.scopes.as_ref();
-
-        if let Some(scopes) = scopes {
-            let items = scopes.items_in_scope(utils::pos_to_byte(position, &self.source_code));
-
-            (
-                items.variables.get_names(position),
-                items.constants.get_names(position),
-            )
-        } else {
-            (vec![], vec![])
-        }
+    pub fn get_symbols_at_pos(&self, position: Position) -> Option<Symbols> {
+        self.metadata
+            .as_ref()?
+            .symbol_table
+            .symbols_in_scope(position)
     }
 }
