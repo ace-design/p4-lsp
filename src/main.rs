@@ -24,7 +24,7 @@ mod utils;
 use file::File;
 use settings::Settings;
 
-const LANGUAGE_IDS: [&str; 2] = ["p4", "P4"];
+const LANGUAGE_ID: &str = "p4";
 
 struct Backend {
     client: Client,
@@ -145,7 +145,7 @@ impl LanguageServer for Backend {
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let doc = params.text_document;
-        if LANGUAGE_IDS.contains(&doc.language_id.as_str()) {
+        if LANGUAGE_ID == &doc.language_id.as_str().to_lowercase() {
             let tree = {
                 let mut parser = self.parser.lock().unwrap();
                 parser.parse(&doc.text, None)
