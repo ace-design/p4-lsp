@@ -1,11 +1,11 @@
-use crate::analysis::Analysis;
+use super::super::DiagnosticProvider;
 use crate::file::File;
 
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
 pub struct Parse {}
 
-impl Analysis for Parse {
+impl DiagnosticProvider for Parse {
     fn get_diagnostics(file: &File) -> Vec<Diagnostic> {
         if let Some(metadata) = &file.metadata {
             let error_nodes = metadata.ast.get_error_nodes();
