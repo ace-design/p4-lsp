@@ -275,7 +275,7 @@ impl TreesitterTranslator {
                 params_node_id.append(name_node_id, &mut self.arena);
 
                 // Add type node
-                let type_syntax_node = syntax_child.child_by_field_name("type").unwrap();
+                let type_syntax_node = syntax_child.child_by_field_name("type")?;
                 params_node_id.append(
                     self.parse_type_ref(&type_syntax_node)
                         .unwrap_or_else(|| self.new_error_node(&type_syntax_node)),
@@ -283,10 +283,10 @@ impl TreesitterTranslator {
                 );
 
                 // Add direction node
-                if let Some(value_syntax_node) = syntax_child.child_by_field_name("direction") {
+                if let Some(dir_syntax_node) = syntax_child.child_by_field_name("direction") {
                     param_node_id.append(
-                        self.parse_direction(&value_syntax_node)
-                            .unwrap_or_else(|| self.new_error_node(&value_syntax_node)),
+                        self.parse_direction(&dir_syntax_node)
+                            .unwrap_or_else(|| self.new_error_node(&dir_syntax_node)),
                         &mut self.arena,
                     )
                 };
@@ -314,7 +314,10 @@ impl TreesitterTranslator {
             "in" => Direction::In,
             "out" => Direction::Out,
             "inout" => Direction::InOut,
-            _ => return None,
+            _ => {
+                debug!("None");
+                return None;
+            }
         };
 
         Some(

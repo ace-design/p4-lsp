@@ -137,7 +137,7 @@ fn get_parser_declaration_params(
 
     let mut cursor = parameters.walk();
     for param in parameters.named_children(&mut cursor) {
-        let name_node = param.child_by_field_name("name").unwrap();
+        let name_node = param.child_by_field_name("name")?;
         let name_range = name_node.range();
 
         let name: String =
