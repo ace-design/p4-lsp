@@ -70,6 +70,7 @@ impl LanguageServer for Backend {
                         SemanticTokensOptions {
                             range: Some(false),
                             legend: semantic_tokens::get_legend(),
+                            full: Some(SemanticTokensFullOptions::Delta { delta: Some(true) }),
                             ..Default::default()
                         },
                     ),
@@ -181,6 +182,16 @@ impl LanguageServer for Backend {
 
         let diagnotics = file.get_quick_diagnostics();
         self.client.publish_diagnostics(uri, diagnotics, None).await;
+    }
+
+    async fn semantic_tokens_full(
+        &self,
+        params: SemanticTokensParams,
+    ) -> Result<Option<SemanticTokensResult>> {
+        let uri = params.text_document.uri.clone();
+        let file = self.files.get_mut(&uri).unwrap();
+
+        Ok(file.get_semantic_tokens())
     }
 }
 

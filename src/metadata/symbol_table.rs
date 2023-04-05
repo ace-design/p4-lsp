@@ -12,7 +12,7 @@ pub struct SymbolTable {
 pub trait SymbolTableActions {
     fn get_symbols_in_scope(&self, position: Position) -> Option<Symbols>;
     fn get_top_level_symbols(&self) -> Option<Symbols>;
-    fn get_symbol_at_pos(&self) -> Option<Symbol>;
+    fn get_symbol_at_pos(&self, position: Position) -> Option<Symbol>;
 }
 
 impl SymbolTableActions for SymbolTable {
@@ -42,7 +42,7 @@ impl SymbolTableActions for SymbolTable {
         Some(self.arena.get(self.root_id?)?.get().symbols.clone())
     }
 
-    fn get_symbol_at_pos(&self) -> Option<Symbol> {
+    fn get_symbol_at_pos(&self, position: Position) -> Option<Symbol> {
         todo!()
     }
 }
