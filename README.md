@@ -6,7 +6,9 @@ A Rust implementation of the [Language Server Protocol](https://microsoft.github
 
 Development is active in the `dev` branch.
 
-## MacOS and Linux
+## Installation
+
+### MacOS and Linux
 
 1. [Install Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html)
 ```bash
@@ -18,5 +20,5 @@ curl https://sh.rustup.rs -sSf | sh
 cargo install --git https://github.com/ace-design/p4-lsp.git
 ```
 
-## Windows
+### Windows
 Windows is not currently supported.
