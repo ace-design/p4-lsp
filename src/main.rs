@@ -1,7 +1,7 @@
 use std::sync::{Mutex, RwLock};
 
 use dashmap::DashMap;
-use features::{completion, hover};
+use features::{completion, hover, semantic_tokens};
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
@@ -65,6 +65,15 @@ impl LanguageServer for Backend {
         info!("Initializing lsp");
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
+                semantic_tokens_provider: Some(
+                    SemanticTokensServerCapabilities::SemanticTokensOptions(
+                        SemanticTokensOptions {
+                            range: Some(false),
+                            legend: semantic_tokens::get_legend(),
+                            ..Default::default()
+                        },
+                    ),
+                ),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
                 completion_provider: Some(CompletionOptions::default()),
                 text_document_sync: Some(TextDocumentSyncCapability::Options(
