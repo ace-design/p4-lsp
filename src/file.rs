@@ -1,9 +1,11 @@
 use std::sync::MutexGuard;
 
-use tower_lsp::lsp_types::{Diagnostic, DidChangeTextDocumentParams, Position};
+use tower_lsp::lsp_types::{
+    Diagnostic, DidChangeTextDocumentParams, Position, SemanticTokensResult,
+};
 use tree_sitter::{InputEdit, Parser, Tree};
 
-use crate::features::diagnostics;
+use crate::features::{diagnostics, semantic_tokens};
 use crate::metadata::{Metadata, SymbolTableActions, Symbols};
 use crate::utils;
 
@@ -66,6 +68,10 @@ impl File {
 
     pub fn get_full_diagnostics(&self) -> Vec<Diagnostic> {
         diagnostics::get_full_diagnostics(self)
+    }
+
+    pub fn get_semantic_tokens(&self) -> Option<SemanticTokensResult> {
+        Some(semantic_tokens::get_tokens(&self.metadata.as_ref()?.ast))
     }
 
     pub fn get_symbols_at_pos(&self, position: Position) -> Option<Symbols> {
