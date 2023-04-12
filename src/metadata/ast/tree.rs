@@ -82,21 +82,15 @@ impl Node {
     }
 }
 
-pub trait Visitable {
-    fn get_root_id(&self) -> NodeId;
-    fn get_node(&self, node_id: NodeId) -> &Node;
-    fn get_child_ids(&self, node_id: NodeId) -> Vec<NodeId>;
-    fn get_child_of_kind(&self, node_id: NodeId, kind: NodeKind) -> Option<NodeId>;
-    fn get_subscope_ids(&self, node_id: NodeId) -> Vec<NodeId>;
-}
-
 pub trait TrueVisitable {
     fn get(&self) -> &Node;
     fn get_children(&self) -> Vec<VisitNode>;
     fn get_child_of_kind(&self, kind: NodeKind) -> Option<VisitNode>;
     fn get_subscopes(&self) -> Vec<VisitNode>;
+    fn get_type(&self) -> Option<Type>;
 }
 
+#[derive(Debug, PartialEq, Clone)]
 pub struct VisitNode<'a> {
     arena: &'a Arena<Node>,
     id: NodeId,
@@ -135,6 +129,16 @@ impl TrueVisitable for VisitNode<'_> {
             .filter(|child| child.get().kind.is_scope_node())
             .collect::<Vec<VisitNode>>()
     }
+
+    fn get_type(&self) -> Option<Type> {
+        self.get_children().into_iter().find_map(|child| {
+            if let NodeKind::Type(type_) = child.get().kind {
+                Some(type_)
+            } else {
+                None
+            }
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -146,33 +150,6 @@ pub struct Ast {
 impl fmt::Display for Ast {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str(&self.get_debug_tree())
-    }
-}
-
-impl Visitable for Ast {
-    fn get_root_id(&self) -> NodeId {
-        self.root_id
-    }
-
-    fn get_node(&self, node_id: NodeId) -> &Node {
-        self.arena.get(node_id).unwrap().get()
-    }
-
-    fn get_child_ids(&self, node_id: NodeId) -> Vec<NodeId> {
-        node_id.children(&self.arena).collect()
-    }
-
-    fn get_subscope_ids(&self, node_id: NodeId) -> Vec<NodeId> {
-        self.get_child_ids(node_id)
-            .into_iter()
-            .filter(|id| self.get_node(*id).kind.is_scope_node())
-            .collect::<Vec<NodeId>>()
-    }
-
-    fn get_child_of_kind(&self, node_id: NodeId, node_kind: NodeKind) -> Option<NodeId> {
-        node_id
-            .children(&self.arena)
-            .find(|id| self.arena.get(*id).unwrap().get().kind == node_kind)
     }
 }
 
@@ -239,15 +216,5 @@ impl Ast {
             };
         }
         errors
-    }
-
-    pub fn get_type(&self, node_id: NodeId) -> Option<Type> {
-        self.get_child_ids(node_id).into_iter().find_map(|id| {
-            if let NodeKind::Type(type_) = self.get_node(id).kind {
-                Some(type_)
-            } else {
-                None
-            }
-        })
     }
 }
