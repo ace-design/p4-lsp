@@ -92,8 +92,8 @@ pub trait Visitable {
 
 #[derive(Debug)]
 pub struct Ast {
-    pub arena: Arena<Node>,
-    pub root_id: Option<NodeId>,
+    arena: Arena<Node>,
+    root_id: NodeId,
 }
 
 impl fmt::Display for Ast {
@@ -104,7 +104,7 @@ impl fmt::Display for Ast {
 
 impl Visitable for Ast {
     fn get_root_id(&self) -> NodeId {
-        self.root_id.unwrap()
+        self.root_id
     }
 
     fn get_node(&self, node_id: NodeId) -> &Node {
@@ -130,6 +130,10 @@ impl Visitable for Ast {
 }
 
 impl Ast {
+    pub fn initialize(arena: Arena<Node>, root_id: NodeId) -> Ast {
+        Ast { arena, root_id }
+    }
+
     pub fn new(source_code: &str, syntax_tree: tree_sitter::Tree) -> Option<Ast> {
         Some(TreesitterTranslator::translate(
             source_code.to_string(),
@@ -139,8 +143,12 @@ impl Ast {
 
     pub fn get_debug_tree(&self) -> String {
         let mut result = String::new();
-        self._get_debug_tree(self.root_id.unwrap(), "", true, &mut result);
+        self._get_debug_tree(self.root_id, "", true, &mut result);
         result
+    }
+
+    pub fn get_arena(&self) -> Arena<Node> {
+        self.arena.clone()
     }
 
     fn _get_debug_tree(&self, node_id: NodeId, indent: &str, last: bool, result: &mut String) {

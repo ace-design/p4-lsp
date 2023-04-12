@@ -22,10 +22,8 @@ impl TreesitterTranslator {
     pub fn translate(source_code: String, tree: tree_sitter::Tree) -> Ast {
         let mut translator = TreesitterTranslator::new(source_code, tree);
         let root_id = translator.parse_root();
-        Ast {
-            arena: translator.arena,
-            root_id: Some(root_id),
-        }
+
+        Ast::initialize(translator.arena, root_id)
     }
 
     fn new_error_node(&mut self, node: &tree_sitter::Node) -> NodeId {
@@ -422,8 +420,8 @@ mod tests {
         let value = arena.new_node(Node::new(NodeKind::Value, &syntax_node, source_code));
         constant_dec.append(value, &mut arena);
 
-        print_arenas(&arena, &translated_ast.arena);
-        assert!(translated_ast.arena.eq(&arena))
+        print_arenas(&arena, &translated_ast.get_arena());
+        assert!(translated_ast.get_arena().eq(&arena))
     }
 
     #[test]
@@ -468,7 +466,7 @@ mod tests {
         ));
         type_dec.append(type_type_dec, &mut arena);
 
-        print_arenas(&arena, &translated_ast.arena);
-        assert!(translated_ast.arena.eq(&arena))
+        print_arenas(&arena, &translated_ast.get_arena());
+        assert!(translated_ast.get_arena().eq(&arena))
     }
 }
