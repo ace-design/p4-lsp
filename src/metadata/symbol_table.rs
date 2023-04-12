@@ -1,4 +1,4 @@
-use crate::metadata::ast::{Ast, NodeKind, Visitable};
+use crate::metadata::ast::{Ast, NodeKind, TrueVisitable, VisitNode};
 use crate::metadata::types::Type;
 use crate::utils;
 use indextree::{Arena, NodeId};
@@ -52,19 +52,19 @@ impl SymbolTable {
     pub fn new(ast: &Ast) -> SymbolTable {
         let mut table = SymbolTable::default();
 
-        table.root_id = Some(table.parse_scope(ast.get_root_id(), ast));
+        table.root_id = Some(table.parse_scope(ast.visit_root(), ast));
 
         table
     }
 
-    fn parse_scope(&mut self, scope_node_id: NodeId, ast: &Ast) -> NodeId {
-        let table = ScopeSymbolTable::parse(scope_node_id, ast);
+    fn parse_scope(&mut self, visit_node: VisitNode, ast: &Ast) -> NodeId {
+        let table = ScopeSymbolTable::parse(visit_node.clone());
 
         debug!("{:?}", table);
         let node_id = self.arena.new_node(table);
 
-        for subscope_id in ast.get_subscope_ids(scope_node_id) {
-            let subtable = self.parse_scope(subscope_id, ast);
+        for subscope_visit in visit_node.get_subscopes() {
+            let subtable = self.parse_scope(subscope_visit, ast);
             node_id.append(subtable, &mut self.arena);
         }
 
@@ -105,46 +105,46 @@ struct ScopeSymbolTable {
 }
 
 impl ScopeSymbolTable {
-    fn parse(scope_node_id: NodeId, ast: &Ast) -> ScopeSymbolTable {
+    fn parse(root_visit_node: VisitNode) -> ScopeSymbolTable {
         let mut table = ScopeSymbolTable {
-            range: ast.get_node(scope_node_id).range,
+            range: root_visit_node.get().range,
             ..Default::default()
         };
 
-        for node_id in ast.get_child_ids(scope_node_id) {
-            let node = ast.get_node(node_id);
+        for child_visit_node in root_visit_node.get_children() {
+            let child_node = child_visit_node.get();
 
-            match &node.kind {
+            match &child_node.kind {
                 NodeKind::ConstantDec => {
-                    let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
-                    let name = ast.get_node(name_node_id).content.clone();
+                    let name_node = child_visit_node.get_child_of_kind(NodeKind::Name).unwrap();
+                    let name = name_node.get().content.clone();
 
-                    let type_ = ast.get_type(node_id);
+                    let type_ = child_visit_node.get_type();
 
-                    let symbol = Symbol::new(name, node.range, type_);
+                    let symbol = Symbol::new(name, child_node.range, type_);
 
                     table.symbols.constants.push(symbol);
                 }
                 NodeKind::VariableDec => {
-                    let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
-                    let name = ast.get_node(name_node_id).content.clone();
+                    let name_node = child_visit_node.get_child_of_kind(NodeKind::Name).unwrap();
+                    let name = name_node.get().content.clone();
 
-                    let type_ = ast.get_type(node_id);
+                    let type_ = child_visit_node.get_type();
 
-                    let symbol = Symbol::new(name, node.range, type_);
+                    let symbol = Symbol::new(name, child_node.range, type_);
 
                     table.symbols.variables.push(symbol);
                 }
                 NodeKind::TypeDec(_type_dec_type) => {
-                    let name_node_id = ast.get_child_of_kind(node_id, NodeKind::Name).unwrap();
-                    let name = ast.get_node(name_node_id).content.clone();
+                    let name_node = child_visit_node.get_child_of_kind(NodeKind::Name).unwrap();
+                    let name = name_node.get().content.clone();
 
-                    let type_ = ast.get_type(node_id);
+                    let type_ = child_visit_node.get_type();
 
                     table
                         .symbols
                         .types
-                        .push(Symbol::new(name, node.range, type_));
+                        .push(Symbol::new(name, child_node.range, type_));
                 }
                 _ => {}
             }
