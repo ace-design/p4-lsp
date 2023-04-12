@@ -1,4 +1,4 @@
-use crate::metadata::ast::{Ast, NodeKind, TrueVisitable, VisitNode};
+use crate::metadata::ast::{Ast, NodeKind, VisitNode, Visitable};
 use crate::metadata::types::Type;
 use crate::utils;
 use indextree::{Arena, NodeId};

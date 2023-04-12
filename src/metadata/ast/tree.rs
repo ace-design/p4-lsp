@@ -82,7 +82,7 @@ impl Node {
     }
 }
 
-pub trait TrueVisitable {
+pub trait Visitable {
     fn get(&self) -> &Node;
     fn get_children(&self) -> Vec<VisitNode>;
     fn get_child_of_kind(&self, kind: NodeKind) -> Option<VisitNode>;
@@ -102,7 +102,7 @@ impl<'a> VisitNode<'a> {
     }
 }
 
-impl TrueVisitable for VisitNode<'_> {
+impl Visitable for VisitNode<'_> {
     fn get(&self) -> &Node {
         self.arena.get(self.id).unwrap().get()
     }
