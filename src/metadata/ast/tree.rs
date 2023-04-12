@@ -90,6 +90,53 @@ pub trait Visitable {
     fn get_subscope_ids(&self, node_id: NodeId) -> Vec<NodeId>;
 }
 
+pub trait TrueVisitable {
+    fn get(&self) -> &Node;
+    fn get_children(&self) -> Vec<VisitNode>;
+    fn get_child_of_kind(&self, kind: NodeKind) -> Option<VisitNode>;
+    fn get_subscopes(&self) -> Vec<VisitNode>;
+}
+
+pub struct VisitNode<'a> {
+    arena: &'a Arena<Node>,
+    id: NodeId,
+}
+
+impl<'a> VisitNode<'a> {
+    pub fn new(arena: &'a Arena<Node>, node_id: NodeId) -> VisitNode<'a> {
+        VisitNode { arena, id: node_id }
+    }
+}
+
+impl TrueVisitable for VisitNode<'_> {
+    fn get(&self) -> &Node {
+        self.arena.get(self.id).unwrap().get()
+    }
+
+    fn get_children(&self) -> Vec<VisitNode> {
+        self.id
+            .children(&self.arena)
+            .map(|id| VisitNode::new(self.arena, id))
+            .collect::<Vec<VisitNode>>()
+    }
+
+    fn get_child_of_kind(&self, kind: NodeKind) -> Option<VisitNode> {
+        let id = self
+            .id
+            .children(&self.arena)
+            .find(|id| self.arena.get(*id).unwrap().get().kind == kind)?;
+
+        Some(VisitNode::new(self.arena, id))
+    }
+
+    fn get_subscopes(&self) -> Vec<VisitNode> {
+        self.get_children()
+            .into_iter()
+            .filter(|child| child.get().kind.is_scope_node())
+            .collect::<Vec<VisitNode>>()
+    }
+}
+
 #[derive(Debug)]
 pub struct Ast {
     arena: Arena<Node>,
@@ -139,6 +186,10 @@ impl Ast {
             source_code.to_string(),
             syntax_tree,
         ))
+    }
+
+    pub fn visit_root(&self) -> VisitNode {
+        VisitNode::new(&self.arena, self.root_id)
     }
 
     pub fn get_debug_tree(&self) -> String {
