@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::metadata::ast::{Ast, NodeKind, VisitNode, Visitable};
 use crate::metadata::types::Type;
 use crate::utils;
@@ -60,7 +62,7 @@ impl SymbolTable {
     fn parse_scope(&mut self, visit_node: VisitNode, ast: &Ast) -> NodeId {
         let table = ScopeSymbolTable::parse(visit_node.clone());
 
-        debug!("{:?}", table);
+        debug!("{}", table);
         let node_id = self.arena.new_node(table);
 
         for subscope_visit in visit_node.get_subscopes() {
@@ -102,6 +104,41 @@ impl Symbols {
 struct ScopeSymbolTable {
     range: Range,
     symbols: Symbols,
+}
+
+impl fmt::Display for ScopeSymbolTable {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let mut output = String::from("\n");
+
+        output.push_str(
+            format!(
+                "{0: <8} | {1: <15} | {2: <10} | {3: <10} | {4: <10}\n",
+                "symbol", "name", "position", "type", "usages"
+            )
+            .as_str(),
+        );
+
+        output.push_str("-".repeat(62).as_str());
+        output.push('\n');
+
+        for s in &self.symbols.types {
+            output.push_str(format!("{: <8} | {}\n", "type", s.to_string()).as_str());
+        }
+
+        for s in &self.symbols.constants {
+            output.push_str(format!("{: <8} | {}\n", "constant", s.to_string()).as_str());
+        }
+
+        for s in &self.symbols.variables {
+            output.push_str(format!("{: <8} | {}\n", "variable", s.to_string()).as_str());
+        }
+
+        for s in &self.symbols.functions {
+            output.push_str(format!("{: <8} | {}\n", "function", s.to_string()).as_str());
+        }
+
+        fmt.write_str(&output)
+    }
 }
 
 impl ScopeSymbolTable {
@@ -160,6 +197,21 @@ pub struct Symbol {
     def_position: Range,
     type_: Option<Type>,
     usages: Vec<Range>,
+}
+
+impl fmt::Display for Symbol {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(
+            format!(
+                "{0: <15} | {1: <10} | {2: <10} | {3: <10}",
+                self.name,
+                "",
+                "",
+                self.usages.len()
+            )
+            .as_str(),
+        )
+    }
 }
 
 impl Symbol {
