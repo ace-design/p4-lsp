@@ -85,12 +85,14 @@ impl Node {
 pub trait Visitable {
     fn get(&self) -> &Node;
     fn get_children(&self) -> Vec<VisitNode>;
+    fn get_descendants(&self) -> Vec<VisitNode>;
     fn get_child_of_kind(&self, kind: NodeKind) -> Option<VisitNode>;
     fn get_subscopes(&self) -> Vec<VisitNode>;
+    fn get_type_node(&self) -> Option<VisitNode>;
     fn get_type(&self) -> Option<Type>;
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct VisitNode<'a> {
     arena: &'a Arena<Node>,
     id: NodeId,
@@ -114,6 +116,13 @@ impl Visitable for VisitNode<'_> {
             .collect::<Vec<VisitNode>>()
     }
 
+    fn get_descendants(&self) -> Vec<VisitNode> {
+        self.id
+            .descendants(&self.arena)
+            .map(|id| VisitNode::new(self.arena, id))
+            .collect::<Vec<VisitNode>>()
+    }
+
     fn get_child_of_kind(&self, kind: NodeKind) -> Option<VisitNode> {
         let id = self
             .id
@@ -130,14 +139,23 @@ impl Visitable for VisitNode<'_> {
             .collect::<Vec<VisitNode>>()
     }
 
-    fn get_type(&self) -> Option<Type> {
+    fn get_type_node(&self) -> Option<VisitNode> {
         self.get_children().into_iter().find_map(|child| {
-            if let NodeKind::Type(type_) = child.get().kind {
-                Some(type_)
+            let node = child.get();
+            if matches!(node.kind, NodeKind::Type(_)) {
+                Some(VisitNode::new(self.arena, child.id))
             } else {
                 None
             }
         })
+    }
+
+    fn get_type(&self) -> Option<Type> {
+        if let NodeKind::Type(type_) = self.get().kind {
+            Some(type_)
+        } else {
+            None
+        }
     }
 }
 

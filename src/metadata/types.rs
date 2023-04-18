@@ -1,3 +1,5 @@
+use std::fmt;
+
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum BaseType {
     Bool,
@@ -19,4 +21,16 @@ pub enum Type {
     Specialized,
     Header,
     Tuple,
+}
+
+impl fmt::Display for Type {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(match self {
+            Type::Name => "Name",
+            Type::Base(_) => "Base",
+            Type::Specialized => "Specialized ",
+            Type::Header => "Header",
+            Type::Tuple => "Tuple",
+        })
+    }
 }
