@@ -9,8 +9,8 @@ pub struct Metadata {
 impl Metadata {
     pub fn new(source_code: &str, syntax_tree: tree_sitter::Tree) -> Option<Metadata> {
         let ast = Ast::new(source_code, syntax_tree)?;
-        debug!("{}", ast);
         let symbol_table = SymbolTable::new(&ast);
+        debug!("\nAST:\n{}\nSymbol Table:\n{}", ast, symbol_table);
 
         Some(Metadata { ast, symbol_table })
     }
