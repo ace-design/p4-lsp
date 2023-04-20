@@ -46,6 +46,7 @@ pub enum NodeKind {
     ConstantDec,
     VariableDec,
     ParserDec,
+    ControlDec,
     Type(Type),
     Direction(Direction),
     TypeDec(TypeDecType),
@@ -57,7 +58,12 @@ pub enum NodeKind {
     Value,
 }
 
-const SCOPE_NODES: [NodeKind; 3] = [NodeKind::Root, NodeKind::ParserDec, NodeKind::Body];
+const SCOPE_NODES: [NodeKind; 4] = [
+    NodeKind::Root,
+    NodeKind::ParserDec,
+    NodeKind::ControlDec,
+    NodeKind::Body,
+];
 
 impl NodeKind {
     pub fn is_scope_node(&self) -> bool {
