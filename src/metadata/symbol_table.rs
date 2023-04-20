@@ -365,6 +365,29 @@ impl ScopeSymbolTable {
                         .types
                         .push(Symbol::new(name, name_node.get().range, type_));
                 }
+                NodeKind::Params => {
+                    for param_visit in child_visit_node.get_children() {
+                        let param_node = param_visit.get();
+                        if param_node.kind == NodeKind::Param {
+                            let name_node = param_visit.get_child_of_kind(NodeKind::Name).unwrap();
+                            let name = name_node.get().content.clone();
+
+                            let type_node = param_visit.get_type_node();
+
+                            let type_ = if let Some(type_node) = type_node {
+                                type_node.get_type()
+                            } else {
+                                None
+                            };
+
+                            table.symbols.types.push(Symbol::new(
+                                name,
+                                name_node.get().range,
+                                type_,
+                            ));
+                        }
+                    }
+                }
                 _ => {}
             }
         }

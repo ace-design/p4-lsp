@@ -1,7 +1,7 @@
 use super::super::DiagnosticProvider;
 use crate::file::File;
 
-use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
+use tower_lsp::lsp_types::Diagnostic;
 
 pub struct Symbols {}
 
