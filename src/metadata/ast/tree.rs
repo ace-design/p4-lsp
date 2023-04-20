@@ -3,7 +3,7 @@
 use std::fmt;
 
 use indextree::{Arena, NodeId};
-use tower_lsp::lsp_types::Range;
+use tower_lsp::lsp_types::{Position, Range};
 
 use crate::metadata::types::Type;
 use crate::utils;
@@ -90,6 +90,7 @@ pub trait Visitable {
     fn get_subscopes(&self) -> Vec<VisitNode>;
     fn get_type_node(&self) -> Option<VisitNode>;
     fn get_type(&self) -> Option<Type>;
+    fn get_node_at_position(&self, position: Position) -> Option<VisitNode>;
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -155,6 +156,22 @@ impl Visitable for VisitNode<'_> {
             Some(type_)
         } else {
             None
+        }
+    }
+
+    fn get_node_at_position(&self, position: Position) -> Option<VisitNode> {
+        let mut child_id = self.id;
+
+        loop {
+            let children = child_id.children(self.arena);
+            if let Some(new_child) = children.into_iter().find(|id| {
+                let range = self.arena.get(*id).unwrap().get().range;
+                position >= range.start && position <= range.end
+            }) {
+                child_id = new_child;
+            } else {
+                return Some(VisitNode::new(self.arena, child_id));
+            }
         }
     }
 }

@@ -52,7 +52,6 @@ parser MyParser(packet_in packet,
                 inout standard_metadata_t standard_metadata) {
     bit<16> test = TYPE_IPV4;
     egressSpec_t test2 = 1;
-    egressSpec_t test3 = 1;
 
     state start {
         transition parse_ethernet;

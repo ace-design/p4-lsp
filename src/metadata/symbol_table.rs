@@ -15,7 +15,8 @@ pub struct SymbolTable {
 pub trait SymbolTableActions {
     fn get_symbols_in_scope(&self, position: Position) -> Option<Symbols>;
     fn get_top_level_symbols(&self) -> Option<Symbols>;
-    fn get_symbol_at_pos(&mut self, name: String, position: Position) -> Option<&mut Symbol>;
+    fn get_symbol_at_pos(&self, name: String, position: Position) -> Option<&Symbol>;
+    fn get_symbol_at_pos_mut(&mut self, name: String, position: Position) -> Option<&mut Symbol>;
 }
 
 impl SymbolTableActions for SymbolTable {
@@ -45,14 +46,31 @@ impl SymbolTableActions for SymbolTable {
         Some(self.arena.get(self.root_id?)?.get().symbols.clone())
     }
 
-    fn get_symbol_at_pos(&mut self, name: String, position: Position) -> Option<&mut Symbol> {
+    fn get_symbol_at_pos_mut(&mut self, name: String, position: Position) -> Option<&mut Symbol> {
         let scope_id = self.get_scope_id(position)?;
 
         for pre_id in scope_id.predecessors(&self.arena) {
             let scope = self.arena.get(pre_id)?.get();
 
             if scope.symbols.contains(&name) {
-                return self.arena.get_mut(pre_id)?.get_mut().symbols.get(&name);
+                return self.arena.get_mut(pre_id)?.get_mut().symbols.get_mut(&name);
+            }
+        }
+
+        None
+    }
+
+    fn get_symbol_at_pos(&self, name: String, position: Position) -> Option<&Symbol> {
+        let scope_id = self.get_scope_id(position)?;
+
+        for pre_id in scope_id.predecessors(&self.arena) {
+            let scope = self.arena.get(pre_id)?.get();
+
+            if scope.symbols.contains(&name) {
+                let scope = self.arena.get(pre_id)?.get();
+                let symbols = scope.get_symbols();
+                let symbol = symbols.get(&name)?;
+                return Some(symbol);
             }
         }
 
@@ -117,7 +135,7 @@ impl SymbolTable {
                         let name = type_node.content.clone();
                         let pos = type_node.range.start;
 
-                        if let Some(symbol) = self.get_symbol_at_pos(name, pos) {
+                        if let Some(symbol) = self.get_symbol_at_pos_mut(name, pos) {
                             symbol.usages.push(type_node.range);
                         } else {
                             self.undefined_list.push(type_node.range)
@@ -193,7 +211,32 @@ impl Symbols {
         false
     }
 
-    pub fn get(&mut self, name: &str) -> Option<&mut Symbol> {
+    pub fn get(&self, name: &str) -> Option<&Symbol> {
+        for symbol in &self.types {
+            if symbol.name == name {
+                return Some(symbol);
+            }
+        }
+        for symbol in &self.constants {
+            if symbol.name == name {
+                return Some(symbol);
+            }
+        }
+        for symbol in &self.variables {
+            if symbol.name == name {
+                return Some(symbol);
+            }
+        }
+        for symbol in &self.functions {
+            if symbol.name == name {
+                return Some(symbol);
+            }
+        }
+
+        None
+    }
+
+    pub fn get_mut(&mut self, name: &str) -> Option<&mut Symbol> {
         for symbol in &mut self.types {
             if symbol.name == name {
                 return Some(symbol);
@@ -261,6 +304,10 @@ impl fmt::Display for ScopeSymbolTable {
 }
 
 impl ScopeSymbolTable {
+    fn get_symbols(&self) -> &Symbols {
+        &self.symbols
+    }
+
     fn parse(root_visit_node: VisitNode) -> ScopeSymbolTable {
         let mut table = ScopeSymbolTable {
             range: root_visit_node.get().range,
@@ -370,5 +417,9 @@ impl Symbol {
 
     pub fn get_name(&self) -> String {
         self.name.clone()
+    }
+
+    pub fn get_definition_range(&self) -> Range {
+        self.def_position
     }
 }

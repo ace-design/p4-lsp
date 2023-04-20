@@ -86,6 +86,7 @@ impl LanguageServer for Backend {
                         save: Some(TextDocumentSyncSaveOptions::Supported(true)),
                     },
                 )),
+                definition_provider: Some(OneOf::Left(true)),
                 ..Default::default()
             },
             ..Default::default()
@@ -161,8 +162,10 @@ impl LanguageServer for Backend {
                 parser.parse(&doc.text, None)
             };
 
-            self.files
-                .insert(doc.uri.clone(), File::new(&doc.text, &tree));
+            self.files.insert(
+                doc.uri.clone(),
+                File::new(doc.uri.clone(), &doc.text, &tree),
+            );
 
             let diagnotics = self.files.get(&doc.uri).unwrap().get_full_diagnostics();
             self.client
@@ -182,6 +185,23 @@ impl LanguageServer for Backend {
 
         let diagnotics = file.get_quick_diagnostics();
         self.client.publish_diagnostics(uri, diagnotics, None).await;
+    }
+
+    async fn goto_definition(
+        &self,
+        params: GotoDefinitionParams,
+    ) -> Result<Option<GotoDefinitionResponse>> {
+        let uri = params.text_document_position_params.text_document.uri;
+        let file = self.files.get_mut(&uri).unwrap();
+
+        let pos = params.text_document_position_params.position;
+        let response = if let Some(location) = file.get_definition_location(pos) {
+            Some(GotoDefinitionResponse::Scalar(location))
+        } else {
+            None
+        };
+
+        Ok(response)
     }
 
     async fn semantic_tokens_full(
