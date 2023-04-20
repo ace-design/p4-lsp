@@ -1,23 +1,25 @@
 use std::sync::MutexGuard;
 
 use tower_lsp::lsp_types::{
-    Diagnostic, DidChangeTextDocumentParams, Position, SemanticTokensResult,
+    Diagnostic, DidChangeTextDocumentParams, Location, Position, SemanticTokensResult, Url,
 };
 use tree_sitter::{InputEdit, Parser, Tree};
 
-use crate::features::{diagnostics, semantic_tokens};
+use crate::features::{diagnostics, goto, semantic_tokens};
 use crate::metadata::{Metadata, SymbolTableActions, Symbols};
 use crate::utils;
 
 pub struct File {
+    pub uri: Url,
     pub source_code: String,
     pub tree: Option<Tree>,
     pub metadata: Option<Metadata>,
 }
 
 impl File {
-    pub fn new(source_code: &str, tree: &Option<Tree>) -> File {
+    pub fn new(uri: Url, source_code: &str, tree: &Option<Tree>) -> File {
         File {
+            uri,
             source_code: source_code.to_string(),
             tree: tree.clone(),
             metadata: Metadata::new(source_code, tree.as_ref().unwrap().clone()),
@@ -72,6 +74,15 @@ impl File {
 
     pub fn get_semantic_tokens(&self) -> Option<SemanticTokensResult> {
         Some(semantic_tokens::get_tokens(&self.metadata.as_ref()?.ast))
+    }
+
+    pub fn get_definition_location(&self, position: Position) -> Option<Location> {
+        let range = goto::get_definition_range(
+            &self.metadata.as_ref()?.ast,
+            &self.metadata.as_ref()?.symbol_table,
+            position,
+        )?;
+        Some(Location::new(self.uri.clone(), range))
     }
 
     pub fn get_symbols_at_pos(&self, position: Position) -> Option<Symbols> {
