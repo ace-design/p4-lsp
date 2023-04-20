@@ -329,7 +329,7 @@ impl ScopeSymbolTable {
                         None
                     };
 
-                    let symbol = Symbol::new(name, child_node.range, type_);
+                    let symbol = Symbol::new(name, name_node.get().range, type_);
 
                     table.symbols.constants.push(symbol);
                 }
@@ -344,7 +344,7 @@ impl ScopeSymbolTable {
                         None
                     };
 
-                    let symbol = Symbol::new(name, child_node.range, type_);
+                    let symbol = Symbol::new(name, name_node.get().range, type_);
 
                     table.symbols.variables.push(symbol);
                 }
@@ -363,7 +363,7 @@ impl ScopeSymbolTable {
                     table
                         .symbols
                         .types
-                        .push(Symbol::new(name, child_node.range, type_));
+                        .push(Symbol::new(name, name_node.get().range, type_));
                 }
                 _ => {}
             }
