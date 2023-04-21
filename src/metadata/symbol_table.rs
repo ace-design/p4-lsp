@@ -104,7 +104,7 @@ impl SymbolTable {
                 }
             }
         }
-        None
+        self.root_id
     }
 
     fn parse_scope(&mut self, visit_node: VisitNode) -> NodeId {
@@ -438,11 +438,19 @@ impl Symbol {
         }
     }
 
+    pub fn rename(&mut self, new_name: String) {
+        self.name = new_name;
+    }
+
     pub fn get_name(&self) -> String {
         self.name.clone()
     }
 
     pub fn get_definition_range(&self) -> Range {
         self.def_position
+    }
+
+    pub fn get_usages(&self) -> &Vec<Range> {
+        &self.usages
     }
 }

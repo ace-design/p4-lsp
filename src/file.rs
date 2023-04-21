@@ -2,10 +2,11 @@ use std::sync::MutexGuard;
 
 use tower_lsp::lsp_types::{
     Diagnostic, DidChangeTextDocumentParams, Location, Position, SemanticTokensResult, Url,
+    WorkspaceEdit,
 };
 use tree_sitter::{InputEdit, Parser, Tree};
 
-use crate::features::{diagnostics, goto, semantic_tokens};
+use crate::features::{diagnostics, goto, rename, semantic_tokens};
 use crate::metadata::{Metadata, SymbolTableActions, Symbols};
 use crate::utils;
 
@@ -83,6 +84,18 @@ impl File {
             position,
         )?;
         Some(Location::new(self.uri.clone(), range))
+    }
+
+    pub fn rename_symbol(&mut self, position: Position, new_name: String) -> Option<WorkspaceEdit> {
+        let metadata = &mut self.metadata.as_mut()?;
+
+        rename::rename(
+            &metadata.ast,
+            &mut metadata.symbol_table,
+            self.uri.clone(),
+            new_name,
+            position,
+        )
     }
 
     pub fn get_symbols_at_pos(&self, position: Position) -> Option<Symbols> {
