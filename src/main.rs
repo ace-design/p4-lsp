@@ -87,6 +87,10 @@ impl LanguageServer for Backend {
                     },
                 )),
                 definition_provider: Some(OneOf::Left(true)),
+                rename_provider: Some(OneOf::Right(RenameOptions {
+                    prepare_provider: Some(false),
+                    work_done_progress_options: WorkDoneProgressOptions::default(),
+                })),
                 ..Default::default()
             },
             ..Default::default()
@@ -202,6 +206,17 @@ impl LanguageServer for Backend {
         };
 
         Ok(response)
+    }
+
+    async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
+        let uri = params.text_document_position.text_document.uri;
+        let mut file = self.files.get_mut(&uri).unwrap();
+
+        let response =
+            Ok(file.rename_symbol(params.text_document_position.position, params.new_name));
+        debug!("rename: {:?}", response);
+
+        response
     }
 
     async fn semantic_tokens_full(
