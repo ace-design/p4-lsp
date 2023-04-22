@@ -1,24 +1,29 @@
 use std::sync::MutexGuard;
 
-use tower_lsp::lsp_types::{DidChangeTextDocumentParams, Position};
+use tower_lsp::lsp_types::{
+    Diagnostic, DidChangeTextDocumentParams, Location, Position, SemanticTokensResult, Url,
+    WorkspaceEdit,
+};
 use tree_sitter::{InputEdit, Parser, Tree};
 
+use crate::features::{diagnostics, goto, rename, semantic_tokens};
+use crate::metadata::{Metadata, SymbolTableActions, Symbols};
 use crate::utils;
 
-use crate::scope_tree::ScopeTree;
-
 pub struct File {
-    pub content: String,
+    pub uri: Url,
+    pub source_code: String,
     pub tree: Option<Tree>,
-    pub scopes: Option<ScopeTree>,
+    pub metadata: Option<Metadata>,
 }
 
 impl File {
-    pub fn new(content: String, tree: Option<Tree>) -> File {
+    pub fn new(uri: Url, source_code: &str, tree: &Option<Tree>) -> File {
         File {
-            content: content.clone(),
+            uri,
+            source_code: source_code.to_string(),
             tree: tree.clone(),
-            scopes: ScopeTree::new(&tree, &content),
+            metadata: Metadata::new(source_code, tree.as_ref().unwrap().clone()),
         }
     }
 
@@ -28,24 +33,24 @@ impl File {
             let text: String;
 
             if let Some(range) = change.range {
-                let start_byte = utils::pos_to_byte(range.start, &self.content);
-                let old_end_byte = utils::pos_to_byte(range.end, &self.content);
+                let start_byte = utils::pos_to_byte(range.start, &self.source_code);
+                let old_end_byte = utils::pos_to_byte(range.end, &self.source_code);
 
                 let start_position = utils::pos_to_point(range.start);
 
                 let edit = InputEdit {
                     start_byte,
-                    old_end_byte: utils::pos_to_byte(range.end, &self.content),
+                    old_end_byte: utils::pos_to_byte(range.end, &self.source_code),
                     new_end_byte: start_byte + change.text.len(),
                     start_position,
                     old_end_position: utils::pos_to_point(range.end),
                     new_end_position: utils::calculate_end_point(start_position, &change.text),
                 };
 
-                self.content
+                self.source_code
                     .replace_range(start_byte..old_end_byte, &change.text);
 
-                text = self.content.clone();
+                text = self.source_code.clone();
                 let tree = self.tree.as_mut().unwrap();
                 tree.edit(&edit);
                 old_tree = Some(tree);
@@ -57,18 +62,46 @@ impl File {
             self.tree = parser.parse(text, old_tree);
         }
 
-        self.scopes = ScopeTree::new(&self.tree, &self.content);
+        self.metadata = Metadata::new(&self.source_code, self.tree.to_owned().unwrap());
     }
 
-    pub fn get_variables_at_pos(&self, position: Position) -> (Vec<String>, Vec<String>) {
-        let scopes = self.scopes.as_ref();
+    pub fn get_quick_diagnostics(&self) -> Vec<Diagnostic> {
+        diagnostics::get_quick_diagnostics(self)
+    }
 
-        if let Some(scopes) = scopes {
-            scopes
-                .variables_in_scope(utils::pos_to_byte(position, &self.content))
-                .get_names()
-        } else {
-            (vec![], vec![])
-        }
+    pub fn get_full_diagnostics(&self) -> Vec<Diagnostic> {
+        diagnostics::get_full_diagnostics(self)
+    }
+
+    pub fn get_semantic_tokens(&self) -> Option<SemanticTokensResult> {
+        Some(semantic_tokens::get_tokens(&self.metadata.as_ref()?.ast))
+    }
+
+    pub fn get_definition_location(&self, position: Position) -> Option<Location> {
+        let range = goto::get_definition_range(
+            &self.metadata.as_ref()?.ast,
+            &self.metadata.as_ref()?.symbol_table,
+            position,
+        )?;
+        Some(Location::new(self.uri.clone(), range))
+    }
+
+    pub fn rename_symbol(&mut self, position: Position, new_name: String) -> Option<WorkspaceEdit> {
+        let metadata = &mut self.metadata.as_mut()?;
+
+        rename::rename(
+            &metadata.ast,
+            &mut metadata.symbol_table,
+            self.uri.clone(),
+            new_name,
+            position,
+        )
+    }
+
+    pub fn get_symbols_at_pos(&self, position: Position) -> Option<Symbols> {
+        self.metadata
+            .as_ref()?
+            .symbol_table
+            .get_symbols_in_scope(position)
     }
 }

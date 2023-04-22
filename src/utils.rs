@@ -8,6 +8,20 @@ pub fn pos_to_point(pos: Position) -> Point {
     }
 }
 
+pub fn point_to_pos(point: Point) -> Position {
+    Position {
+        line: point.row as u32,
+        character: point.column as u32,
+    }
+}
+
+pub fn ts_range_to_lsp_range(range: tree_sitter::Range) -> tower_lsp::lsp_types::Range {
+    tower_lsp::lsp_types::Range {
+        start: point_to_pos(range.start_point),
+        end: point_to_pos(range.end_point),
+    }
+}
+
 pub fn pos_to_byte(pos: Position, text: &str) -> usize {
     let mut total_bytes = 0;
     let lines = &text.lines().collect::<Vec<&str>>()[..(pos.line as usize)];
@@ -36,6 +50,10 @@ pub fn calculate_end_point(start: Point, new_content: &str) -> Point {
         column,
         row: start.row + nb_lines,
     }
+}
+
+pub fn get_node_text(node: &tree_sitter::Node, source_code: &str) -> String {
+    node.utf8_text(source_code.as_bytes()).unwrap().to_string()
 }
 
 #[cfg(test)]
