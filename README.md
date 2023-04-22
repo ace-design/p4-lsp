@@ -6,6 +6,10 @@ A Rust implementation of the [Language Server Protocol](https://microsoft.github
 
 Development is active in the `dev` branch.
 
+## Survey
+
+Fill out this survey to help us design this tool : [Link](https://forms.office.com/r/4hzEvDvXbX)
+
 ## Installation
 
 ### MacOS and Linux
