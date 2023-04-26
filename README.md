@@ -8,9 +8,11 @@ Development is active in the `dev` branch.
 
 ## Survey
 
-Fill out this survey to help us design this tool : [Link](https://forms.office.com/r/4hzEvDvXbX)
+Fill out the survey to help us design this tool : [Link](https://forms.office.com/r/4hzEvDvXbX)
 
 ## Installation
+
+Disclaimer: This software is not production ready and probably won't work out of the box.
 
 ### MacOS and Linux
 
