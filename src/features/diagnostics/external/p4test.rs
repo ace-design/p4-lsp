@@ -26,23 +26,26 @@ fn get_p4test_output(content: &str) -> Option<String> {
     let include_path = PathBuf::from("/home/alex/Documents/University/Master/p4c/p4include");
     let p4test_path = PathBuf::from("/home/alex/.local/bin/p4c_backend_p4test");
 
-    let mut command = Command::new(p4test_path)
+    let command_result = Command::new(p4test_path)
         .arg("/dev/stdin")
         .arg("-I")
         .arg(include_path.as_os_str())
         .stdin(Stdio::piped())
         .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
+        .spawn();
 
-    let stdin = command.stdin.as_mut().unwrap();
-    stdin.write_all(content.as_bytes()).unwrap();
+    if let Ok(mut command) = command_result {
+        let stdin = command.stdin.as_mut().unwrap();
+        stdin.write_all(content.as_bytes()).unwrap();
 
-    let result = command.wait_with_output().unwrap();
+        let result = command.wait_with_output().unwrap();
 
-    let output = String::from_utf8(result.stderr).unwrap();
-    if !output.is_empty() {
-        Some(output)
+        let output = String::from_utf8(result.stderr).unwrap();
+        if !output.is_empty() {
+            Some(output)
+        } else {
+            None
+        }
     } else {
         None
     }
