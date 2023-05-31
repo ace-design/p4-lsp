@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 dashmap = "5.4.0"
+extism = "0.4.0"
 indextree = "4.5.0"
 lazy_static = "1.4.0"
 regex = "1.7.2"

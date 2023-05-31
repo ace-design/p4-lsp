@@ -15,9 +15,13 @@ use serde_json::Value;
 extern crate simple_log;
 use simple_log::LogConfigBuilder;
 
+#[macro_use]
+extern crate lazy_static;
+
 mod features;
 mod file;
 mod metadata;
+mod plugin_manager;
 mod settings;
 mod utils;
 
