@@ -1,7 +1,7 @@
 use super::symbol_table::SymbolTable;
 use super::Ast;
 
-use crate::metadata::Symbols;
+use crate::metadata::{Symbol, Symbols};
 use tower_lsp::lsp_types::Position;
 
 use crate::metadata::symbol_table::SymbolTableActions;
@@ -17,6 +17,7 @@ pub trait SymbolTableEditor {}
 
 pub trait SymbolTableQuery {
     fn get_symbols_at_pos(&self, position: Position) -> Option<Symbols>;
+    fn get_symbol_at_pos(&self, name: String, position: Position) -> Option<&Symbol>;
 }
 
 pub struct Metadata {
@@ -37,5 +38,9 @@ impl Metadata {
 impl SymbolTableQuery for Metadata {
     fn get_symbols_at_pos(&self, position: Position) -> Option<Symbols> {
         self.symbol_table.get_symbols_in_scope(position)
+    }
+
+    fn get_symbol_at_pos(&self, name: String, position: Position) -> Option<&Symbol> {
+        self.symbol_table.get_symbol_at_pos(name, position)
     }
 }

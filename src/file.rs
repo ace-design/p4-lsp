@@ -80,7 +80,7 @@ impl File {
     pub fn get_definition_location(&self, position: Position) -> Option<Location> {
         let range = goto::get_definition_range(
             &self.metadata.as_ref()?.ast,
-            &self.metadata.as_ref()?.symbol_table,
+            self.metadata.as_ref()?,
             position,
         )?;
         Some(Location::new(self.uri.clone(), range))
