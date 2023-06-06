@@ -74,24 +74,18 @@ impl File {
     }
 
     pub fn get_semantic_tokens(&self) -> Option<SemanticTokensResult> {
-        Some(semantic_tokens::get_tokens(&self.metadata.as_ref()?.ast))
+        Some(semantic_tokens::get_tokens())
     }
 
     pub fn get_definition_location(&self, position: Position) -> Option<Location> {
-        let range = goto::get_definition_range(
-            &self.metadata.as_ref()?.ast,
-            self.metadata.as_ref()?,
-            position,
-        )?;
+        let range =
+            goto::get_definition_range(self.metadata.as_ref()?, self.metadata.as_ref()?, position)?;
         Some(Location::new(self.uri.clone(), range))
     }
 
     pub fn rename_symbol(&mut self, position: Position, new_name: String) -> Option<WorkspaceEdit> {
-        let metadata = &mut self.metadata.as_mut()?;
-
         rename::rename(
-            &metadata.ast,
-            &mut metadata.symbol_table,
+            self.metadata.as_mut()?,
             self.uri.clone(),
             new_name,
             position,

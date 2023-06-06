@@ -4,6 +4,7 @@ use super::Ast;
 use crate::metadata::{Symbol, Symbols};
 use tower_lsp::lsp_types::Position;
 
+use crate::metadata::ast::VisitNode;
 use crate::metadata::symbol_table::SymbolTableActions;
 
 pub trait AstEditor {
@@ -11,9 +12,13 @@ pub trait AstEditor {
     fn update(new_content: &str); // Take in a vector of changes instead?
 }
 
-pub trait AstQuery {}
+pub trait AstQuery {
+    fn visit_root(&self) -> VisitNode;
+}
 
-pub trait SymbolTableEditor {}
+pub trait SymbolTableEditor {
+    fn rename_symbol(&mut self, id: usize, new_name: String);
+}
 
 pub trait SymbolTableQuery {
     fn get_symbols_at_pos(&self, position: Position) -> Option<Symbols>;
@@ -22,7 +27,7 @@ pub trait SymbolTableQuery {
 
 pub struct Metadata {
     pub ast: Ast,
-    pub symbol_table: SymbolTable,
+    symbol_table: SymbolTable,
 }
 
 impl Metadata {
@@ -42,5 +47,17 @@ impl SymbolTableQuery for Metadata {
 
     fn get_symbol_at_pos(&self, name: String, position: Position) -> Option<&Symbol> {
         self.symbol_table.get_symbol_at_pos(name, position)
+    }
+}
+
+impl SymbolTableEditor for Metadata {
+    fn rename_symbol(&mut self, id: usize, new_name: String) {
+        self.symbol_table.rename_symbol(id, new_name)
+    }
+}
+
+impl AstQuery for Metadata {
+    fn visit_root(&self) -> VisitNode {
+        self.ast.visit_root()
     }
 }
