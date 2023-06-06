@@ -128,9 +128,14 @@ impl LanguageServer for Backend {
         let file_uri = params.text_document_position.text_document.uri;
         let file = self.files.get(&file_uri).unwrap();
 
-        Ok(Some(CompletionResponse::Array(
-            completion::get_list(params.text_document_position.position, &file).unwrap_or_default(),
-        )))
+        if let Some(metadata) = &file.metadata {
+            Ok(Some(CompletionResponse::Array(
+                completion::get_list(params.text_document_position.position, metadata)
+                    .unwrap_or_default(),
+            )))
+        } else {
+            Ok(None)
+        }
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {

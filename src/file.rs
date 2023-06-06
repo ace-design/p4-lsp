@@ -97,11 +97,4 @@ impl File {
             position,
         )
     }
-
-    pub fn get_symbols_at_pos(&self, position: Position) -> Option<Symbols> {
-        self.metadata
-            .as_ref()?
-            .symbol_table
-            .get_symbols_in_scope(position)
-    }
 }

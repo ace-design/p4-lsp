@@ -1,5 +1,4 @@
-use crate::file::File;
-use crate::metadata::Symbols;
+use crate::metadata::{SymbolTableQuery, Symbols};
 use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind, Position};
 
 pub struct CompletionBuilder {
@@ -35,8 +34,8 @@ impl CompletionBuilder {
     }
 }
 
-pub fn get_list(position: Position, file: &File) -> Option<Vec<CompletionItem>> {
-    let symbols: Symbols = file.get_symbols_at_pos(position)?;
+pub fn get_list(position: Position, query: &impl SymbolTableQuery) -> Option<Vec<CompletionItem>> {
+    let symbols: Symbols = query.get_symbols_at_pos(position)?;
 
     Some(
         CompletionBuilder::new()
