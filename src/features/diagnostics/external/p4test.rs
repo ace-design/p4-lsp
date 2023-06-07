@@ -1,4 +1,3 @@
-use super::super::DiagnosticProvider;
 use crate::file::File;
 use regex::Regex;
 use std::io::Write;
@@ -10,8 +9,8 @@ use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 
 pub struct P4Test {}
 
-impl DiagnosticProvider for P4Test {
-    fn get_diagnostics(file: &File) -> Vec<Diagnostic> {
+impl P4Test {
+    pub fn get_diagnostics(file: &File) -> Vec<Diagnostic> {
         let output = get_p4test_output(&file.source_code);
 
         if let Some(output) = output {

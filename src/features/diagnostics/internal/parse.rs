@@ -1,33 +1,38 @@
 use super::super::DiagnosticProvider;
-use crate::file::File;
 
+use crate::metadata::{AstQuery, NodeKind, SymbolTableQuery, VisitNode, Visitable};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
 pub struct Parse {}
 
 impl DiagnosticProvider for Parse {
-    fn get_diagnostics(file: &File) -> Vec<Diagnostic> {
-        if let Some(metadata) = &file.metadata {
-            let error_nodes = metadata.ast.get_error_nodes();
-
-            error_nodes
-                .into_iter()
-                .map(|node| {
-                    Diagnostic::new(
-                        node.range,
-                        Some(DiagnosticSeverity::ERROR),
-                        Some(tower_lsp::lsp_types::NumberOrString::String(
-                            "parsing".to_string(),
-                        )),
-                        Some("AST".to_string()),
-                        "Parsing error.".to_string(),
-                        None,
-                        None,
-                    )
-                })
-                .collect()
-        } else {
-            vec![]
+    fn get_diagnostics(
+        ast_query: &impl AstQuery,
+        _symbol_table_query: &impl SymbolTableQuery,
+    ) -> Vec<Diagnostic> {
+        let root = ast_query.visit_root();
+        let mut errors: Vec<VisitNode> = vec![];
+        for node in root.get_descendants() {
+            if let NodeKind::Error = node.get().kind {
+                errors.push(node.clone())
+            };
         }
+
+        errors
+            .into_iter()
+            .map(|node| {
+                Diagnostic::new(
+                    node.get().range,
+                    Some(DiagnosticSeverity::ERROR),
+                    Some(tower_lsp::lsp_types::NumberOrString::String(
+                        "parsing".to_string(),
+                    )),
+                    Some("AST".to_string()),
+                    "Parsing error.".to_string(),
+                    None,
+                    None,
+                )
+            })
+            .collect()
     }
 }

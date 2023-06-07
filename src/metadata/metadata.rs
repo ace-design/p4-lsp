@@ -26,7 +26,7 @@ pub trait SymbolTableQuery {
 }
 
 pub struct Metadata {
-    pub ast: Ast,
+    ast: Ast,
     symbol_table: SymbolTable,
 }
 

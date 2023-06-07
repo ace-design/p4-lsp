@@ -7,7 +7,7 @@ use tower_lsp::lsp_types::{
 use tree_sitter::{InputEdit, Parser, Tree};
 
 use crate::features::{diagnostics, goto, rename, semantic_tokens};
-use crate::metadata::{Metadata, SymbolTableActions, Symbols};
+use crate::metadata::Metadata;
 use crate::utils;
 
 pub struct File {
@@ -66,11 +66,19 @@ impl File {
     }
 
     pub fn get_quick_diagnostics(&self) -> Vec<Diagnostic> {
-        diagnostics::get_quick_diagnostics(self)
+        if let Some(metadata) = self.metadata.as_ref() {
+            diagnostics::get_quick_diagnostics(metadata, metadata)
+        } else {
+            vec![]
+        }
     }
 
     pub fn get_full_diagnostics(&self) -> Vec<Diagnostic> {
-        diagnostics::get_full_diagnostics(self)
+        if let Some(metadata) = self.metadata.as_ref() {
+            diagnostics::get_full_diagnostics(self, metadata, metadata)
+        } else {
+            vec![]
+        }
     }
 
     pub fn get_semantic_tokens(&self) -> Option<SemanticTokensResult> {
