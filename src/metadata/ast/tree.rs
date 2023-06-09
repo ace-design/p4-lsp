@@ -54,6 +54,10 @@ pub enum NodeKind {
     Name,
     Param,
     Params,
+    Field,
+    Fields,
+    Option,
+    Options,
     Error,
     Value,
 }
