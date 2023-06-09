@@ -24,14 +24,15 @@ mod metadata;
 mod plugin_manager;
 mod settings;
 mod utils;
+mod workspace;
 
 use file::File;
 use settings::Settings;
-
-const LANGUAGE_ID: &str = "p4";
+use workspace::Workspace;
 
 struct Backend {
     client: Client,
+    workspace: Mutex<Workspace>,
     settings: RwLock<Settings>,
     parser: Mutex<Parser>,
     files: DashMap<Url, File>,
@@ -54,10 +55,10 @@ impl LanguageServer for Backend {
             .path("/tmp/p4-lsp.log")
             .size(100)
             .roll_count(10)
-            .time_format("%Y-%m-%d %H:%M:%S.%f") //E.g:%H:%M:%S.%f
+            .time_format("%Y-%m-%d %H:%M:%S.%f")
             .level("debug")
             .output_file()
-            .output_console()
+            // .output_console() Interferes with the communication between the LS and vscode
             .build();
 
         if simple_log::new(config).is_err() {
@@ -142,49 +143,34 @@ impl LanguageServer for Backend {
         let file_uri = params.text_document_position_params.text_document.uri;
         let file = self.files.get(&file_uri).unwrap();
 
-        let tree: &Tree = file.tree.as_ref().unwrap();
-
-        let point = utils::pos_to_point(params.text_document_position_params.position);
-
-        let mut node: Node = tree
-            .root_node()
-            .named_descendant_for_point_range(point, point)
-            .unwrap();
-
-        let mut node_hierarchy = node.kind().to_string();
-        while node.kind() != "source_file" {
-            node = node.parent().unwrap();
-            node_hierarchy = [node.kind().into(), node_hierarchy].join(" > ");
+        if let Some(hover_info) = file.get_hover_info(params.text_document_position_params.position)
+        {
+            Ok(Some(Hover {
+                contents: hover_info,
+                range: None,
+            }))
+        } else {
+            Ok(None)
         }
-
-        let hover_content = hover::HoverContentBuilder::new()
-            .add_text(&node_hierarchy)
-            .build();
-
-        Ok(Some(Hover {
-            contents: hover_content,
-            range: None,
-        }))
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let doc = params.text_document;
-        if LANGUAGE_ID == &doc.language_id.as_str().to_lowercase() {
-            let tree = {
-                let mut parser = self.parser.lock().unwrap();
-                parser.parse(&doc.text, None)
-            };
+        info!("Opening file: {}", doc.uri);
+        let tree = {
+            let mut parser = self.parser.lock().unwrap();
+            parser.parse(&doc.text, None)
+        };
 
-            self.files.insert(
-                doc.uri.clone(),
-                File::new(doc.uri.clone(), &doc.text, &tree),
-            );
+        self.files.insert(
+            doc.uri.clone(),
+            File::new(doc.uri.clone(), &doc.text, &tree),
+        );
 
-            let diagnotics = self.files.get(&doc.uri).unwrap().get_full_diagnostics();
-            self.client
-                .publish_diagnostics(doc.uri, diagnotics, None)
-                .await;
-        }
+        let diagnotics = self.files.get(&doc.uri).unwrap().get_full_diagnostics();
+        self.client
+            .publish_diagnostics(doc.uri, diagnotics, None)
+            .await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
@@ -193,7 +179,7 @@ impl LanguageServer for Backend {
 
         {
             let parser = self.parser.lock().unwrap();
-            file.update(params, parser);
+            file.update_old(params.content_changes, parser);
         }
 
         let diagnotics = file.get_quick_diagnostics();
@@ -249,8 +235,9 @@ async fn main() {
 
     let (service, socket) = LspService::new(|client| Backend {
         client,
+        workspace: Workspace::new().into(),
         settings: Settings::default().into(),
-        parser: Mutex::new(parser),
+        parser: parser.into(),
         files: DashMap::new(),
     });
     Server::new(stdin, stdout, socket).serve(service).await;

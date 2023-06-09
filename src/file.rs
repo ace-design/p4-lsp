@@ -1,12 +1,12 @@
 use std::sync::MutexGuard;
 
 use tower_lsp::lsp_types::{
-    Diagnostic, DidChangeTextDocumentParams, Location, Position, SemanticTokensResult, Url,
-    WorkspaceEdit,
+    CompletionItem, Diagnostic, DidChangeTextDocumentParams, HoverContents, Location, Position,
+    SemanticTokensResult, TextDocumentContentChangeEvent, Url, WorkspaceEdit,
 };
 use tree_sitter::{InputEdit, Parser, Tree};
 
-use crate::features::{diagnostics, goto, rename, semantic_tokens};
+use crate::features::{completion, diagnostics, goto, hover, rename, semantic_tokens};
 use crate::metadata::Metadata;
 use crate::utils;
 
@@ -27,8 +27,50 @@ impl File {
         }
     }
 
-    pub fn update(&mut self, params: DidChangeTextDocumentParams, mut parser: MutexGuard<Parser>) {
-        for change in params.content_changes {
+    pub fn update_old(
+        &mut self,
+        changes: Vec<TextDocumentContentChangeEvent>,
+        mut parser: MutexGuard<Parser>,
+    ) {
+        for change in changes {
+            let mut old_tree: Option<&Tree> = None;
+            let text: String;
+
+            if let Some(range) = change.range {
+                let start_byte = utils::pos_to_byte(range.start, &self.source_code);
+                let old_end_byte = utils::pos_to_byte(range.end, &self.source_code);
+
+                let start_position = utils::pos_to_point(range.start);
+
+                let edit = InputEdit {
+                    start_byte,
+                    old_end_byte: utils::pos_to_byte(range.end, &self.source_code),
+                    new_end_byte: start_byte + change.text.len(),
+                    start_position,
+                    old_end_position: utils::pos_to_point(range.end),
+                    new_end_position: utils::calculate_end_point(start_position, &change.text),
+                };
+
+                self.source_code
+                    .replace_range(start_byte..old_end_byte, &change.text);
+
+                text = self.source_code.clone();
+                let tree = self.tree.as_mut().unwrap();
+                tree.edit(&edit);
+                old_tree = Some(tree);
+            } else {
+                // If change.range is None, change.text represents the whole file
+                text = change.text.clone();
+            }
+
+            self.tree = parser.parse(text, old_tree);
+        }
+
+        self.metadata = Metadata::new(&self.source_code, self.tree.to_owned().unwrap());
+    }
+
+    pub fn update(&mut self, changes: Vec<TextDocumentContentChangeEvent>, parser: &mut Parser) {
+        for change in changes {
             let mut old_tree: Option<&Tree> = None;
             let text: String;
 
@@ -79,6 +121,32 @@ impl File {
         } else {
             vec![]
         }
+    }
+
+    pub fn get_completion_list(&self, position: Position) -> Option<Vec<CompletionItem>> {
+        completion::get_list(position, self.metadata.as_ref()?)
+    }
+
+    pub fn get_hover_info(&self, position: Position) -> Option<HoverContents> {
+        let tree: &Tree = self.tree.as_ref()?;
+
+        let point = utils::pos_to_point(position);
+
+        let mut node: tree_sitter::Node = tree
+            .root_node()
+            .named_descendant_for_point_range(point, point)?;
+
+        let mut node_hierarchy = node.kind().to_string();
+        while node.kind() != "source_file" {
+            node = node.parent()?;
+            node_hierarchy = [node.kind().into(), node_hierarchy].join(" > ");
+        }
+
+        let hover_content = hover::HoverContentBuilder::new()
+            .add_text(&node_hierarchy)
+            .build();
+
+        Some(hover_content)
     }
 
     pub fn get_semantic_tokens(&self) -> Option<SemanticTokensResult> {
