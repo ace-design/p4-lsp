@@ -176,6 +176,13 @@ impl TreesitterTranslator {
                     }              
                 }
             },
+            TypeDecType::Parser => {
+                let params_syntax_node = type_kind_node.child_by_field_name("parameters").unwrap();
+                let params_node_id = self
+                    .parse_params(&params_syntax_node)
+                    .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
+                node_id.append(params_node_id, &mut self.arena);
+            },
             _ => {}
         }
 
