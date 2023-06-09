@@ -190,6 +190,9 @@ impl TreesitterTranslator {
                     .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
                 node_id.append(params_node_id, &mut self.arena);
             },
+            TypeDecType::Package => {
+                // TODO
+            },
             _ => {}
         }
 
