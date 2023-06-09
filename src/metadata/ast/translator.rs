@@ -132,17 +132,76 @@ impl TreesitterTranslator {
 
         match type_type {
             TypeDecType::TypeDef => {
-                let type_node =
+                let type_node: NodeId =
                     self.parse_type_ref(&type_kind_node.child_by_field_name("type")?)?;
                 node_id.append(type_node, &mut self.arena);
-            }
-            // TODO: Implement other types
+            },
+            TypeDecType::HeaderType => {
+                match type_kind_node.child_by_field_name("field_list"){
+                    Some(x) => {
+                        node_id.append(self.parse_type_fields_dec(&x).unwrap_or_else(|| self.new_error_node(&x)), &mut self.arena); 
+                    },
+                    None => {
+                    }              
+                }
+            },
             _ => {}
         }
 
         Some(node_id)
     }
+    
+    fn parse_type_fields_dec(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        let fields_node_id =
+        self.arena
+            .new_node(Node::new(NodeKind::Fields, &node, &self.source_code));
 
+        let mut cursor = node.walk();
+        for field_child in node.named_children(&mut cursor) {
+            let new_node_id = if field_child.is_error() {
+                self.new_error_node(&field_child)
+            } else {
+                let field_node_id = self.arena.new_node(Node::new(
+                    NodeKind::Field,
+                    &field_child,
+                    &self.source_code,
+                ));
+
+                // Add name node
+                match field_child.child_by_field_name("name"){
+                    Some(x) => {
+                        field_node_id.append(self.arena.new_node(Node::new(
+                                NodeKind::Name,
+                                &x,
+                                &self.source_code,
+                            )),
+                            &mut self.arena,
+                        );
+                    },
+                    None => {},
+                }
+
+                // Add type node
+                match field_child.child_by_field_name("type"){
+                    Some(x) => {
+                        field_node_id.append(
+                            self.parse_type_ref(&x)
+                                .unwrap_or_else(|| self.new_error_node(&x)),
+                            &mut self.arena,
+                        );
+                    },
+                    None => {},
+                }
+
+                field_node_id
+
+            };
+
+            fields_node_id.append(new_node_id, &mut self.arena);
+        }
+        return Some(fields_node_id);
+    }
+    
     fn parse_type_ref(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let child = node.named_child(0)?;
         let type_type: Type = match child.kind() {
