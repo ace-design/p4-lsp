@@ -145,6 +145,15 @@ impl TreesitterTranslator {
                     }              
                 }
             },
+            TypeDecType::HeaderUnion => {
+                match type_kind_node.child_by_field_name("field_list"){
+                    Some(x) => {
+                        node_id.append(self.parse_type_fields_dec(&x).unwrap_or_else(|| self.new_error_node(&x)), &mut self.arena); 
+                    },
+                    None => {
+                    }              
+                }
+            },
             _ => {}
         }
 
