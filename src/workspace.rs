@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use tower_lsp::lsp_types::{
-    CompletionItem, Location, Position, SemanticTokensResult, TextDocumentContentChangeEvent, Url,
+    CompletionItem, HoverContents, Location, Position, SemanticTokensResult,
+    TextDocumentContentChangeEvent, Url, WorkspaceEdit,
 };
 use tree_sitter::Parser;
 use tree_sitter_p4::language;
@@ -43,10 +44,15 @@ impl Workspace {
         file.get_definition_location(symbol_position)
     }
 
-    pub fn rename_symbol(&mut self, url: Url, symbol_position: Position, new_name: String) {
+    pub fn rename_symbol(
+        &mut self,
+        url: Url,
+        symbol_position: Position,
+        new_name: String,
+    ) -> Option<WorkspaceEdit> {
         let file = self.files.get_mut(&url).unwrap();
 
-        file.rename_symbol(symbol_position, new_name);
+        file.rename_symbol(symbol_position, new_name)
     }
 
     pub fn get_semantic_tokens(&self, url: Url) -> Option<SemanticTokensResult> {
@@ -59,5 +65,11 @@ impl Workspace {
         let file = self.files.get(&url)?;
 
         file.get_completion_list(position)
+    }
+
+    pub fn get_hover_info(&self, url: Url, position: Position) -> Option<HoverContents> {
+        let file = self.files.get(&url)?;
+
+        file.get_hover_info(position)
     }
 }
