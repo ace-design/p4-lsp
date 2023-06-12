@@ -247,15 +247,4 @@ impl Ast {
             i += 1;
         }
     }
-
-    pub fn get_error_nodes(&self) -> Vec<Node> {
-        let mut errors: Vec<Node> = vec![];
-        for node in self.arena.iter() {
-            let node = node.get();
-            if let NodeKind::Error = node.kind {
-                errors.push(node.clone())
-            };
-        }
-        errors
-    }
 }

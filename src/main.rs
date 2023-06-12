@@ -1,13 +1,9 @@
-use std::sync::{Mutex, RwLock};
+use std::sync::RwLock;
 
-use dashmap::DashMap;
-use features::{completion, hover, semantic_tokens};
+use features::semantic_tokens;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
-
-use tree_sitter::{Node, Parser, Tree};
-use tree_sitter_p4::language;
 
 use serde_json::Value;
 
@@ -15,22 +11,24 @@ use serde_json::Value;
 extern crate simple_log;
 use simple_log::LogConfigBuilder;
 
+#[macro_use]
+extern crate lazy_static;
+
 mod features;
 mod file;
 mod metadata;
+mod plugin_manager;
 mod settings;
 mod utils;
+mod workspace;
 
-use file::File;
 use settings::Settings;
-
-const LANGUAGE_ID: &str = "p4";
+use workspace::Workspace;
 
 struct Backend {
     client: Client,
+    workspace: RwLock<Workspace>,
     settings: RwLock<Settings>,
-    parser: Mutex<Parser>,
-    files: DashMap<Url, File>,
 }
 
 impl Backend {
@@ -50,10 +48,9 @@ impl LanguageServer for Backend {
             .path("/tmp/p4-lsp.log")
             .size(100)
             .roll_count(10)
-            .time_format("%Y-%m-%d %H:%M:%S.%f") //E.g:%H:%M:%S.%f
+            .time_format("%Y-%m-%d %H:%M:%S.%f")
             .level("debug")
             .output_file()
-            .output_console()
             .build();
 
         if simple_log::new(config).is_err() {
@@ -112,83 +109,79 @@ impl LanguageServer for Backend {
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        let doc_uri = params.text_document.uri;
-        let diagnotics = self.files.get(&doc_uri).unwrap().get_full_diagnostics();
-        debug!("Save diags: {:?}", diagnotics);
+        let diagnostics = {
+            let workspace = self.workspace.read().unwrap();
+
+            (*workspace).get_full_diagnostics(params.text_document.uri.clone())
+        };
+
         self.client
-            .publish_diagnostics(doc_uri, diagnotics, None)
+            .publish_diagnostics(params.text_document.uri, diagnostics, None)
             .await;
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
-        let file_uri = params.text_document_position.text_document.uri;
-        let file = self.files.get(&file_uri).unwrap();
+        let completion_list = {
+            let workspace = self.workspace.read().unwrap();
 
-        Ok(Some(CompletionResponse::Array(
-            completion::get_list(params.text_document_position.position, &file).unwrap_or_default(),
-        )))
+            (*workspace)
+                .get_completion(
+                    params.text_document_position.text_document.uri,
+                    params.text_document_position.position,
+                )
+                .unwrap_or_default()
+        };
+
+        Ok(Some(CompletionResponse::Array(completion_list)))
     }
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        let file_uri = params.text_document_position_params.text_document.uri;
-        let file = self.files.get(&file_uri).unwrap();
+        let maybe_hover_info = {
+            let workspace = self.workspace.read().unwrap();
 
-        let tree: &Tree = file.tree.as_ref().unwrap();
+            (*workspace).get_hover_info(
+                params.text_document_position_params.text_document.uri,
+                params.text_document_position_params.position,
+            )
+        };
 
-        let point = utils::pos_to_point(params.text_document_position_params.position);
-
-        let mut node: Node = tree
-            .root_node()
-            .named_descendant_for_point_range(point, point)
-            .unwrap();
-
-        let mut node_hierarchy = node.kind().to_string();
-        while node.kind() != "source_file" {
-            node = node.parent().unwrap();
-            node_hierarchy = [node.kind().into(), node_hierarchy].join(" > ");
+        if let Some(hover_info) = maybe_hover_info {
+            Ok(Some(Hover {
+                contents: hover_info,
+                range: None,
+            }))
+        } else {
+            Ok(None)
         }
-
-        let hover_content = hover::HoverContentBuilder::new()
-            .add_text(&node_hierarchy)
-            .build();
-
-        Ok(Some(Hover {
-            contents: hover_content,
-            range: None,
-        }))
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let doc = params.text_document;
-        if LANGUAGE_ID == &doc.language_id.as_str().to_lowercase() {
-            let tree = {
-                let mut parser = self.parser.lock().unwrap();
-                parser.parse(&doc.text, None)
-            };
+        info!("Opening file: {}", doc.uri);
 
-            self.files.insert(
-                doc.uri.clone(),
-                File::new(doc.uri.clone(), &doc.text, &tree),
-            );
+        let diagnostics = {
+            let mut workspace = self.workspace.write().unwrap();
+            (*workspace).add_file(doc.uri.clone(), &doc.text);
 
-            let diagnotics = self.files.get(&doc.uri).unwrap().get_full_diagnostics();
-            self.client
-                .publish_diagnostics(doc.uri, diagnotics, None)
-                .await;
-        }
+            (*workspace).get_full_diagnostics(doc.uri.clone())
+        };
+
+        self.client
+            .publish_diagnostics(doc.uri, diagnostics, None)
+            .await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
-        let mut file = self.files.get_mut(&uri).unwrap();
+        let diagnostics = {
+            let mut workspace = self.workspace.write().unwrap();
+            (*workspace).update_file(params.text_document.uri.clone(), params.content_changes);
 
-        {
-            let parser = self.parser.lock().unwrap();
-            file.update(params, parser);
-        }
+            (*workspace).get_quick_diagnostics(params.text_document.uri.clone())
+        };
 
-        let diagnotics = file.get_quick_diagnostics();
-        self.client.publish_diagnostics(uri, diagnotics, None).await;
+        self.client
+            .publish_diagnostics(params.text_document.uri, diagnostics, None)
+            .await;
     }
 
     async fn goto_definition(
@@ -196,24 +189,31 @@ impl LanguageServer for Backend {
         params: GotoDefinitionParams,
     ) -> Result<Option<GotoDefinitionResponse>> {
         let uri = params.text_document_position_params.text_document.uri;
-        let file = self.files.get_mut(&uri).unwrap();
 
-        let pos = params.text_document_position_params.position;
-        let response = if let Some(location) = file.get_definition_location(pos) {
-            Some(GotoDefinitionResponse::Scalar(location))
-        } else {
-            None
+        let maybe_location = {
+            let workspace = self.workspace.read().unwrap();
+
+            (*workspace).get_definition_location(uri, params.text_document_position_params.position)
         };
 
-        Ok(response)
+        if let Some(location) = maybe_location {
+            Ok(Some(GotoDefinitionResponse::Scalar(location)))
+        } else {
+            Ok(None)
+        }
     }
 
     async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
-        let uri = params.text_document_position.text_document.uri;
-        let mut file = self.files.get_mut(&uri).unwrap();
+        let response = {
+            let mut workspace = self.workspace.write().unwrap();
 
-        let response =
-            Ok(file.rename_symbol(params.text_document_position.position, params.new_name));
+            Ok((*workspace).rename_symbol(
+                params.text_document_position.text_document.uri,
+                params.text_document_position.position,
+                params.new_name,
+            ))
+        };
+
         debug!("rename: {:?}", response);
 
         response
@@ -223,10 +223,13 @@ impl LanguageServer for Backend {
         &self,
         params: SemanticTokensParams,
     ) -> Result<Option<SemanticTokensResult>> {
-        let uri = params.text_document.uri.clone();
-        let file = self.files.get_mut(&uri).unwrap();
+        let response = {
+            let workspace = self.workspace.read().unwrap();
 
-        Ok(file.get_semantic_tokens())
+            Ok((*workspace).get_semantic_tokens(params.text_document.uri))
+        };
+
+        response
     }
 }
 
@@ -235,14 +238,10 @@ async fn main() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
 
-    let mut parser = Parser::new();
-    parser.set_language(language()).unwrap();
-
     let (service, socket) = LspService::new(|client| Backend {
         client,
+        workspace: Workspace::new().into(),
         settings: Settings::default().into(),
-        parser: Mutex::new(parser),
-        files: DashMap::new(),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }

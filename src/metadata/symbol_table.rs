@@ -3,7 +3,13 @@ use std::fmt;
 use crate::metadata::ast::{Ast, NodeKind, VisitNode, Visitable};
 use crate::metadata::types::Type;
 use indextree::{Arena, NodeId};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tower_lsp::lsp_types::{Position, Range};
+
+fn get_id() -> usize {
+    static SYMBOL_ID_COUNTER: AtomicUsize = AtomicUsize::new(1);
+    SYMBOL_ID_COUNTER.fetch_add(1, Ordering::Relaxed)
+}
 
 #[derive(Debug, Default)]
 pub struct SymbolTable {
@@ -17,6 +23,7 @@ pub trait SymbolTableActions {
     fn get_top_level_symbols(&self) -> Option<Symbols>;
     fn get_symbol_at_pos(&self, name: String, position: Position) -> Option<&Symbol>;
     fn get_symbol_at_pos_mut(&mut self, name: String, position: Position) -> Option<&mut Symbol>;
+    fn rename_symbol(&mut self, id: usize, new_name: String);
 }
 
 impl SymbolTableActions for SymbolTable {
@@ -46,6 +53,15 @@ impl SymbolTableActions for SymbolTable {
         Some(self.arena.get(self.root_id?)?.get().symbols.clone())
     }
 
+    fn rename_symbol(&mut self, id: usize, new_name: String) {
+        for scope in self.arena.iter_mut() {
+            if let Some(symbol) = scope.get_mut().symbols.get_mut(id) {
+                symbol.name = new_name;
+                break;
+            }
+        }
+    }
+
     fn get_symbol_at_pos_mut(&mut self, name: String, position: Position) -> Option<&mut Symbol> {
         let scope_id = self.get_scope_id(position)?;
 
@@ -53,7 +69,12 @@ impl SymbolTableActions for SymbolTable {
             let scope = self.arena.get(pre_id)?.get();
 
             if scope.symbols.contains(&name) {
-                return self.arena.get_mut(pre_id)?.get_mut().symbols.get_mut(&name);
+                return self
+                    .arena
+                    .get_mut(pre_id)?
+                    .get_mut()
+                    .symbols
+                    .find_mut(&name);
             }
         }
 
@@ -69,7 +90,7 @@ impl SymbolTableActions for SymbolTable {
             if scope.symbols.contains(&name) {
                 let scope = self.arena.get(pre_id)?.get();
                 let symbols = scope.get_symbols();
-                let symbol = symbols.get(&name)?;
+                let symbol = symbols.find(&name)?;
                 return Some(symbol);
             }
         }
@@ -211,7 +232,7 @@ impl Symbols {
         false
     }
 
-    pub fn get(&self, name: &str) -> Option<&Symbol> {
+    pub fn find(&self, name: &str) -> Option<&Symbol> {
         for symbol in &self.types {
             if symbol.name == name {
                 return Some(symbol);
@@ -236,7 +257,7 @@ impl Symbols {
         None
     }
 
-    pub fn get_mut(&mut self, name: &str) -> Option<&mut Symbol> {
+    pub fn find_mut(&mut self, name: &str) -> Option<&mut Symbol> {
         for symbol in &mut self.types {
             if symbol.name == name {
                 return Some(symbol);
@@ -254,6 +275,31 @@ impl Symbols {
         }
         for symbol in &mut self.functions {
             if symbol.name == name {
+                return Some(symbol);
+            }
+        }
+
+        None
+    }
+
+    pub fn get_mut(&mut self, id: usize) -> Option<&mut Symbol> {
+        for symbol in &mut self.types {
+            if symbol.id == id {
+                return Some(symbol);
+            }
+        }
+        for symbol in &mut self.constants {
+            if symbol.id == id {
+                return Some(symbol);
+            }
+        }
+        for symbol in &mut self.variables {
+            if symbol.id == id {
+                return Some(symbol);
+            }
+        }
+        for symbol in &mut self.functions {
+            if symbol.id == id {
                 return Some(symbol);
             }
         }
@@ -398,6 +444,7 @@ impl ScopeSymbolTable {
 
 #[derive(Debug, Clone)]
 pub struct Symbol {
+    id: usize,
     name: String,
     def_position: Range,
     type_: Option<Type>,
@@ -431,6 +478,7 @@ impl fmt::Display for Symbol {
 impl Symbol {
     pub fn new(name: String, def_position: Range, type_: Option<Type>) -> Symbol {
         Symbol {
+            id: get_id(),
             name,
             def_position,
             type_,
@@ -438,8 +486,8 @@ impl Symbol {
         }
     }
 
-    pub fn rename(&mut self, new_name: String) {
-        self.name = new_name;
+    pub fn get_id(&self) -> usize {
+        self.id
     }
 
     pub fn get_name(&self) -> String {
