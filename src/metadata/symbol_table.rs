@@ -486,10 +486,6 @@ impl Symbol {
         }
     }
 
-    pub fn rename_symbol(&mut self, new_name: String) {
-        self.name = new_name;
-    }
-
     pub fn get_id(&self) -> usize {
         self.id
     }

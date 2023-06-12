@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use tower_lsp::lsp_types::{HoverContents, MarkedString};
 
 pub struct HoverContentBuilder {
