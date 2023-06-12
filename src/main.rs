@@ -5,9 +5,6 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
-use tree_sitter::Parser;
-use tree_sitter_p4::language;
-
 use serde_json::Value;
 
 #[macro_use]
@@ -112,11 +109,15 @@ impl LanguageServer for Backend {
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        // let doc_uri = params.text_document.uri;
-        // debug!("Save diags: {:?}", diagnostics);
-        // self.client
-        //     .publish_diagnostics(doc_uri, diagnostics, None)
-        //     .await;
+        let diagnostics = {
+            let workspace = self.workspace.read().unwrap();
+
+            (*workspace).get_full_diagnostics(params.text_document.uri.clone())
+        };
+
+        self.client
+            .publish_diagnostics(params.text_document.uri, diagnostics, None)
+            .await;
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
@@ -158,25 +159,29 @@ impl LanguageServer for Backend {
         let doc = params.text_document;
         info!("Opening file: {}", doc.uri);
 
-        {
+        let diagnostics = {
             let mut workspace = self.workspace.write().unwrap();
-            (*workspace).add_file(doc.uri, &doc.text);
-        }
+            (*workspace).add_file(doc.uri.clone(), &doc.text);
 
-        // let diagnotics = self.files.get(&doc.uri).unwrap().get_full_diagnostics();
-        // self.client
-        //     .publish_diagnostics(doc.uri, diagnotics, None)
-        //     .await;
+            (*workspace).get_full_diagnostics(doc.uri.clone())
+        };
+
+        self.client
+            .publish_diagnostics(doc.uri, diagnostics, None)
+            .await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        {
+        let diagnostics = {
             let mut workspace = self.workspace.write().unwrap();
-            (*workspace).update_file(params.text_document.uri, params.content_changes);
-        }
+            (*workspace).update_file(params.text_document.uri.clone(), params.content_changes);
 
-        // let diagnotics = file.get_quick_diagnostics();
-        // self.client.publish_diagnostics(uri, diagnotics, None).await;
+            (*workspace).get_quick_diagnostics(params.text_document.uri.clone())
+        };
+
+        self.client
+            .publish_diagnostics(params.text_document.uri, diagnostics, None)
+            .await;
     }
 
     async fn goto_definition(

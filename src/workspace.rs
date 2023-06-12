@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use tower_lsp::lsp_types::{
-    CompletionItem, HoverContents, Location, Position, SemanticTokensResult,
+    CompletionItem, Diagnostic, HoverContents, Location, Position, SemanticTokensResult,
     TextDocumentContentChangeEvent, Url, WorkspaceEdit,
 };
 use tree_sitter::Parser;
@@ -71,5 +71,25 @@ impl Workspace {
         let file = self.files.get(&url)?;
 
         file.get_hover_info(position)
+    }
+
+    pub fn get_quick_diagnostics(&self, url: Url) -> Vec<Diagnostic> {
+        let maybe_file = self.files.get(&url);
+
+        if let Some(file) = maybe_file {
+            file.get_quick_diagnostics()
+        } else {
+            vec![]
+        }
+    }
+
+    pub fn get_full_diagnostics(&self, url: Url) -> Vec<Diagnostic> {
+        let maybe_file = self.files.get(&url);
+
+        if let Some(file) = maybe_file {
+            file.get_full_diagnostics()
+        } else {
+            vec![]
+        }
     }
 }
