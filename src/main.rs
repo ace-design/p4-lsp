@@ -1,12 +1,11 @@
-use std::sync::{Mutex, RwLock};
+use std::sync::RwLock;
 
-use dashmap::DashMap;
-use features::{completion, semantic_tokens};
+use features::semantic_tokens;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
-use tree_sitter::{Node, Parser, Tree};
+use tree_sitter::Parser;
 use tree_sitter_p4::language;
 
 use serde_json::Value;
@@ -63,11 +62,6 @@ impl LanguageServer for Backend {
                 .await;
         }
 
-        {
-            let mut workspace = self.workspace.write().unwrap();
-            *workspace = Workspace::new();
-        }
-
         info!("Initializing lsp");
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
@@ -119,10 +113,9 @@ impl LanguageServer for Backend {
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         // let doc_uri = params.text_document.uri;
-        // let diagnotics = self.files.get(&doc_uri).unwrap().get_full_diagnostics();
-        // debug!("Save diags: {:?}", diagnotics);
+        // debug!("Save diags: {:?}", diagnostics);
         // self.client
-        //     .publish_diagnostics(doc_uri, diagnotics, None)
+        //     .publish_diagnostics(doc_uri, diagnostics, None)
         //     .await;
     }
 
@@ -239,9 +232,6 @@ impl LanguageServer for Backend {
 async fn main() {
     let stdin = tokio::io::stdin();
     let stdout = tokio::io::stdout();
-
-    let mut parser = Parser::new();
-    parser.set_language(language()).unwrap();
 
     let (service, socket) = LspService::new(|client| Backend {
         client,
