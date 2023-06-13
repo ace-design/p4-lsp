@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::metadata::ast::{Ast, NodeKind, VisitNode, Visitable};
+use crate::metadata::ast::{Ast, NodeKind, TypeDecType, VisitNode, Visitable};
 use crate::metadata::types::Type;
 use indextree::{Arena, NodeId};
 use tower_lsp::lsp_types::{Position, Range};
@@ -329,7 +329,7 @@ impl ScopeSymbolTable {
                         None
                     };
 
-                    let symbol = Symbol::new(name, name_node.get().range, type_);
+                    let symbol = Symbol::new(name, name_node.get().range, type_, None);
 
                     table.symbols.constants.push(symbol);
                 }
@@ -344,11 +344,47 @@ impl ScopeSymbolTable {
                         None
                     };
 
-                    let symbol = Symbol::new(name, name_node.get().range, type_);
+                    let symbol = Symbol::new(name, name_node.get().range, type_, None);
 
                     table.symbols.variables.push(symbol);
                 }
                 NodeKind::TypeDec(_type_dec_type) => {
+                    fn get_fields_vec(child_visit_node: VisitNode, type1: NodeKind, type2: NodeKind) -> Vec<Field>{
+                        let mut fields:Vec<Field>  = vec![];
+
+                        let fields_node : VisitNode;
+                        match child_visit_node.get_child_of_kind(type1){
+                            Some(x) => {
+                                fields_node = x;
+                            },
+                            None => {
+                                return fields;
+                            }
+                        }
+                        for field_visit in fields_node.get_children() {
+                            let param_node = field_visit.get();
+                            if param_node.kind == type2 {
+                                let name_node = field_visit.get_child_of_kind(NodeKind::Name).unwrap();
+                                let name = name_node.get().content.clone();
+    
+                                let type_node = field_visit.get_type_node();
+    
+                                let type_ = if let Some(type_node) = type_node {
+                                    type_node.get_type()
+                                } else {
+                                    None
+                                };
+    
+                                fields.push(Field::new(
+                                    name,
+                                    name_node.get().range,
+                                    type_
+                                ));
+                            }
+                        }
+                        return fields;
+                    }
+
                     let name_node = child_visit_node.get_child_of_kind(NodeKind::Name).unwrap();
                     let name = name_node.get().content.clone();
 
@@ -359,11 +395,44 @@ impl ScopeSymbolTable {
                     } else {
                         None
                     };
+                    let mut fields:Vec<Field>  = vec![];
+                    match _type_dec_type {
+                        TypeDecType::TypeDef => {
+                        },
+                        TypeDecType::HeaderType => {
+                            fields = get_fields_vec(child_visit_node, NodeKind::Fields, NodeKind::Field);
+                        },
+                        TypeDecType::HeaderUnion => {
+                            fields = get_fields_vec(child_visit_node, NodeKind::Fields, NodeKind::Field);
+                        },
+                        TypeDecType::Struct => {
+                            fields = get_fields_vec(child_visit_node, NodeKind::Fields, NodeKind::Field);
+                        },
+                        TypeDecType::Enum => {
+                            fields = get_fields_vec(child_visit_node, NodeKind::Options, NodeKind::Option);
+                        },
+                        TypeDecType::Parser => {
+                            fields = get_fields_vec(child_visit_node, NodeKind::Params, NodeKind::Param);
+                        },
+                        TypeDecType::Control => {
+                            fields = get_fields_vec(child_visit_node, NodeKind::Params, NodeKind::Param);
+                        },
+                        TypeDecType::Package => {
+                        },
+                        _ => {}
+                    }
+
+                    let fields_symbol:Option<Vec<Field>>;
+                    if fields.len() == 0{
+                        fields_symbol = None;
+                    } else{
+                        fields_symbol = Some(fields);
+                    }
 
                     table
                         .symbols
                         .types
-                        .push(Symbol::new(name, name_node.get().range, type_));
+                        .push(Symbol::new(name, name_node.get().range, type_, fields_symbol));
                 }
                 NodeKind::Params => {
                     for param_visit in child_visit_node.get_children() {
@@ -384,9 +453,40 @@ impl ScopeSymbolTable {
                                 name,
                                 name_node.get().range,
                                 type_,
+                                None
                             ));
                         }
                     }
+                }
+                NodeKind::ParserDec => {
+                    let name_node = child_visit_node.get_child_of_kind(NodeKind::Name).unwrap();
+                    let name = name_node.get().content.clone();
+
+                    let type_node = child_visit_node.get_type_node();
+                    let type_ = if let Some(type_node) = type_node {
+                        type_node.get_type()
+                    } else {
+                        None
+                    };
+
+                    let symbol = Symbol::new(name, name_node.get().range, type_, None);
+
+                    table.symbols.constants.push(symbol);
+                }
+                NodeKind::ControlDec => {
+                    let name_node = child_visit_node.get_child_of_kind(NodeKind::Name).unwrap();
+                    let name = name_node.get().content.clone();
+
+                    let type_node = child_visit_node.get_type_node();
+                    let type_ = if let Some(type_node) = type_node {
+                        type_node.get_type()
+                    } else {
+                        None
+                    };
+
+                    let symbol = Symbol::new(name, name_node.get().range, type_, None);
+
+                    table.symbols.constants.push(symbol);
                 }
                 _ => {}
             }
@@ -397,11 +497,19 @@ impl ScopeSymbolTable {
 }
 
 #[derive(Debug, Clone)]
+pub struct Field {
+    name: String,
+    def_position: Range,
+    type_: Option<Type>,
+    usages: Vec<Range>,
+}
+#[derive(Debug, Clone)]
 pub struct Symbol {
     name: String,
     def_position: Range,
     type_: Option<Type>,
     usages: Vec<Range>,
+    fields: Option<Vec<Field>>,
 }
 
 impl fmt::Display for Symbol {
@@ -429,8 +537,40 @@ impl fmt::Display for Symbol {
 }
 
 impl Symbol {
-    pub fn new(name: String, def_position: Range, type_: Option<Type>) -> Symbol {
+    pub fn new(name: String, def_position: Range, type_: Option<Type>, fields: Option<Vec<Field>>) -> Symbol {
         Symbol {
+            name,
+            def_position,
+            type_,
+            usages: vec![],
+            fields: fields,
+        }
+    }
+
+    pub fn rename(&mut self, new_name: String) {
+        self.name = new_name;
+    }
+
+    pub fn get_name(&self) -> String {
+        self.name.clone()
+    }
+
+    pub fn get_definition_range(&self) -> Range {
+        self.def_position
+    }
+
+    pub fn get_usages(&self) -> &Vec<Range> {
+        &self.usages
+    }
+
+    pub fn get_fields(&self) -> &Option<Vec<Field>>{
+        &self.fields
+    }
+}
+
+impl Field {
+    pub fn new(name: String, def_position: Range, type_: Option<Type>) -> Field {
+        Field {
             name,
             def_position,
             type_,
