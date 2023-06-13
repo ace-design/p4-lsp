@@ -6,6 +6,7 @@ use tree_sitter::{InputEdit, Parser, Tree};
 
 use crate::features::{completion, diagnostics, goto, hover, rename, semantic_tokens};
 use crate::metadata::Metadata;
+use crate::settings::Settings;
 use crate::utils;
 
 pub struct File {
@@ -71,9 +72,9 @@ impl File {
         }
     }
 
-    pub fn get_full_diagnostics(&self) -> Vec<Diagnostic> {
+    pub fn get_full_diagnostics(&self, settings: &Settings) -> Vec<Diagnostic> {
         if let Some(metadata) = self.metadata.as_ref() {
-            diagnostics::get_full_diagnostics(self, metadata, metadata)
+            diagnostics::get_full_diagnostics(self, metadata, metadata, settings)
         } else {
             vec![]
         }

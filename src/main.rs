@@ -5,8 +5,6 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
-use serde_json::Value;
-
 #[macro_use]
 extern crate simple_log;
 use simple_log::LogConfigBuilder;
@@ -22,23 +20,11 @@ mod settings;
 mod utils;
 mod workspace;
 
-use settings::Settings;
 use workspace::Workspace;
 
 struct Backend {
     client: Client,
     workspace: RwLock<Workspace>,
-    settings: RwLock<Settings>,
-}
-
-impl Backend {
-    async fn update_settings(&self, settings: Value) {
-        self.client
-            .log_message(MessageType::INFO, format!("{:?}", settings))
-            .await;
-        let mut options = self.settings.write().unwrap();
-        *options = Settings::parse(settings);
-    }
 }
 
 #[tower_lsp::async_trait]
@@ -104,8 +90,8 @@ impl LanguageServer for Backend {
     }
 
     async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
-        self.update_settings(params.settings).await;
-        info!("Settings: {:?}", self.settings.read().unwrap());
+        let mut workspace = self.workspace.write().unwrap();
+        (*workspace).update_settings(params.settings);
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
@@ -241,7 +227,6 @@ async fn main() {
     let (service, socket) = LspService::new(|client| Backend {
         client,
         workspace: Workspace::new().into(),
-        settings: Settings::default().into(),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }

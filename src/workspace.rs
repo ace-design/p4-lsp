@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use serde_json::Value;
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, HoverContents, Location, Position, SemanticTokensResult,
     TextDocumentContentChangeEvent, Url, WorkspaceEdit,
@@ -7,9 +8,10 @@ use tower_lsp::lsp_types::{
 use tree_sitter::Parser;
 use tree_sitter_p4::language;
 
-use crate::file::File;
+use crate::{file::File, settings::Settings};
 
 pub struct Workspace {
+    settings: Settings,
     files: HashMap<Url, File>,
     parser: Parser,
 }
@@ -20,6 +22,7 @@ impl Workspace {
         parser.set_language(language()).unwrap();
 
         Workspace {
+            settings: Settings::default(),
             files: HashMap::new(),
             parser,
         }
@@ -87,9 +90,14 @@ impl Workspace {
         let maybe_file = self.files.get(&url);
 
         if let Some(file) = maybe_file {
-            file.get_full_diagnostics()
+            file.get_full_diagnostics(&self.settings)
         } else {
             vec![]
         }
+    }
+
+    pub fn update_settings(&mut self, settings: Value) {
+        self.settings = Settings::parse(settings);
+        info!("Settings: {:?}", self.settings);
     }
 }

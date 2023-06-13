@@ -4,6 +4,7 @@ use super::external::P4Test;
 use super::internal::Parse;
 use crate::file::File;
 use crate::metadata::{AstQuery, SymbolTableQuery};
+use crate::settings::Settings;
 
 macro_rules! diags {
     ($($diag:expr),*) => {
@@ -37,9 +38,10 @@ pub fn get_full_diagnostics(
     file: &File,
     ast_query: &impl AstQuery,
     symbol_table_query: &impl SymbolTableQuery,
+    settings: &Settings,
 ) -> Vec<Diagnostic> {
     diags![
-        P4Test::get_diagnostics(file),
+        P4Test::get_diagnostics(file, settings),
         Parse::get_diagnostics(ast_query, symbol_table_query)
     ]
 }
