@@ -1,4 +1,5 @@
 use crate::file::File;
+use crate::settings::Settings;
 use regex::Regex;
 use std::io::Write;
 use std::path::PathBuf;
@@ -10,8 +11,8 @@ use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 pub struct P4Test {}
 
 impl P4Test {
-    pub fn get_diagnostics(file: &File) -> Vec<Diagnostic> {
-        let output = get_p4test_output(&file.source_code);
+    pub fn get_diagnostics(file: &File, settings: &Settings) -> Vec<Diagnostic> {
+        let output = get_p4test_output(&file.source_code, settings);
 
         if let Some(output) = output {
             parse_output(output).unwrap_or_default()
@@ -21,17 +22,28 @@ impl P4Test {
     }
 }
 
-fn get_p4test_output(content: &str) -> Option<String> {
-    let include_path = PathBuf::from("/home/alex/Documents/University/Master/p4c/p4include");
-    let p4test_path = PathBuf::from("/home/alex/.local/bin/p4c_backend_p4test");
+fn get_p4test_output(content: &str, settings: &Settings) -> Option<String> {
+    let p4test_path = if let Some(path) = settings.p4test_path.clone() {
+        path
+    } else {
+        PathBuf::from("p4test")
+    };
 
-    let command_result = Command::new(p4test_path)
-        .arg("/dev/stdin")
-        .arg("-I")
-        .arg(include_path.as_os_str())
-        .stdin(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn();
+    let command_result = if let Some(include_path) = settings.include_path.clone() {
+        Command::new(p4test_path)
+            .arg("/dev/stdin")
+            .arg("-I")
+            .arg(include_path.as_os_str())
+            .stdin(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+    } else {
+        Command::new(p4test_path)
+            .arg("/dev/stdin")
+            .stdin(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+    };
 
     if let Ok(mut command) = command_result {
         let stdin = command.stdin.as_mut().unwrap();
