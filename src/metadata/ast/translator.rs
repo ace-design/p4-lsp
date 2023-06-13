@@ -644,4 +644,113 @@ mod tests {
         print_arenas(&arena, &translated_ast.get_arena());
         assert!(translated_ast.get_arena().eq(&arena))
     }
+
+    /*#[test]
+    fn test_typedec_headers() {
+        let source_code = r#"
+            header ethernet_t {
+                macAddr_t dstAddr;
+                macAddr_t srcAddr;
+                bit<16>   etherType;
+            }        
+        "#;
+        let syntax_tree = get_syntax_tree(source_code);
+        let translated_ast =
+            TreesitterTranslator::translate(source_code.to_string(), syntax_tree.clone());
+
+        let mut arena: Arena<Node> = Arena::new();
+        let mut syntax_node = syntax_tree.root_node();
+        let root = arena.new_node(Node::new(NodeKind::Root, &syntax_node, source_code));
+
+        syntax_node = syntax_node.named_child(0).unwrap();
+        let typedec_syntax_node = syntax_node;
+        let type_dec = arena.new_node(Node::new(
+            NodeKind::TypeDec(TypeDecType::HeaderType),
+            &syntax_node,
+            source_code,
+        ));
+        root.append(type_dec, &mut arena);
+
+        syntax_node = typedec_syntax_node
+            .child(0)
+            .unwrap()
+            .child_by_field_name("name")
+            .unwrap();
+        let name_dec = arena.new_node(Node::new(NodeKind::Name, &syntax_node, source_code));
+        type_dec.append(name_dec, &mut arena);
+
+        let node = typedec_syntax_node
+        .child(0)
+        .unwrap()
+        .child_by_field_name("field_list")
+        .unwrap();
+
+        let fields = arena.new_node(Node::new(
+            NodeKind::Fields,
+            &node,
+            source_code,
+        ));
+        root.append(fields, &mut arena);
+
+        let node1 = node.named_child(0).unwrap();
+        let field = arena.new_node(Node::new(
+            NodeKind::Field,
+            &node1,
+            source_code,
+        ));
+        fields.append(field, &mut arena);
+
+        let name_dec = arena.new_node(Node::new(NodeKind::Name, &node1
+            .child_by_field_name("name")
+            .unwrap(), source_code));
+        field.append(name_dec, &mut arena);
+
+        let type_dec: indextree::NodeId = arena.new_node(Node::new(
+            NodeKind::Type(Type::Name),
+            &node1.child_by_field_name("type").unwrap(),
+            source_code,
+        ));
+        field.append(type_dec, &mut arena);
+        
+        let node2 = node.child(1).unwrap();
+        let field = arena.new_node(Node::new(
+            NodeKind::Field,
+            &node2,
+            source_code,
+        ));
+        fields.append(field, &mut arena);
+
+        let name_dec = arena.new_node(Node::new(NodeKind::Name, &node2
+            .child_by_field_name("name")
+            .unwrap(), source_code));
+        field.append(name_dec, &mut arena);
+        let type_dec = arena.new_node(Node::new(
+            NodeKind::Type(Type::Name),
+            &node2.child_by_field_name("type").unwrap(),
+            source_code,
+        ));
+        field.append(type_dec, &mut arena);
+
+        let node3 = node.child(2).unwrap();
+        let field = arena.new_node(Node::new(
+            NodeKind::Field,
+            &node3,
+            source_code,
+        ));
+        fields.append(field, &mut arena);
+
+        let name_dec = arena.new_node(Node::new(NodeKind::Name, &node3
+            .child_by_field_name("name")
+            .unwrap(), source_code));
+        field.append(name_dec, &mut arena);
+        let type_dec = arena.new_node(Node::new(
+            NodeKind::Type(Type::Base(BaseType::SizedBit(Some(16)))),
+            &node3.child_by_field_name("type").unwrap(),
+            source_code,
+        ));
+        field.append(type_dec, &mut arena);
+        
+        print_arenas(&arena, &translated_ast.get_arena());
+        assert!(translated_ast.get_arena().eq(&arena))
+    }*/
 }
