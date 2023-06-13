@@ -167,7 +167,7 @@ impl TreesitterTranslator {
                 match type_kind_node.child_by_field_name("type"){
                     Some(x) => {node_id.append(self.parse_type_ref(&x).unwrap_or_else(|| self.new_error_node(&x)), &mut self.arena);},
                     None => {}
-                }                
+                }
                 match type_kind_node.child_by_field_name("option_list"){
                     Some(x) => {
                         node_id.append(self.parse_type_options_dec(&x).unwrap_or_else(|| self.new_error_node(&x)), &mut self.arena); 
@@ -260,8 +260,8 @@ impl TreesitterTranslator {
             let new_node_id = if option_child.is_error() {
                 self.new_error_node(&option_child)
             } else {
-                let node_text = utils::get_node_text(&option_child, &self.source_code);
-                let text = node_text.as_str().trim();
+                //let node_text = utils::get_node_text(&option_child, &self.source_code);
+                //let text = node_text.as_str().trim();
                 
                 let option_node_id = self.arena.new_node(Node::new(
                     NodeKind::Option,
@@ -273,7 +273,7 @@ impl TreesitterTranslator {
                 option_node_id.append(self.arena.new_node(Node::new(
                         NodeKind::Name,
                         &option_child,
-                        &text,
+                        &self.source_code,
                     )),
                     &mut self.arena,
                 );
@@ -286,7 +286,7 @@ impl TreesitterTranslator {
         }
         return Some(options_node_id);
     }
-    
+
     fn parse_type_ref(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let child = node.named_child(0)?;
         let type_type: Type = match child.kind() {
@@ -306,6 +306,7 @@ impl TreesitterTranslator {
     }
 
     fn parse_base_type(&self, node: &tree_sitter::Node) -> Option<BaseType> {
+        
         let node_text = utils::get_node_text(node, &self.source_code);
         let text = node_text.as_str().trim();
 
