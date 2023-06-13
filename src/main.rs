@@ -53,7 +53,7 @@ impl LanguageServer for Backend {
             .time_format("%Y-%m-%d %H:%M:%S.%f") //E.g:%H:%M:%S.%f
             .level("debug")
             .output_file()
-            .output_console()
+            //.output_console() // for vscode
             .build();
 
         if simple_log::new(config).is_err() {
