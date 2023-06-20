@@ -50,8 +50,11 @@ parser MyParser(packet_in packet,
                 out headers hdr,
                 inout metadata meta,
                 inout standard_metadata_t standard_metadata) {
+
     bit<16> test = TYPE_IPV4;
     egressSpec_t test2 = 1;
+    bit<16> test3 = 0x80;
+    bit<16> test4 = 0x50;
 
     state start {
         transition parse_ethernet;
@@ -88,7 +91,21 @@ control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
+
+    bit<16> test = TYPE_IPV4;
+    egressSpec_t test2 = 1;
+    bit<16> test3 = 0x80;
+    bit<16> test4 = test3.test.t.aa + test + 0x10;
+
     action drop() {
+        test4 = test3.test.t.aa + test + 0x10 + (0x10 + 0x10) + 0x10 + [0:10];
+        test<bit,bit>(test2,test3);
+        hdr.asfsdf.fgdfhf.
+        ethernet_t t = hdr.ethernet;
+        test(test4);
+        test2<test>(test3);
+        a = hdr
+        if (t){}
         mark_to_drop(standard_metadata);
     }
 
@@ -152,7 +169,7 @@ control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
             HashAlgorithm.csum16);
     }
 }
-
+ad
 /*************************************************************************
 ***********************  D E P A R S E R  *******************************
 *************************************************************************/
