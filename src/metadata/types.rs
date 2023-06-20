@@ -18,6 +18,17 @@ pub enum BaseType {
 pub enum Type {
     Base(BaseType),
     Name,
+    NoName,
+    Specialized,
+    Header,
+    Tuple,
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum TypeList {
+    Base(BaseType),
+    Name,
+    NoName,
     Specialized,
     Header,
     Tuple,
@@ -26,6 +37,7 @@ pub enum Type {
 impl fmt::Display for Type {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str(match self {
+            Type::NoName => "NoName",
             Type::Name => "Name",
             Type::Base(_) => "Base",
             Type::Specialized => "Specialized ",
