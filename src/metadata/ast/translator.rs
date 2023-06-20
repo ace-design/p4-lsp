@@ -132,15 +132,161 @@ impl TreesitterTranslator {
 
         match type_type {
             TypeDecType::TypeDef => {
-                let type_node =
+                let type_node: NodeId =
                     self.parse_type_ref(&type_kind_node.child_by_field_name("type")?)?;
                 node_id.append(type_node, &mut self.arena);
-            }
-            // TODO: Implement other types
+            },
+            TypeDecType::HeaderType => {
+                match type_kind_node.child_by_field_name("field_list"){
+                    Some(x) => {
+                        node_id.append(self.parse_type_fields_dec(&x).unwrap_or_else(|| self.new_error_node(&x)), &mut self.arena); 
+                    },
+                    None => {
+                    }              
+                }
+            },
+            TypeDecType::HeaderUnion => {
+                match type_kind_node.child_by_field_name("field_list"){
+                    Some(x) => {
+                        node_id.append(self.parse_type_fields_dec(&x).unwrap_or_else(|| self.new_error_node(&x)), &mut self.arena); 
+                    },
+                    None => {
+                    }              
+                }
+            },
+            TypeDecType::Struct => {
+                match type_kind_node.child_by_field_name("field_list"){
+                    Some(x) => {
+                        node_id.append(self.parse_type_fields_dec(&x).unwrap_or_else(|| self.new_error_node(&x)), &mut self.arena);
+                    },
+                    None => {
+                    }
+                }
+            },
+            TypeDecType::Enum => {
+                match type_kind_node.child_by_field_name("type"){
+                    Some(x) => {node_id.append(self.parse_type_ref(&x).unwrap_or_else(|| self.new_error_node(&x)), &mut self.arena);},
+                    None => {}
+                }
+                match type_kind_node.child_by_field_name("option_list"){
+                    Some(x) => {
+                        node_id.append(self.parse_type_options_dec(&x).unwrap_or_else(|| self.new_error_node(&x)), &mut self.arena); 
+                    },
+                    None => {
+                    }              
+                }
+            },
+            TypeDecType::Parser => {
+                if let Some(params_syntax_node) = type_kind_node.child_by_field_name("parameters"){
+                    let params_node_id = self
+                        .parse_params(&params_syntax_node)
+                        .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
+                    node_id.append(params_node_id, &mut self.arena);
+                }
+            },
+            TypeDecType::Control => {
+                if let Some(params_syntax_node) = type_kind_node.child_by_field_name("parameters"){
+                    let params_node_id = self
+                        .parse_params(&params_syntax_node)
+                        .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
+                    node_id.append(params_node_id, &mut self.arena);
+                }
+            },
+            TypeDecType::Package => {
+                // TODO
+            },
             _ => {}
         }
 
         Some(node_id)
+    }
+    
+    fn parse_type_fields_dec(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        let fields_node_id =
+        self.arena
+            .new_node(Node::new(NodeKind::Fields, &node, &self.source_code));
+
+        let mut cursor = node.walk();
+        for field_child in node.named_children(&mut cursor) {
+            let new_node_id = if field_child.is_error() {
+                self.new_error_node(&field_child)
+            } else {
+                let field_node_id = self.arena.new_node(Node::new(
+                    NodeKind::Field,
+                    &field_child,
+                    &self.source_code,
+                ));
+
+                // Add name node
+                match field_child.child_by_field_name("name"){
+                    Some(x) => {
+                        field_node_id.append(self.arena.new_node(Node::new(
+                                NodeKind::Name,
+                                &x,
+                                &self.source_code,
+                            )),
+                            &mut self.arena,
+                        );
+                    },
+                    None => {},
+                }
+
+                // Add type node
+                match field_child.child_by_field_name("type"){
+                    Some(x) => {
+                        field_node_id.append(
+                            self.parse_type_ref(&x)
+                                .unwrap_or_else(|| self.new_error_node(&x)),
+                            &mut self.arena,
+                        );
+                    },
+                    None => {},
+                }
+
+                field_node_id
+
+            };
+
+            fields_node_id.append(new_node_id, &mut self.arena);
+        }
+        return Some(fields_node_id);
+    }
+    
+    fn parse_type_options_dec(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        let options_node_id =
+        self.arena
+            .new_node(Node::new(NodeKind::Options, &node, &self.source_code));
+
+        let mut cursor = node.walk();
+        for option_child in node.named_children(&mut cursor) {
+            let new_node_id = if option_child.is_error() {
+                self.new_error_node(&option_child)
+            } else {
+                //let node_text = utils::get_node_text(&option_child, &self.source_code);
+                //let text = node_text.as_str().trim();
+                
+                let option_node_id = self.arena.new_node(Node::new(
+                    NodeKind::Option,
+                    &option_child,
+                    &self.source_code,
+                ));
+
+                // Add name node
+                option_node_id.append(self.arena.new_node(Node::new(
+                        NodeKind::Name,
+                        &option_child,
+                        &self.source_code,
+                    )),
+                    &mut self.arena,
+                );
+
+                option_node_id
+
+            };
+
+            options_node_id.append(new_node_id, &mut self.arena);
+        }
+        return Some(options_node_id);
     }
 
     fn parse_type_ref(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -162,6 +308,7 @@ impl TreesitterTranslator {
     }
 
     fn parse_base_type(&self, node: &tree_sitter::Node) -> Option<BaseType> {
+        
         let node_text = utils::get_node_text(node, &self.source_code);
         let text = node_text.as_str().trim();
 
@@ -499,4 +646,113 @@ mod tests {
         print_arenas(&arena, &translated_ast.get_arena());
         assert!(translated_ast.get_arena().eq(&arena))
     }
+
+    /*#[test]
+    fn test_typedec_headers() {
+        let source_code = r#"
+            header ethernet_t {
+                macAddr_t dstAddr;
+                macAddr_t srcAddr;
+                bit<16>   etherType;
+            }        
+        "#;
+        let syntax_tree = get_syntax_tree(source_code);
+        let translated_ast =
+            TreesitterTranslator::translate(source_code.to_string(), syntax_tree.clone());
+
+        let mut arena: Arena<Node> = Arena::new();
+        let mut syntax_node = syntax_tree.root_node();
+        let root = arena.new_node(Node::new(NodeKind::Root, &syntax_node, source_code));
+
+        syntax_node = syntax_node.named_child(0).unwrap();
+        let typedec_syntax_node = syntax_node;
+        let type_dec = arena.new_node(Node::new(
+            NodeKind::TypeDec(TypeDecType::HeaderType),
+            &syntax_node,
+            source_code,
+        ));
+        root.append(type_dec, &mut arena);
+
+        syntax_node = typedec_syntax_node
+            .child(0)
+            .unwrap()
+            .child_by_field_name("name")
+            .unwrap();
+        let name_dec = arena.new_node(Node::new(NodeKind::Name, &syntax_node, source_code));
+        type_dec.append(name_dec, &mut arena);
+
+        let node = typedec_syntax_node
+        .child(0)
+        .unwrap()
+        .child_by_field_name("field_list")
+        .unwrap();
+
+        let fields = arena.new_node(Node::new(
+            NodeKind::Fields,
+            &node,
+            source_code,
+        ));
+        root.append(fields, &mut arena);
+
+        let node1 = node.named_child(0).unwrap();
+        let field = arena.new_node(Node::new(
+            NodeKind::Field,
+            &node1,
+            source_code,
+        ));
+        fields.append(field, &mut arena);
+
+        let name_dec = arena.new_node(Node::new(NodeKind::Name, &node1
+            .child_by_field_name("name")
+            .unwrap(), source_code));
+        field.append(name_dec, &mut arena);
+
+        let type_dec: indextree::NodeId = arena.new_node(Node::new(
+            NodeKind::Type(Type::Name),
+            &node1.child_by_field_name("type").unwrap(),
+            source_code,
+        ));
+        field.append(type_dec, &mut arena);
+        
+        let node2 = node.child(1).unwrap();
+        let field = arena.new_node(Node::new(
+            NodeKind::Field,
+            &node2,
+            source_code,
+        ));
+        fields.append(field, &mut arena);
+
+        let name_dec = arena.new_node(Node::new(NodeKind::Name, &node2
+            .child_by_field_name("name")
+            .unwrap(), source_code));
+        field.append(name_dec, &mut arena);
+        let type_dec = arena.new_node(Node::new(
+            NodeKind::Type(Type::Name),
+            &node2.child_by_field_name("type").unwrap(),
+            source_code,
+        ));
+        field.append(type_dec, &mut arena);
+
+        let node3 = node.child(2).unwrap();
+        let field = arena.new_node(Node::new(
+            NodeKind::Field,
+            &node3,
+            source_code,
+        ));
+        fields.append(field, &mut arena);
+
+        let name_dec = arena.new_node(Node::new(NodeKind::Name, &node3
+            .child_by_field_name("name")
+            .unwrap(), source_code));
+        field.append(name_dec, &mut arena);
+        let type_dec = arena.new_node(Node::new(
+            NodeKind::Type(Type::Base(BaseType::SizedBit(Some(16)))),
+            &node3.child_by_field_name("type").unwrap(),
+            source_code,
+        ));
+        field.append(type_dec, &mut arena);
+        
+        print_arenas(&arena, &translated_ast.get_arena());
+        assert!(translated_ast.get_arena().eq(&arena))
+    }*/
 }
