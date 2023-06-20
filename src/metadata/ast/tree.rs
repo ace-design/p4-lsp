@@ -5,7 +5,7 @@ use std::fmt;
 use indextree::{Arena, NodeId};
 use tower_lsp::lsp_types::{Position, Range};
 
-use crate::metadata::types::Type;
+use crate::metadata::types::{Type,TypeList};
 use crate::utils;
 
 use super::translator::TreesitterTranslator;
@@ -46,8 +46,10 @@ pub enum NodeKind {
     ConstantDec,
     VariableDec,
     ParserDec,
+    StateParser,
     ControlDec,
     Type(Type),
+    TypeList(TypeList),
     Direction(Direction),
     TypeDec(TypeDecType),
     Expression,
@@ -60,6 +62,24 @@ pub enum NodeKind {
     Options,
     Error,
     Value,
+    ValueSymbol,
+    ControlAction,
+    Block,
+    Assignment,
+    BodyIf,
+    BodyElse,
+    Return,
+    ValueSet,
+    ParamsList,
+    TransitionStatement,
+    Row,
+    Instantiation,
+    Obj,
+    Function,
+    FunctionName,
+    Switch,
+    SwitchLabel,
+    ParserBlock,
 }
 
 const SCOPE_NODES: [NodeKind; 4] = [
@@ -99,6 +119,8 @@ pub trait Visitable {
     fn get_child_of_kind(&self, kind: NodeKind) -> Option<VisitNode>;
     fn get_subscopes(&self) -> Vec<VisitNode>;
     fn get_type_node(&self) -> Option<VisitNode>;
+    fn get_value_node(&self) -> Option<VisitNode>;
+    fn get_value_symbol_node(&self) -> Option<VisitNode>;
     fn get_type(&self) -> Option<Type>;
     fn get_node_at_position(&self, position: Position) -> Option<VisitNode>;
 }
@@ -154,6 +176,29 @@ impl Visitable for VisitNode<'_> {
         self.get_children().into_iter().find_map(|child| {
             let node = child.get();
             if matches!(node.kind, NodeKind::Type(_)) {
+                Some(VisitNode::new(self.arena, child.id))
+            } else {
+                None
+            }
+        })
+    }
+
+    fn get_value_node(&self) -> Option<VisitNode> {
+        self.get_children().into_iter().find_map(|child| {
+            let node = child.get();
+            if matches!(node.kind, NodeKind::Value) {
+                Some(VisitNode::new(self.arena, child.id))
+            } else {
+                None
+            }
+        })
+    }
+
+
+    fn get_value_symbol_node(&self) -> Option<VisitNode> {
+        self.get_children().into_iter().find_map(|child| {
+            let node = child.get();
+            if matches!(node.kind, NodeKind::ValueSymbol) {
                 Some(VisitNode::new(self.arena, child.id))
             } else {
                 None
