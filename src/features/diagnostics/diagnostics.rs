@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use tower_lsp::lsp_types::Diagnostic;
 
 use super::external::P4Test;
@@ -22,22 +24,22 @@ macro_rules! diags {
 
 pub trait DiagnosticProvider {
     fn get_diagnostics(
-        ast_query: &impl AstQuery,
-        symbol_table_query: &impl SymbolTableQuery,
+        ast_query: &Arc<Mutex<impl AstQuery>>,
+        symbol_table_query: &Arc<Mutex<impl SymbolTableQuery>>,
     ) -> Vec<Diagnostic>;
 }
 
 pub fn get_quick_diagnostics(
-    ast_query: &impl AstQuery,
-    symbol_table_query: &impl SymbolTableQuery,
+    ast_query: &Arc<Mutex<impl AstQuery>>,
+    symbol_table_query: &Arc<Mutex<impl SymbolTableQuery>>,
 ) -> Vec<Diagnostic> {
     diags![Parse::get_diagnostics(ast_query, symbol_table_query)]
 }
 
 pub fn get_full_diagnostics(
     file: &File,
-    ast_query: &impl AstQuery,
-    symbol_table_query: &impl SymbolTableQuery,
+    ast_query: &Arc<Mutex<impl AstQuery>>,
+    symbol_table_query: &Arc<Mutex<impl SymbolTableQuery>>,
     settings: &Settings,
 ) -> Vec<Diagnostic> {
     diags![

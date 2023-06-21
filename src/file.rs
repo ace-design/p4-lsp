@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, HoverContents, Location, Position, SemanticTokensResult,
     TextDocumentContentChangeEvent, Url, WorkspaceEdit,
@@ -5,7 +7,7 @@ use tower_lsp::lsp_types::{
 use tree_sitter::{InputEdit, Parser, Tree};
 
 use crate::features::{completion, diagnostics, goto, hover, rename, semantic_tokens};
-use crate::metadata::Metadata;
+use crate::metadata::{AstEditor, AstManager, SymbolTableEditor, SymbolTableManager};
 use crate::settings::Settings;
 use crate::utils;
 
@@ -13,16 +15,28 @@ pub struct File {
     pub uri: Url,
     pub source_code: String,
     pub tree: Option<Tree>,
-    pub metadata: Option<Metadata>,
+    pub symbol_table_manager: Arc<Mutex<SymbolTableManager>>,
+    pub ast_manager: Arc<Mutex<AstManager>>,
 }
 
 impl File {
     pub fn new(uri: Url, source_code: &str, tree: &Option<Tree>) -> File {
+        let ast_manager = Arc::new(Mutex::new(AstManager::new(
+            source_code,
+            tree.to_owned().unwrap(),
+        )));
+
+        let symbol_table_manager = {
+            let ast_manager = ast_manager.lock().unwrap();
+            Arc::new(Mutex::new(SymbolTableManager::new(ast_manager.get_ast())))
+        };
+
         File {
             uri,
             source_code: source_code.to_string(),
             tree: tree.clone(),
-            metadata: Metadata::new(source_code, tree.as_ref().unwrap().clone()),
+            symbol_table_manager,
+            ast_manager,
         }
     }
 
@@ -61,27 +75,28 @@ impl File {
             self.tree = parser.parse(text, old_tree);
         }
 
-        self.metadata = Metadata::new(&self.source_code, self.tree.to_owned().unwrap());
+        let mut ast_manager = self.ast_manager.lock().unwrap();
+        let mut st_manager = self.symbol_table_manager.lock().unwrap();
+
+        ast_manager.update(&self.source_code, self.tree.to_owned().unwrap());
+        st_manager.update(ast_manager.get_ast());
     }
 
     pub fn get_quick_diagnostics(&self) -> Vec<Diagnostic> {
-        if let Some(metadata) = self.metadata.as_ref() {
-            diagnostics::get_quick_diagnostics(metadata, metadata)
-        } else {
-            vec![]
-        }
+        diagnostics::get_quick_diagnostics(&self.ast_manager, &self.symbol_table_manager)
     }
 
     pub fn get_full_diagnostics(&self, settings: &Settings) -> Vec<Diagnostic> {
-        if let Some(metadata) = self.metadata.as_ref() {
-            diagnostics::get_full_diagnostics(self, metadata, metadata, settings)
-        } else {
-            vec![]
-        }
+        diagnostics::get_full_diagnostics(
+            self,
+            &self.ast_manager,
+            &self.symbol_table_manager,
+            settings,
+        )
     }
 
     pub fn get_completion_list(&self, position: Position) -> Option<Vec<CompletionItem>> {
-        completion::get_list(position, self.metadata.as_ref()?)
+        completion::get_list(position, &self.symbol_table_manager)
     }
 
     pub fn get_hover_info(&self, position: Position) -> Option<HoverContents> {
@@ -112,13 +127,15 @@ impl File {
 
     pub fn get_definition_location(&self, position: Position) -> Option<Location> {
         let range =
-            goto::get_definition_range(self.metadata.as_ref()?, self.metadata.as_ref()?, position)?;
+            goto::get_definition_range(&self.ast_manager, &self.symbol_table_manager, position)?;
         Some(Location::new(self.uri.clone(), range))
     }
 
-    pub fn rename_symbol(&mut self, position: Position, new_name: String) -> Option<WorkspaceEdit> {
+    pub fn rename_symbol(&self, position: Position, new_name: String) -> Option<WorkspaceEdit> {
         rename::rename(
-            self.metadata.as_mut()?,
+            &self.ast_manager,
+            &self.symbol_table_manager,
+            &self.symbol_table_manager,
             self.uri.clone(),
             new_name,
             position,

@@ -64,8 +64,8 @@ impl LanguageServer for Backend {
                     TextDocumentSyncOptions {
                         open_close: Some(true),
                         change: Some(TextDocumentSyncKind::INCREMENTAL),
-                        will_save: Some(true),
-                        will_save_wait_until: Some(true),
+                        will_save: Some(false),
+                        will_save_wait_until: Some(false),
                         save: Some(TextDocumentSyncSaveOptions::Supported(true)),
                     },
                 )),
