@@ -41,6 +41,7 @@ impl LanguageServer for Backend {
             ConfigBuilder::new()
                 .add_filter_ignore(String::from("cranelift"))
                 .add_filter_ignore(String::from("wasmtime"))
+                .add_filter_ignore(String::from("extism"))
                 .build(),
             File::create("/tmp/p4-lsp.log").unwrap(),
         );
@@ -54,6 +55,7 @@ impl LanguageServer for Backend {
         info!("Initializing lsp");
 
         self.plugin_manager.write().unwrap().load_plugins();
+        self.plugin_manager.write().unwrap().run_plugins();
 
         Ok(InitializeResult {
             capabilities: ServerCapabilities {

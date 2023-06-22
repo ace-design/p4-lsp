@@ -41,4 +41,12 @@ impl PluginManager {
 
         info!("Loaded {} plugin(s)", self.plugins.len());
     }
+
+    pub fn run_plugins(&mut self) {
+        for plugin in &mut self.plugins {
+            if plugin.call("count_vowels", "test").is_ok() {
+                info!("Plugin called");
+            }
+        }
+    }
 }
