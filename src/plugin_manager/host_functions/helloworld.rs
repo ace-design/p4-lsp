@@ -21,7 +21,7 @@ fn hello_world(
     outputs: &mut [Val],
     _user_data: UserData,
 ) -> Result<(), Error> {
-    println!("Hello from Rust!");
+    debug!("Hello from Rust!");
     outputs[0] = inputs[0].clone();
     Ok(())
 }

@@ -1,32 +1,44 @@
 use super::host_functions::FUNCTIONS;
-use extism::{Context, Plugin};
-use std::fs;
+use extism::Plugin;
+use std::{env, fs};
 
-struct Manager<'a> {
-    context: Context,
-    plugins: Vec<Plugin<'a>>,
+pub struct PluginManager {
+    plugins: Vec<Plugin<'static>>,
 }
 
-impl<'a> Manager<'a> {
-    pub fn new() -> Manager<'a> {
-        Manager {
-            context: Context::new(),
+impl PluginManager {
+    pub fn new() -> PluginManager {
+        PluginManager {
             plugins: Vec::new(),
         }
     }
 
-    pub fn load_plugins(&'a mut self) {
+    pub fn load_plugins(&mut self) {
+        info!("Loading plugins");
         self.plugins = Vec::new();
 
-        let paths = fs::read_dir(".").unwrap();
+        if let Some(mut home_path) = env::var_os("HOME") {
+            home_path.push("/.config/p4_lsp/plugins/");
 
-        for path in paths {
-            let file_content = fs::read(path.unwrap().path()).unwrap();
-            let functions = (*FUNCTIONS).clone();
+            let paths = match fs::read_dir(&home_path) {
+                Ok(paths) => paths,
+                Err(_) => {
+                    error!("Couldn't read from plugins path ({:?}).", home_path);
+                    return;
+                }
+            };
 
-            let plugin = Plugin::new(&self.context, file_content, functions, true).unwrap();
-
-            self.plugins.push(plugin);
+            for path in paths {
+                if let Ok(dir_entry) = path {
+                    info!("Loading plugin: {}", dir_entry.path().display());
+                    let file_content = fs::read(dir_entry.path()).unwrap();
+                    let functions = (*FUNCTIONS).clone();
+                    let plugin = Plugin::create(file_content, functions, true).unwrap();
+                    self.plugins.push(plugin);
+                }
+            }
         }
+
+        info!("Loaded {} plugin(s)", self.plugins.len());
     }
 }
