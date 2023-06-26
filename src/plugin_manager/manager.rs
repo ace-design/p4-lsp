@@ -33,8 +33,19 @@ impl PluginManager {
                     info!("Loading plugin: {}", dir_entry.path().display());
                     let file_content = fs::read(dir_entry.path()).unwrap();
                     let functions = (*FUNCTIONS).clone();
-                    let plugin = Plugin::create(file_content, functions, true).unwrap();
-                    self.plugins.push(plugin);
+
+                    match Plugin::create(file_content, functions, true) {
+                        Ok(plugin) => {
+                            self.plugins.push(plugin);
+                        }
+                        Err(err) => {
+                            error!(
+                                "Failed loading plugin: {} Error: {}",
+                                dir_entry.path().display(),
+                                err
+                            );
+                        }
+                    }
                 }
             }
         }
@@ -44,8 +55,12 @@ impl PluginManager {
 
     pub fn run_plugins(&mut self) {
         for plugin in &mut self.plugins {
-            if plugin.call("count_vowels", "test").is_ok() {
-                info!("Plugin called");
+            let result = plugin.call("count_vowels", "testing");
+            if let Ok(output) = result {
+                info!(
+                    "Plugin called: {}",
+                    String::from_utf8(output.to_vec()).expect("Invalid string")
+                );
             }
         }
     }
