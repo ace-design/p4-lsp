@@ -45,7 +45,7 @@ impl TreesitterTranslator {
         let tree = self.tree.clone();
         let mut cursor = tree.walk();
         for child in tree.root_node().named_children(&mut cursor) {
-            debug!("{:?}",child);
+            //debug!("{:?}",child);
             let new_child = if child.is_error() {
                 Some(self.new_error_node(&child))
             } else {
@@ -429,9 +429,7 @@ impl TreesitterTranslator {
                             ));
                             last_node.append(name_node, &mut selfV.arena);
                         } else{
-                            if kind == "prefixed_type" || kind == "identifier"{
-                                debug!("{}:{:?}",kind,node);
-                            }
+                            debug!("{}:{:?}",kind,node);
                         }
                     }
                 }
@@ -1219,7 +1217,6 @@ impl TreesitterTranslator {
                 "instantiation" => self.instantiation(&syntax_child),
                 _ => None,
             };
-            debug!("{:?},{:?}",syntax_child.kind(),child_node_id);
             if let Some(child_node) = child_node_id {
                 obj_node_id.append(child_node, &mut self.arena);
             }
@@ -1392,8 +1389,6 @@ impl TreesitterTranslator {
             node_id.append(params_node_id, &mut self.arena);
         }
         if let Some(param_list) = node.child_by_field_name("type"){
-            debug!("{:?}",param_list);
-            debug!("{:?}",param_list.named_child(0));
 
             let params_node_id =
             self.arena
@@ -1410,7 +1405,6 @@ impl TreesitterTranslator {
                     )));},
                     _ => Some(self.new_error_node(&syntax_child)),
                 };
-                debug!("{:?},{:?},{:?}",syntax_child,syntax_child.named_child(0)?.kind(),child_node_id);
                 if let Some(child_node) = child_node_id {
                     params_node_id.append(child_node, &mut self.arena);
                 }
