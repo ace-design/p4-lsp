@@ -90,7 +90,7 @@ impl Workspace {
         let maybe_file = self.files.get(&url);
 
         if let Some(file) = maybe_file {
-            file.get_full_diagnostics(&self.settings)
+            file.get_full_diagnostics()
         } else {
             vec![]
         }

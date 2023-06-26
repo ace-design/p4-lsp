@@ -55,7 +55,6 @@ impl LanguageServer for Backend {
         info!("Initializing lsp");
 
         self.plugin_manager.write().unwrap().load_plugins();
-        self.plugin_manager.write().unwrap().run_plugins();
 
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
@@ -104,12 +103,20 @@ impl LanguageServer for Backend {
         let doc = params.text_document;
         info!("Opening file: {}", doc.uri);
 
-        let diagnostics = {
+        let mut diagnostics = {
             let mut workspace = self.workspace.write().unwrap();
             (*workspace).add_file(doc.uri.clone(), &doc.text);
 
             (*workspace).get_full_diagnostics(doc.uri.clone())
         };
+
+        diagnostics.append(
+            &mut self
+                .plugin_manager
+                .write()
+                .unwrap()
+                .run_diagnostic(doc.uri.path().into()),
+        );
 
         self.client
             .publish_diagnostics(doc.uri, diagnostics, None)
@@ -130,11 +137,19 @@ impl LanguageServer for Backend {
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        let diagnostics = {
+        let mut diagnostics = {
             let workspace = self.workspace.read().unwrap();
 
             (*workspace).get_full_diagnostics(params.text_document.uri.clone())
         };
+
+        diagnostics.append(
+            &mut self
+                .plugin_manager
+                .write()
+                .unwrap()
+                .run_diagnostic(params.text_document.uri.path().into()),
+        );
 
         self.client
             .publish_diagnostics(params.text_document.uri, diagnostics, None)

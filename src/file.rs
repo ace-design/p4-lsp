@@ -8,7 +8,6 @@ use tree_sitter::{InputEdit, Parser, Tree};
 
 use crate::features::{completion, diagnostics, goto, hover, rename, semantic_tokens};
 use crate::metadata::{AstEditor, AstManager, SymbolTableEditor, SymbolTableManager};
-use crate::settings::Settings;
 use crate::utils;
 
 pub struct File {
@@ -86,13 +85,8 @@ impl File {
         diagnostics::get_quick_diagnostics(&self.ast_manager, &self.symbol_table_manager)
     }
 
-    pub fn get_full_diagnostics(&self, settings: &Settings) -> Vec<Diagnostic> {
-        diagnostics::get_full_diagnostics(
-            self,
-            &self.ast_manager,
-            &self.symbol_table_manager,
-            settings,
-        )
+    pub fn get_full_diagnostics(&self) -> Vec<Diagnostic> {
+        diagnostics::get_full_diagnostics(&self.ast_manager, &self.symbol_table_manager)
     }
 
     pub fn get_completion_list(&self, position: Position) -> Option<Vec<CompletionItem>> {

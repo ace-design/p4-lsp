@@ -1,6 +1,7 @@
 use super::host_functions::FUNCTIONS;
 use extism::Plugin;
 use std::{env, fs};
+use tower_lsp::lsp_types::Diagnostic;
 
 pub struct PluginManager {
     plugins: Vec<Plugin<'static>>,
@@ -53,15 +54,21 @@ impl PluginManager {
         info!("Loaded {} plugin(s)", self.plugins.len());
     }
 
-    pub fn run_plugins(&mut self) {
+    pub fn run_diagnostic(&mut self, file_path: String) -> Vec<Diagnostic> {
+        let mut diags = vec![];
         for plugin in &mut self.plugins {
-            let result = plugin.call("count_vowels", "testing");
-            if let Ok(output) = result {
-                info!(
-                    "Plugin called: {}",
-                    String::from_utf8(output.to_vec()).expect("Invalid string")
-                );
+            if plugin.has_function("diagnostic") {
+                let result = plugin.call("diagnostic", file_path.clone());
+                if let Ok(output) = result {
+                    let out_str = String::from_utf8(output.to_vec()).expect("Invalid string");
+
+                    info!("Plugin called: {}", out_str);
+                    let mut deserialized = serde_json::from_str(&out_str).unwrap();
+                    diags.append(&mut deserialized);
+                }
             }
         }
+
+        diags
     }
 }

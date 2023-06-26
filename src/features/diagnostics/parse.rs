@@ -1,9 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use super::super::DiagnosticProvider;
-
 use crate::metadata::{AstQuery, NodeKind, SymbolTableQuery, VisitNode, Visitable};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
+
+use super::diagnostics::DiagnosticProvider;
 
 pub struct Parse {}
 
