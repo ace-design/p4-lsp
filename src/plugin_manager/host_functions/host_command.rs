@@ -2,6 +2,7 @@ use std::process::{Command, Stdio};
 
 use super::HostFunction;
 use extism::{CurrentPlugin, Error, Function, UserData, Val, ValType};
+use serde::{Deserialize, Serialize};
 
 pub struct HostCommand;
 
@@ -15,6 +16,12 @@ impl HostFunction for HostCommand {
             host_command,
         )
     }
+}
+
+#[derive(Serialize, Deserialize)]
+struct CommandOutput {
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
 }
 
 fn host_command(
@@ -37,22 +44,31 @@ fn host_command(
         return Err(Error::msg("Invalid input."));
     };
 
-    let output = get_command_output(command);
+    let split_command = shell_words::split(command).unwrap();
 
-    let out_offset = memory.alloc_bytes(output).unwrap().offset as i64;
+    let (stdout, stderr) = get_command_output(&split_command[0], &split_command[1..]);
 
-    outputs[0] = Val::I64(out_offset);
+    let serialized = serde_json::to_string(&CommandOutput { stdout, stderr })?;
+
+    let stdout_offset = memory.alloc_bytes(serialized).unwrap().offset as i64;
+
+    outputs[0] = Val::I64(stdout_offset);
     Ok(())
 }
 
-fn get_command_output(command: &str) -> Vec<u8> {
-    let command_result = Command::new(command).stderr(Stdio::piped()).spawn();
+fn get_command_output(command: &str, args: &[String]) -> (Vec<u8>, Vec<u8>) {
+    debug!("Command: {} Args: {:?}", command, args);
+    let command_result = Command::new(command)
+        .args(args)
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn();
 
     if let Ok(command) = command_result {
         let result = command.wait_with_output().unwrap();
 
-        result.stderr
+        (result.stdout, result.stderr)
     } else {
-        vec![]
+        (vec![], vec![])
     }
 }
