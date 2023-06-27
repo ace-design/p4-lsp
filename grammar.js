@@ -11,6 +11,7 @@ module.exports = grammar({
         [$.annotation_token, $.type_identifier],
         [$.non_table_kw_name, $.type_identifier],
         [$.expression],
+        [$.block_statement,$.switch_statement], // why ?, todo : remove
     ],
 
     rules: {
@@ -287,7 +288,7 @@ module.exports = grammar({
         ),
 
         extern_declaration: $ => choice(
-            seq(field("annotation", optional($.annotation_list)), field("KeyWord", 'extern'), field('name', $.non_type_name), field('parameters_type', optional($.type_parameters)), '{', field('method', method_prototype_list), '}'),
+            seq(field("annotation", optional($.annotation_list)), field("KeyWord", 'extern'), field('name', $.non_type_name), field('parameters_type', optional($.type_parameters)), '{', field('method', optional($.method_prototype_list)), '}'),
             seq(field("annotation", optional($.annotation_list)), field("KeyWord", 'extern'), field('function', $.function_prototype), ';'),
         ),
 
@@ -295,7 +296,7 @@ module.exports = grammar({
             field("type", $.type_or_void), field("name", $.name), field('parameters_type', optional($.type_parameters)), '(', field("parameters_list", optional($.parameter_list)), ')'
         ),
 
-        method_prototype_list: $ => repeat($.method_prototype),
+        method_prototype_list: $ => repeat1($.method_prototype),
 
         method_prototype: $ => choice(
             seq(field("annotation", optional($.annotation_list)), field('function', $.function_prototype), ';'),
@@ -532,7 +533,7 @@ module.exports = grammar({
             seq(field("expression", $.expression), ':', field("name", $.name), field("annotation", optional($.annotation_list)), ';'),
         ),
 
-        ction_list: $ => repeat1($.action),
+        action_list: $ => repeat1($.action),
         action: $ => seq(field("annotation", optional($.annotation_list)), $._action_ref, ';'),
         _action_ref: $ => choice(
             field("name", $.prefixed_non_type_name),

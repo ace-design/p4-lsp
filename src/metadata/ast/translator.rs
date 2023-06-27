@@ -151,8 +151,9 @@ impl TreesitterTranslator {
             if let Some(paramters) = node.child_by_field_name("parameters_type"){
                 node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
             }
-            let method = node.child_by_field_name("method").unwrap();
-            node_id.append(self.parse_method_prototype(&method).unwrap_or_else(|| self.new_error_node(&method)), &mut self.arena);
+            if let Some(method) = node.child_by_field_name("method"){
+                node_id.append(self.parse_method_prototype(&method).unwrap_or_else(|| self.new_error_node(&method)), &mut self.arena);
+            }
         }
         if let Some(function) = node.child_by_field_name("function"){
             node_id.append(self.function_prototype(&function).unwrap_or_else(|| self.new_error_node(&function)), &mut self.arena);
