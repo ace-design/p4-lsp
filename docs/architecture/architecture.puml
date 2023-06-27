@@ -1,0 +1,28 @@
+@startuml
+
+interface Lsp
+component Client
+
+package "Server" {
+  component Backend
+  component Workspace
+  component File
+  component TreesitterTree
+  component SymbolTableManager
+  component AstManager
+  component SymbolTable
+  component Ast
+}
+
+Lsp -- Backend 
+Client ..> Lsp : use
+
+Backend --> Workspace
+Workspace --> File 
+File --> TreesitterTree
+File --> SymbolTableManager
+SymbolTableManager --> SymbolTable
+AstManager --> Ast
+
+File --> AstManager 
+@enduml
