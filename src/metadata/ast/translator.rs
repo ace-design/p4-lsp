@@ -1887,7 +1887,12 @@ impl TreesitterTranslator {
                         ));
                         action_node_id.append(name_node, &mut self.arena);
 
-                        // TODO : args - argument_list
+                        if let Some(params_syntax_node) = node.child_by_field_name("args"){
+                            let params_node_id = self
+                                .parse_args(&params_syntax_node)
+                                .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
+                            node_id.append(params_node_id, &mut self.arena);
+                        }
 
                         actions_node_id.append(action_node_id, &mut self.arena);
                     }
@@ -1921,13 +1926,12 @@ impl TreesitterTranslator {
                         ));
                         entrie_node_id.append(name_node, &mut self.arena);
 
-                        // Add value node
-                        let value_node = entries_child.child_by_field_name("expression").unwrap();
-                        entrie_node_id.append(
-                            self.parse_value(&value_node)
-                                .unwrap_or_else(|| self.new_error_node(&value_node)),
-                            &mut self.arena,
-                        );
+                        if let Some(params_syntax_node) = node.child_by_field_name("args"){
+                            let params_node_id = self
+                                .parse_args(&params_syntax_node)
+                                .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
+                            node_id.append(params_node_id, &mut self.arena);
+                        }
 
                         // _keyset_expression
                         match entries_child.named_child(0){
