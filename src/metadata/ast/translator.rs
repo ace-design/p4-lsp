@@ -245,7 +245,7 @@ impl TreesitterTranslator {
         }
 
         // Add name node
-        let node_name = node.named_child(0).unwrap().named_child(0).unwrap();
+        let node_name = node.child(3).unwrap();
         let name_node = self.arena.new_node(Node::new(
             NodeKind::Name,
             &node_name,
@@ -863,35 +863,34 @@ impl TreesitterTranslator {
                     _ => {
                         let child_child = child.named_child(0).unwrap();
                         let mut size: Option<u32> = None;
-                        if child_child.kind() == "small_expression" {
-                            let child_child_child = child_child.named_child(0).unwrap();
-                            if child_child_child.kind() == "integer" {
-                                size = Some(
-                                utils::get_node_text(&child_child_child, &self.source_code)
-                                    .parse::<u32>()
-                                    .unwrap(),
-                                );
-        
-                                if text.starts_with("int") {
-                                    return Some(self.arena.new_node(Node::new(
-                                        n_kind(Type::Base(BaseType::SizedInt(size))),
-                                        node,
-                                        &self.source_code,
-                                    )))
-                                } else if text.starts_with("bit") {
-                                    return Some(self.arena.new_node(Node::new(
-                                        n_kind(Type::Base(BaseType::SizedBit(size))),
-                                        node,
-                                        &self.source_code,
-                                    )))
-                                } else if text.starts_with("varbit") {
-                                    return Some(self.arena.new_node(Node::new(
-                                        n_kind(Type::Base(BaseType::SizedVarbit(size))),
-                                        node,
-                                        &self.source_code,
-                                    )))
-                                }
-                            } else{
+                        if child_child.kind() == "integer" {
+                            size = Some(
+                            utils::get_node_text(&child_child, &self.source_code)
+                                .parse::<u32>()
+                                .unwrap(),
+                            );
+    
+                            if text.starts_with("int") {
+                                return Some(self.arena.new_node(Node::new(
+                                    n_kind(Type::Base(BaseType::SizedInt(size))),
+                                    node,
+                                    &self.source_code,
+                                )))
+                            } else if text.starts_with("bit") {
+                                return Some(self.arena.new_node(Node::new(
+                                    n_kind(Type::Base(BaseType::SizedBit(size))),
+                                    node,
+                                    &self.source_code,
+                                )))
+                            } else if text.starts_with("varbit") {
+                                return Some(self.arena.new_node(Node::new(
+                                    n_kind(Type::Base(BaseType::SizedVarbit(size))),
+                                    node,
+                                    &self.source_code,
+                                )))
+                            }
+                        } else if child_child.kind() == "expression" {
+                            //let child_child_child = child_child.named_child(0).unwrap();
                                 let node_return: NodeId;
                                 if text.starts_with("int") {
                                     node_return = self.arena.new_node(Node::new(
@@ -920,7 +919,6 @@ impl TreesitterTranslator {
                                 }
                                 node_return.append(self.parse_value(&child_child)?, &mut self.arena);
                                 return Some(node_return);
-                            }
                         }
                         None
                     }

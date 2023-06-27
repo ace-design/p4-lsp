@@ -11,7 +11,6 @@ module.exports = grammar({
         [$.annotation_token, $.type_identifier],
         [$.non_table_kw_name, $.type_identifier],
         [$.expression],
-        [$.block_statement,$.switch_statement], // why ?, todo : remove
     ],
 
     rules: {
@@ -490,7 +489,7 @@ module.exports = grammar({
         _stat_or_decl_list: $ => repeat1($._statement_or_declaration),
 
         switch_statement: $ => seq(
-            field("annotation", optional($.annotation_list)), '{', optional($._stat_or_decl_list), '}'
+            field("KeyWord", 'switch'), '(', field("expression",$.expression), ')', '{', field("body", repeat($.switch_case)), '}'
         ),
 
         switch_case: $ => choice(
