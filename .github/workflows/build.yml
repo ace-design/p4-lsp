@@ -19,10 +19,35 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Build Project
-        run: cargo build --release
+      - name: Install Rust Targets
+        run: |
+          rustup target add x86_64-unknown-linux-gnu
+          rustup target add x86_64-apple-darwin
+          rustup target add x86_64-pc-windows-gnu
+          rustup target add x86_64-pc-windows-msvc
+          rustup target add arm-unknown-linux-gnu
+          rustup target add aarch64-apple-darwin
+
+      - name: Build and Release
+        run: |
+          cargo build --release --target x86_64-unknown-linux-gnu
+          cargo build --release --target x86_64-apple-darwin
+          cargo build --release --target x86_64-pc-windows-gnu
+          cargo build --release --target x86_64-pc-windows-msvc
+          cargo build --release --target arm-unknown-linux-gnu
+          cargo build --release --target aarch64-apple-darwin
+          mkdir -p bin
+          cp target/x86_64-unknown-linux-gnu/release/p4_lsp bin/p4_lsp_x86_linux
+          cp target/x86_64-pc-windows-gnu/release/p4_lsp.exe bin/p4_lsp_x86_windows.exe
+          cp target/x86_64-unknown-linux-gnu/release/p4_lsp bin/p4_lsp_x86_64_linux
+          cp target/x86_64-apple-darwin/release/p4_lsp bin/p4_lsp_x86_64_macos
+          cp target/x86_64-pc-windows-msvc/release/p4_lsp.exe bin/p4_lsp_x86_64_windows.exe
+          cp target/aarch64-apple-darwin/release/p4_lsp bin/p4_lsp_arm_64_macos
+          cp target/arm-unknown-linux-gnu/release/p4_lsp bin/p4_lsp_arm_64_linux
+          ls bin
 
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          files: target/release/p4_lsp
+          files: bin/*
+
