@@ -1032,6 +1032,12 @@ impl TreesitterTranslator {
             node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
         }
 
+        let params_syntax_node = declaration_body.child_by_field_name("parameters").unwrap();
+        let params_node_id = self
+            .parse_params(&params_syntax_node)
+            .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
+        node_id.append(params_node_id, &mut self.arena);
+
         let body_syntax_node = &node.child_by_field_name("body")?;
         let body_node_id = self.arena.new_node(Node::new(
             NodeKind::Body,
@@ -1089,20 +1095,11 @@ impl TreesitterTranslator {
             node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
         }
 
-        let params_syntax_node = node.child_by_field_name("parameters").unwrap();
+        let params_syntax_node = declaration_body.child_by_field_name("parameters").unwrap();
         let params_node_id = self
             .parse_params(&params_syntax_node)
             .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
-        // Add keyword node
-        if let Some(type_node) = declaration_body.child_by_field_name("KeyWord"){
-            node_id.append(self.arena.new_node(Node::new(
-                    NodeKind::KeyWord,
-                    &type_node,
-                    &self.source_code,
-                )),
-                &mut self.arena,
-            );
-        }
+        node_id.append(params_node_id, &mut self.arena);
 
 
         let body_syntax_node = &node.child_by_field_name("body")?;
@@ -1112,17 +1109,6 @@ impl TreesitterTranslator {
             &self.source_code,
         ));
         node_id.append(body_node_id, &mut self.arena);
-
-        // Add keyword node
-        if let Some(type_node) = body_syntax_node.child_by_field_name("KeyWord"){
-            body_node_id.append(self.arena.new_node(Node::new(
-                    NodeKind::KeyWord,
-                    &type_node,
-                    &self.source_code,
-                )),
-                &mut self.arena,
-            );
-        }
 
         let mut cursor = body_syntax_node.walk();
         for syntax_child in body_syntax_node.named_children(&mut cursor) {
@@ -1361,7 +1347,6 @@ impl TreesitterTranslator {
                 "switch_statement" => self.switch_statement(&syntax_child),
                 _ => None,
             };
-            debug!("{:?},{:?}",syntax_child.kind(),child_node_id);
             if let Some(child_node) = child_node_id {
                 block_node_id.append(child_node, &mut self.arena);
             }
