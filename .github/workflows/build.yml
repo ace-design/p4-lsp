@@ -22,14 +22,7 @@ jobs:
       - name: Build Project
         run: cargo build --release
 
-      - name: Upload Release Asset
-        id: upload_asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Release
+        uses: softprops/action-gh-release@v1
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./target/release/p4_lsp
-          asset_name: my_project
-          asset_content_type: application/octet-stream
-
+          files: target/release/p4_lsp
