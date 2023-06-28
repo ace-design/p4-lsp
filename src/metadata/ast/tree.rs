@@ -182,7 +182,7 @@ impl Visitable for VisitNode<'_> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ast {
     arena: Arena<Node>,
     root_id: NodeId,

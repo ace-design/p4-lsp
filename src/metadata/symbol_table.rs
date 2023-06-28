@@ -11,7 +11,7 @@ fn get_id() -> usize {
     SYMBOL_ID_COUNTER.fetch_add(1, Ordering::Relaxed)
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct SymbolTable {
     arena: Arena<ScopeSymbolTable>,
     root_id: Option<NodeId>,
@@ -308,7 +308,7 @@ impl Symbols {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 struct ScopeSymbolTable {
     range: Range,
     symbols: Symbols,

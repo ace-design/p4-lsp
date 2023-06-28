@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use crate::metadata::{SymbolTableQuery, Symbols};
 use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind, Position};
 
@@ -34,8 +36,11 @@ impl CompletionBuilder {
     }
 }
 
-pub fn get_list(position: Position, query: &impl SymbolTableQuery) -> Option<Vec<CompletionItem>> {
-    let symbols: Symbols = query.get_symbols_at_pos(position)?;
+pub fn get_list(
+    position: Position,
+    query: &Arc<Mutex<impl SymbolTableQuery>>,
+) -> Option<Vec<CompletionItem>> {
+    let symbols: Symbols = query.lock().unwrap().get_symbols_at_pos(position)?;
 
     Some(
         CompletionBuilder::new()

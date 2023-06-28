@@ -1,15 +1,18 @@
-use super::super::DiagnosticProvider;
+use std::sync::{Arc, Mutex};
 
 use crate::metadata::{AstQuery, NodeKind, SymbolTableQuery, VisitNode, Visitable};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
+
+use super::diagnostics::DiagnosticProvider;
 
 pub struct Parse {}
 
 impl DiagnosticProvider for Parse {
     fn get_diagnostics(
-        ast_query: &impl AstQuery,
-        _symbol_table_query: &impl SymbolTableQuery,
+        ast_query: &Arc<Mutex<impl AstQuery>>,
+        _symbol_table_query: &Arc<Mutex<impl SymbolTableQuery>>,
     ) -> Vec<Diagnostic> {
+        let ast_query = ast_query.lock().unwrap();
         let root = ast_query.visit_root();
         let mut errors: Vec<VisitNode> = vec![];
         for node in root.get_descendants() {

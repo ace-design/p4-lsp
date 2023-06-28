@@ -1,13 +1,18 @@
 use std::sync::RwLock;
 
 use features::semantic_tokens;
+use plugin_manager::PluginManager;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
 #[macro_use]
-extern crate simple_log;
-use simple_log::LogConfigBuilder;
+extern crate log;
+extern crate simplelog;
+
+use simplelog::*;
+
+use std::fs::File;
 
 #[macro_use]
 extern crate lazy_static;
@@ -25,27 +30,32 @@ use workspace::Workspace;
 struct Backend {
     client: Client,
     workspace: RwLock<Workspace>,
+    plugin_manager: RwLock<PluginManager>,
 }
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
-        let config = LogConfigBuilder::builder()
-            .path("/tmp/p4-lsp.log")
-            .size(100)
-            .roll_count(10)
-            .time_format("%Y-%m-%d %H:%M:%S.%f")
-            .level("debug")
-            .output_file()
-            .build();
+        let result = WriteLogger::init(
+            LevelFilter::Debug,
+            ConfigBuilder::new()
+                .add_filter_ignore(String::from("cranelift"))
+                .add_filter_ignore(String::from("wasmtime"))
+                .add_filter_ignore(String::from("extism"))
+                .build(),
+            File::create("/tmp/p4-lsp.log").unwrap(),
+        );
 
-        if simple_log::new(config).is_err() {
+        if result.is_err() {
             self.client
                 .log_message(MessageType::ERROR, "Log file couldn't be created.")
                 .await;
         }
 
         info!("Initializing lsp");
+
+        self.plugin_manager.write().unwrap().load_plugins();
+
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 semantic_tokens_provider: Some(
@@ -64,8 +74,8 @@ impl LanguageServer for Backend {
                     TextDocumentSyncOptions {
                         open_close: Some(true),
                         change: Some(TextDocumentSyncKind::INCREMENTAL),
-                        will_save: Some(true),
-                        will_save_wait_until: Some(true),
+                        will_save: Some(false),
+                        will_save_wait_until: Some(false),
                         save: Some(TextDocumentSyncSaveOptions::Supported(true)),
                     },
                 )),
@@ -89,68 +99,24 @@ impl LanguageServer for Backend {
         Ok(())
     }
 
-    async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
-        let mut workspace = self.workspace.write().unwrap();
-        (*workspace).update_settings(params.settings);
-    }
-
-    async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        let diagnostics = {
-            let workspace = self.workspace.read().unwrap();
-
-            (*workspace).get_full_diagnostics(params.text_document.uri.clone())
-        };
-
-        self.client
-            .publish_diagnostics(params.text_document.uri, diagnostics, None)
-            .await;
-    }
-
-    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
-        let completion_list = {
-            let workspace = self.workspace.read().unwrap();
-
-            (*workspace)
-                .get_completion(
-                    params.text_document_position.text_document.uri,
-                    params.text_document_position.position,
-                )
-                .unwrap_or_default()
-        };
-
-        Ok(Some(CompletionResponse::Array(completion_list)))
-    }
-
-    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
-        let maybe_hover_info = {
-            let workspace = self.workspace.read().unwrap();
-
-            (*workspace).get_hover_info(
-                params.text_document_position_params.text_document.uri,
-                params.text_document_position_params.position,
-            )
-        };
-
-        if let Some(hover_info) = maybe_hover_info {
-            Ok(Some(Hover {
-                contents: hover_info,
-                range: None,
-            }))
-        } else {
-            Ok(None)
-        }
-    }
-
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let doc = params.text_document;
         info!("Opening file: {}", doc.uri);
 
-        let diagnostics = {
+        let mut diagnostics = {
             let mut workspace = self.workspace.write().unwrap();
             (*workspace).add_file(doc.uri.clone(), &doc.text);
 
             (*workspace).get_full_diagnostics(doc.uri.clone())
         };
+
+        diagnostics.append(
+            &mut self
+                .plugin_manager
+                .write()
+                .unwrap()
+                .run_diagnostic(doc.uri.path().into()),
+        );
 
         self.client
             .publish_diagnostics(doc.uri, diagnostics, None)
@@ -164,6 +130,26 @@ impl LanguageServer for Backend {
 
             (*workspace).get_quick_diagnostics(params.text_document.uri.clone())
         };
+
+        self.client
+            .publish_diagnostics(params.text_document.uri, diagnostics, None)
+            .await;
+    }
+
+    async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        let mut diagnostics = {
+            let workspace = self.workspace.read().unwrap();
+
+            (*workspace).get_full_diagnostics(params.text_document.uri.clone())
+        };
+
+        diagnostics.append(
+            &mut self
+                .plugin_manager
+                .write()
+                .unwrap()
+                .run_diagnostic(params.text_document.uri.path().into()),
+        );
 
         self.client
             .publish_diagnostics(params.text_document.uri, diagnostics, None)
@@ -189,6 +175,54 @@ impl LanguageServer for Backend {
         }
     }
 
+    async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
+        let maybe_hover_info = {
+            let workspace = self.workspace.read().unwrap();
+
+            (*workspace).get_hover_info(
+                params.text_document_position_params.text_document.uri,
+                params.text_document_position_params.position,
+            )
+        };
+
+        if let Some(hover_info) = maybe_hover_info {
+            Ok(Some(Hover {
+                contents: hover_info,
+                range: None,
+            }))
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn semantic_tokens_full(
+        &self,
+        params: SemanticTokensParams,
+    ) -> Result<Option<SemanticTokensResult>> {
+        let response = {
+            let workspace = self.workspace.read().unwrap();
+
+            Ok((*workspace).get_semantic_tokens(params.text_document.uri))
+        };
+
+        response
+    }
+
+    async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        let completion_list = {
+            let workspace = self.workspace.read().unwrap();
+
+            (*workspace)
+                .get_completion(
+                    params.text_document_position.text_document.uri,
+                    params.text_document_position.position,
+                )
+                .unwrap_or_default()
+        };
+
+        Ok(Some(CompletionResponse::Array(completion_list)))
+    }
+
     async fn rename(&self, params: RenameParams) -> Result<Option<WorkspaceEdit>> {
         let response = {
             let mut workspace = self.workspace.write().unwrap();
@@ -205,17 +239,9 @@ impl LanguageServer for Backend {
         response
     }
 
-    async fn semantic_tokens_full(
-        &self,
-        params: SemanticTokensParams,
-    ) -> Result<Option<SemanticTokensResult>> {
-        let response = {
-            let workspace = self.workspace.read().unwrap();
-
-            Ok((*workspace).get_semantic_tokens(params.text_document.uri))
-        };
-
-        response
+    async fn did_change_configuration(&self, params: DidChangeConfigurationParams) {
+        let mut workspace = self.workspace.write().unwrap();
+        (*workspace).update_settings(params.settings);
     }
 }
 
@@ -227,6 +253,7 @@ async fn main() {
     let (service, socket) = LspService::new(|client| Backend {
         client,
         workspace: Workspace::new().into(),
+        plugin_manager: PluginManager::new().into(),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
