@@ -7,9 +7,44 @@ on:
 
 jobs:
   build:
-    name: Build and Release
-    runs-on: ubuntu-latest
+    name: ${{ matrix.platform.os_name }} with rust ${{ matrix.toolchain }}
+    runs-on: ${{ matrix.platform.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - os_name: Linux-x86_64
+            os: ubuntu-20.04
+            target: x86_64-unknown-linux-musl
+            bin: p4_lsp
+            name: p4_lsp-Linux-x86_64-musl.tar.gz
 
+          - os_name: Linux-aarch64
+            os: ubuntu-20.04
+            target: aarch64-unknown-linux-musl
+            bin: p4_lsp
+            name: p4_lsp-Linux-aarch64-musl.tar.gz
+
+          - os_name: Windows-x86_64
+            os: windows-latest
+            target: x86_64-pc-windows-msvc
+            bin: p4_lsp.exe
+            name: p4_lsp-Windows-x86_64.zip
+
+          - os_name: macOS-x86_64
+            os: macOS-latest
+            target: x86_64-apple-darwin
+            bin: p4_lsp 
+            name: p4_lsp-Darwin-x86_64.tar.gz
+
+          - os_name: macOS-aarch64
+            os: macOS-latest
+            target: aarch64-apple-darwin
+            bin: p4_lsp 
+            name: p4_lsp-Darwin-aarch64.tar.gz
+
+        toolchain:
+          - stable
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v2
@@ -19,10 +54,20 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Build Project
-        run: cargo build --release
+      - name: Install musl-tools on Linux
+        run: sudo apt-get update --yes && sudo apt-get install --yes musl-tools
+        if: contains(matrix.platform.name, 'musl')
+
+      - name: Build binary
+        uses: houseabsolute/actions-rust-cross@v0
+        with:
+          command: "build"
+          target: ${{ matrix.platform.target }}
+          toolchain: ${{ matrix.toolchain }}
+          args: "--locked --release"
+          strip: true
 
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          files: target/release/p4_lsp
+          files: target/${{ matrix.platform.target }}/${{ matrix.platform.bin }}
