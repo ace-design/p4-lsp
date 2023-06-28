@@ -2,10 +2,8 @@ name: Rust Build and Release
 
 on:
   push:
-    branches:
-      - main
-      - pipeline
-  pull_request:
+    tags:
+      - "v*.*.*"
 
 jobs:
   build:
