@@ -88,6 +88,8 @@ pub enum NodeKind {
     Key,
     Actions,
     Action,
+    Entries,
+    Entrie,
     TableKw,
     PreprocInclude,
     PreprocDefine,

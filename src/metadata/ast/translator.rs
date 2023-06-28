@@ -123,6 +123,11 @@ impl TreesitterTranslator {
             self.arena
                 .new_node(Node::new(NodeKind::ErrorCst, node, &self.source_code));
 
+
+        if let Some(annotation) = node.child_by_field_name("annotation"){
+            node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
+        }
+
         // Add keyword node
         if let Some(type_node) = node.child_by_field_name("KeyWord"){
             node_id.append(self.arena.new_node(Node::new(
@@ -134,12 +139,6 @@ impl TreesitterTranslator {
             );
         }
 
-        if let Some(annotation) = node.child_by_field_name("annotation"){
-            node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
-        }
-        if let Some(paramters) = node.child_by_field_name("parameters_type"){
-            node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
-        }
         if let Some(node_name) = node.child_by_field_name("name"){
             let name_node = self.arena.new_node(Node::new(
                 NodeKind::Name,
@@ -325,17 +324,6 @@ impl TreesitterTranslator {
             self.arena
                 .new_node(Node::new(NodeKind::ConstantDec, node, &self.source_code));
 
-        // Add keyword node
-        if let Some(type_node) = node.child_by_field_name("KeyWord"){
-            node_id.append(self.arena.new_node(Node::new(
-                    NodeKind::KeyWord,
-                    &type_node,
-                    &self.source_code,
-                )),
-                &mut self.arena,
-            );
-        }
-
         // Add annotation node
         if let Some(annotation) = node.child_by_field_name("annotation"){
             node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
@@ -461,7 +449,7 @@ impl TreesitterTranslator {
 
         let mut node_value = self.arena
             .new_node(Node::new(NodeKind::Value, node, &self.source_code));
-        let mut last_node = node_value.clone();
+        let last_node = node_value.clone();
         
         loop_value(&mut node_value, last_node.clone(), node, self);
 
@@ -489,15 +477,12 @@ impl TreesitterTranslator {
             &self.source_code,
         ));
 
-        let name_node = self.arena.new_node(Node::new(
-            NodeKind::Name,
-            &type_kind_node.child_by_field_name("name")?,
-            &self.source_code,
-        ));
-        node_id.append(name_node, &mut self.arena);
-
         match type_type {
             TypeDecType::TypeDef => {
+                // Add annotation node
+                if let Some(annotation) = type_kind_node.child_by_field_name("annotation"){
+                    node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
+                }
                 // Add keyword node
                 if let Some(type_node) = type_kind_node.child_by_field_name("KeyWord"){
                     node_id.append(self.arena.new_node(Node::new(
@@ -507,16 +492,24 @@ impl TreesitterTranslator {
                         )),
                         &mut self.arena,
                     );
-                }
-                // Add annotation node
-                if let Some(annotation) = type_kind_node.child_by_field_name("annotation"){
-                    node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
                 }
                 let type_node: NodeId =
                     self.parse_type_ref(&type_kind_node.child_by_field_name("type")?, NodeKind::Type)?;
                 node_id.append(type_node, &mut self.arena);
+
+                let name_node = self.arena.new_node(Node::new(
+                    NodeKind::Name,
+                    &type_kind_node.child_by_field_name("name")?,
+                    &self.source_code,
+                ));
+                node_id.append(name_node, &mut self.arena);
             },
             TypeDecType::HeaderType => {
+                // Add annotation node
+                if let Some(annotation) = type_kind_node.child_by_field_name("annotation"){
+                    node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
+                }
+                
                 // Add keyword node
                 if let Some(type_node) = type_kind_node.child_by_field_name("KeyWord"){
                     node_id.append(self.arena.new_node(Node::new(
@@ -527,10 +520,15 @@ impl TreesitterTranslator {
                         &mut self.arena,
                     );
                 }
-                // Add annotation node
-                if let Some(annotation) = type_kind_node.child_by_field_name("annotation"){
-                    node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
-                }
+
+
+                let name_node = self.arena.new_node(Node::new(
+                    NodeKind::Name,
+                    &type_kind_node.child_by_field_name("name")?,
+                    &self.source_code,
+                ));
+                node_id.append(name_node, &mut self.arena);
+
                 if let Some(paramters) = type_kind_node.child_by_field_name("parameters_type"){
                     node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
                 }
@@ -543,6 +541,11 @@ impl TreesitterTranslator {
                 }
             },
             TypeDecType::HeaderUnion => {
+                // Add annotation node
+                if let Some(annotation) = type_kind_node.child_by_field_name("annotation"){
+                    node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
+                }
+
                 // Add keyword node
                 if let Some(type_node) = type_kind_node.child_by_field_name("KeyWord"){
                     node_id.append(self.arena.new_node(Node::new(
@@ -553,10 +556,14 @@ impl TreesitterTranslator {
                         &mut self.arena,
                     );
                 }
-                // Add annotation node
-                if let Some(annotation) = type_kind_node.child_by_field_name("annotation"){
-                    node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
-                }
+
+                let name_node = self.arena.new_node(Node::new(
+                    NodeKind::Name,
+                    &type_kind_node.child_by_field_name("name")?,
+                    &self.source_code,
+                ));
+                node_id.append(name_node, &mut self.arena);
+
                 if let Some(paramters) = type_kind_node.child_by_field_name("parameters_type"){
                     node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
                 }
@@ -569,6 +576,10 @@ impl TreesitterTranslator {
                 }
             },
             TypeDecType::Struct => {
+                // Add annotation node
+                if let Some(annotation) = type_kind_node.child_by_field_name("annotation"){
+                    node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
+                }
                 // Add keyword node
                 if let Some(type_node) = type_kind_node.child_by_field_name("KeyWord"){
                     node_id.append(self.arena.new_node(Node::new(
@@ -579,10 +590,14 @@ impl TreesitterTranslator {
                         &mut self.arena,
                     );
                 }
-                // Add annotation node
-                if let Some(annotation) = type_kind_node.child_by_field_name("annotation"){
-                    node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
-                }
+
+                let name_node = self.arena.new_node(Node::new(
+                    NodeKind::Name,
+                    &type_kind_node.child_by_field_name("name")?,
+                    &self.source_code,
+                ));
+                node_id.append(name_node, &mut self.arena);
+
                 if let Some(paramters) = type_kind_node.child_by_field_name("parameters_type"){
                     node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
                 }
@@ -595,6 +610,10 @@ impl TreesitterTranslator {
                 }
             },
             TypeDecType::Enum => {
+                // Add annotation node
+                if let Some(annotation) = type_kind_node.child_by_field_name("annotation"){
+                    node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
+                }
                 // Add keyword node
                 if let Some(type_node) = type_kind_node.child_by_field_name("KeyWord"){
                     node_id.append(self.arena.new_node(Node::new(
@@ -605,14 +624,16 @@ impl TreesitterTranslator {
                         &mut self.arena,
                     );
                 }
-                // Add annotation node
-                if let Some(annotation) = type_kind_node.child_by_field_name("annotation"){
-                    node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
-                }
                 match type_kind_node.child_by_field_name("type"){
                     Some(x) => {node_id.append(self.parse_type_ref(&x, NodeKind::Type).unwrap_or_else(|| self.new_error_node(&x)), &mut self.arena);},
                     None => {}
                 }
+                let name_node = self.arena.new_node(Node::new(
+                    NodeKind::Name,
+                    &type_kind_node.child_by_field_name("name")?,
+                    &self.source_code,
+                ));
+                node_id.append(name_node, &mut self.arena);
                 match type_kind_node.child_by_field_name("option_list"){
                     Some(x) => {
                         node_id.append(self.parse_type_options_dec(&x).unwrap_or_else(|| self.new_error_node(&x)), &mut self.arena); 
@@ -622,6 +643,10 @@ impl TreesitterTranslator {
                 }
             },
             TypeDecType::Parser => {
+                // Add annotation node
+                if let Some(annotation) = type_kind_node.child_by_field_name("annotation"){
+                    node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
+                }
                 // Add keyword node
                 if let Some(type_node) = type_kind_node.child_by_field_name("KeyWord"){
                     node_id.append(self.arena.new_node(Node::new(
@@ -632,10 +657,12 @@ impl TreesitterTranslator {
                         &mut self.arena,
                     );
                 }
-                // Add annotation node
-                if let Some(annotation) = type_kind_node.child_by_field_name("annotation"){
-                    node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
-                }
+                let name_node = self.arena.new_node(Node::new(
+                    NodeKind::Name,
+                    &type_kind_node.child_by_field_name("name")?,
+                    &self.source_code,
+                ));
+                node_id.append(name_node, &mut self.arena);
                 if let Some(paramters) = type_kind_node.child_by_field_name("parameters_type"){
                     node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
                 }
@@ -651,6 +678,22 @@ impl TreesitterTranslator {
                 if let Some(annotation) = node.child_by_field_name("annotation"){
                     node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
                 }
+                // Add keyword node
+                if let Some(type_node) = type_kind_node.child_by_field_name("KeyWord"){
+                    node_id.append(self.arena.new_node(Node::new(
+                            NodeKind::KeyWord,
+                            &type_node,
+                            &self.source_code,
+                        )),
+                        &mut self.arena,
+                    );
+                }
+                let name_node = self.arena.new_node(Node::new(
+                    NodeKind::Name,
+                    &type_kind_node.child_by_field_name("name")?,
+                    &self.source_code,
+                ));
+                node_id.append(name_node, &mut self.arena);
                 if let Some(paramters) = type_kind_node.child_by_field_name("parameters_type"){
                     node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
                 }
@@ -662,6 +705,10 @@ impl TreesitterTranslator {
                 }
             },
             TypeDecType::Package => {
+                // Add annotation node
+                if let Some(annotation) = type_kind_node.child_by_field_name("annotation"){
+                    node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
+                }
                 // Add keyword node
                 if let Some(type_node) = type_kind_node.child_by_field_name("KeyWord"){
                     node_id.append(self.arena.new_node(Node::new(
@@ -671,13 +718,6 @@ impl TreesitterTranslator {
                         )),
                         &mut self.arena,
                     );
-                }
-                // Add annotation node
-                if let Some(annotation) = type_kind_node.child_by_field_name("annotation"){
-                    node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
-                }
-                if let Some(paramters) = type_kind_node.child_by_field_name("parameters_type"){
-                    node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
                 }
                 if let Some(name_node) = type_kind_node.child_by_field_name("name"){
                     let name_node_id: NodeId = self.arena.new_node(Node::new(
@@ -693,7 +733,10 @@ impl TreesitterTranslator {
                             .unwrap_or_else(|| self.new_error_node(&params_syntax_node)),
                             &mut self.arena);
                     }*/
-                }else{
+                }
+                if let Some(paramters) = type_kind_node.child_by_field_name("parameters_type"){
+                    node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
+                } else{
                     if let Some(params_syntax_node) = type_kind_node.child_by_field_name("parameters"){
                         node_id.append(self
                             .parse_params(&params_syntax_node)
@@ -967,11 +1010,27 @@ impl TreesitterTranslator {
             .arena
             .new_node(Node::new(NodeKind::ParserDec, node, &self.source_code));
 
-        let (name_node_id, parameters_node_id) = self
-            .parse_parser_type_dec(&node.child_by_field_name("declaration")?)
-            .unwrap();
+        let declaration_body = &node.child_by_field_name("declaration")?;
+        let KeyWord_node_id = self.arena.new_node(Node::new(
+            NodeKind::KeyWord,
+            &declaration_body.child_by_field_name("KeyWord")?,
+            &self.source_code,
+        ));
+        node_id.append(KeyWord_node_id, &mut self.arena);
+
+        let name_node_id = self.arena.new_node(Node::new(
+            NodeKind::Name,
+            &declaration_body.child_by_field_name("name")?,
+            &self.source_code,
+        ));
         node_id.append(name_node_id, &mut self.arena);
-        node_id.append(parameters_node_id, &mut self.arena);
+
+        if let Some(paramters) = declaration_body.child_by_field_name("parameters_type"){
+            node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
+        }
+        if let Some(annotation) = declaration_body.child_by_field_name("annotation"){
+            node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
+        }
 
         let body_syntax_node = &node.child_by_field_name("body")?;
         let body_node_id = self.arena.new_node(Node::new(
@@ -1003,32 +1062,37 @@ impl TreesitterTranslator {
         Some(node_id)
     }
 
-    fn parse_parser_type_dec(&mut self, node: &tree_sitter::Node) -> Option<(NodeId, NodeId)> {
-        let name_node_id = self.arena.new_node(Node::new(
-            NodeKind::Name,
-            &node.child_by_field_name("name")?,
-            &self.source_code,
-        ));
-
-        let params_syntax_node = node.child_by_field_name("parameters").unwrap();
-        let params_node_id = self
-            .parse_params(&params_syntax_node)
-            .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
-
-        Some((name_node_id, params_node_id))
-    }
-
     fn parse_control(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let node_id = self
             .arena
             .new_node(Node::new(NodeKind::ControlDec, node, &self.source_code));
 
         let declaration_body = node.child_by_field_name("declaration")?;
-        let (name_node_id, parameters_node_id) = self
-            .parse_parser_type_dec(&declaration_body)
-            .unwrap();
+        let KeyWord_node_id = self.arena.new_node(Node::new(
+            NodeKind::KeyWord,
+            &declaration_body.child_by_field_name("KeyWord")?,
+            &self.source_code,
+        ));
+        node_id.append(KeyWord_node_id, &mut self.arena);
+
+        let name_node_id = self.arena.new_node(Node::new(
+            NodeKind::Name,
+            &declaration_body.child_by_field_name("name")?,
+            &self.source_code,
+        ));
         node_id.append(name_node_id, &mut self.arena);
-        node_id.append(parameters_node_id, &mut self.arena);
+
+        if let Some(paramters) = declaration_body.child_by_field_name("parameters_type"){
+            node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
+        }
+        if let Some(annotation) = declaration_body.child_by_field_name("annotation"){
+            node_id.append(self.parse_annotation(&annotation).unwrap_or_else(|| self.new_error_node(&annotation)), &mut self.arena);
+        }
+
+        let params_syntax_node = node.child_by_field_name("parameters").unwrap();
+        let params_node_id = self
+            .parse_params(&params_syntax_node)
+            .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
         // Add keyword node
         if let Some(type_node) = declaration_body.child_by_field_name("KeyWord"){
             node_id.append(self.arena.new_node(Node::new(
@@ -1901,7 +1965,7 @@ impl TreesitterTranslator {
                 "entries_table" => {
                     let entries = table_child.child_by_field_name("entries").unwrap();
                     let entries_node_id = self.arena.new_node(Node::new(
-                        NodeKind::Keys,
+                        NodeKind::Entries,
                         &table_child,
                         &self.source_code,
                     ));
@@ -1909,7 +1973,7 @@ impl TreesitterTranslator {
                     for entries_child in entries.named_children(&mut cursor) {
                         // Add name node
                         let entrie_node_id = self.arena.new_node(Node::new(
-                            NodeKind::Key,
+                            NodeKind::Entrie,
                             &entries_child,
                             &self.source_code,
                         ));
