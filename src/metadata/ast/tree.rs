@@ -103,7 +103,11 @@ pub enum NodeKind {
     KvList,
     Kv,
     KeyWord,
-    ParamType
+    ParamType,
+    NameStatement,
+    StatementDouble,
+    StatementExpr,
+    StatementDot,
 }
 
 const SCOPE_NODES: [NodeKind; 4] = [
@@ -223,9 +227,9 @@ impl Visitable for VisitNode<'_> {
         self.get_children().into_iter().find_map(|child| {
             let node = child.get();
             if matches!(node.kind, NodeKind::ValueSymbol) {
-                Some(VisitNode::new(self.arena, child.id))
+                return Some(VisitNode::new(self.arena, child.id))
             } else {
-                None
+                return None
             }
         })
     }
