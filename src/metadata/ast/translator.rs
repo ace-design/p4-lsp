@@ -1408,18 +1408,138 @@ impl TreesitterTranslator {
 
         Some(node_id)
     }
+    fn parse_name_assignment(&mut self, node_t: &tree_sitter::Node) -> Option<NodeId> {
+        debug!("0");
+        let node_first = node_t.clone();
+        let mut last_node: Option<NodeId> = None;
+        debug!("1");
+        if let Some(mut node) = node_t.child(0){
+            debug!("2");
+            let mut bool = true;
+            while bool {
+                debug!("3");
+                debug!("{:?}", node);
+                match node.kind(){
+                    "prefixed_non_type_name" => {
+                        debug!("a");
+                        let node_id = self.arena.new_node(Node::new(
+                            NodeKind::Name,
+                            &node,
+                            &self.source_code,
+                        ));
+                        if let Some(new_child) = last_node{
+                            node_id.append(new_child, &mut self.arena);
+                        }
+                        last_node = Some(node_id.clone());
+                        bool = false;
+                    }
+                    "lvalue_dot" => {
+                        debug!("b");
+                        let node_id = self.arena.new_node(Node::new(
+                            NodeKind::StatementDot,
+                            &node,
+                            &self.source_code,
+                        ));
+                        let node_id_dot = self.arena.new_node(Node::new(
+                            NodeKind::ValueSymbol,
+                            &node.named_child(1).unwrap(),
+                            &self.source_code,
+                        ));
+
+                        if let Some(new_child) = last_node{
+                            node_id.append(new_child, &mut self.arena);
+                        }
+                        last_node = Some(node_id.clone());
+
+                        node_id.append(node_id_dot, &mut self.arena);
+
+                        if let Some(x) = node.named_child(0).unwrap().named_child(0){
+                            node = x
+                        } else{
+                            bool = false;
+                        }
+                    }
+                    "lvalue_bra" => {
+                        debug!("c");
+                        let node_id = self.arena.new_node(Node::new(
+                            NodeKind::StatementExpr,
+                            &node,
+                            &self.source_code,
+                        ));
+                        let t = node.named_child(1).unwrap();
+                        let node_id_expr = self.parse_value(&t)
+                        .unwrap_or_else(|| self.new_error_node(&t));
+
+                        if let Some(new_child) = last_node{
+                            node_id.append(new_child, &mut self.arena);
+                        }
+                        last_node = Some(node_id.clone());
+
+                        node_id.append(node_id_expr, &mut self.arena);
+
+                        if let Some(x) = node.named_child(0).unwrap().named_child(0){
+                            node = x
+                        } else{
+                            bool = false;
+                        }
+                    }
+                    "lvalue_double_dot" => {
+                        debug!("d");
+                        let node_id = self.arena.new_node(Node::new(
+                            NodeKind::StatementDouble,
+                            &node,
+                            &self.source_code,
+                        ));
+                        let t1 = node.named_child(1).unwrap();
+                        let t2 = node.named_child(2).unwrap();
+                        let node_id_expr1 = self.parse_value(&t1)
+                        .unwrap_or_else(|| self.new_error_node(&t1));
+                        let node_id_expr2 = self.parse_value(&t2)
+                        .unwrap_or_else(|| self.new_error_node(&t2));
+
+                        if let Some(new_child) = last_node{
+                            node_id.append(new_child, &mut self.arena);
+                        }
+                        last_node = Some(node_id.clone());
+
+                        node_id.append(node_id_expr1, &mut self.arena);
+                        node_id.append(node_id_expr2, &mut self.arena);
+
+                        if let Some(x) = node.named_child(0).unwrap().named_child(0){
+                            node = x
+                        } else{
+                            bool = false;
+                        }
+                    }
+                    _ => {
+                        debug!("e");
+                        bool = false;
+                    }
+                }
+            }
+        }
+
+        let name_node = self.arena.new_node(Node::new(
+            NodeKind::NameStatement,
+            &node_first,
+            &self.source_code,
+        ));
+        if let Some(new_child) = last_node{
+            name_node.append(new_child, &mut self.arena);
+        }
+
+        return Some(name_node);
+    }
     fn parse_state_assignment(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let node_id =
             self.arena
                 .new_node(Node::new(NodeKind::Assignment, node, &self.source_code));
 
         // Add name node
-        let name_node = self.arena.new_node(Node::new(
-            NodeKind::Name,
-            &node.child_by_field_name("name").unwrap(),
-            &self.source_code,
-        ));
-        node_id.append(name_node, &mut self.arena);
+        let name_node = &node.child_by_field_name("name").unwrap();
+        node_id.append(
+            self.parse_name_assignment(&name_node)
+                .unwrap_or_else(|| self.new_error_node(&name_node)), &mut self.arena);
 
         // Add value node
         if let Some(value_node) = node.child_by_field_name("expression"){
@@ -2109,7 +2229,6 @@ impl TreesitterTranslator {
         if let Some(statement) = body_node.child_by_field_name("statement"){
             let mut cursor = statement.walk();
             for body_child in statement.named_children(&mut cursor) {
-                debug!("{:?}",body_child);
                 let child_node_id = match body_child.kind() {
                     "assignment_or_method_call_statement" => self.parse_state_assignment(&body_child),
                     "direct_application" => self.parse_state_direct(&body_child),

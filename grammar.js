@@ -686,10 +686,13 @@ module.exports = grammar({
         lvalue: $ => choice(
             $.prefixed_non_type_name,
             'this',
-            seq($.lvalue, '.', $.member),
-            seq($.lvalue, '[', $.expression, ']'),
-            seq($.lvalue, '[', $.expression, ':', $.expression, ']'),
+            $.lvalue_dot,
+            $.lvalue_bra,
+            $.lvalue_double_dot,
         ),
+        lvalue_dot: $ => seq($.lvalue, '.', $.member),
+        lvalue_bra: $ => seq($.lvalue, '[', $.expression, ']'),
+        lvalue_double_dot: $ => seq($.lvalue, '[', $.expression, ':', $.expression, ']'),
 
         bool: $ => choice(
             'true',
