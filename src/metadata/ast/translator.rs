@@ -2126,6 +2126,7 @@ impl TreesitterTranslator {
                 }
             }
         }
+        node_id.append(value_node, &mut self.arena);
 
         if let Some(transition_statement) = body_node.child_by_field_name("transition_statement"){
             let transition_node = self.arena.new_node(Node::new(
@@ -2227,7 +2228,6 @@ impl TreesitterTranslator {
 
             node_id.append(transition_node, &mut self.arena);
         }
-        node_id.append(value_node, &mut self.arena);
 
 
         Some(node_id)
