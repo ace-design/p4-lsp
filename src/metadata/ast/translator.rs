@@ -2106,22 +2106,24 @@ impl TreesitterTranslator {
             &self.source_code,
         ));
 
-        let statement = body_node.child_by_field_name("statement")?;
-        let mut cursor = statement.walk();
-        for body_child in statement.named_children(&mut cursor) {
-            let child_node_id = match body_child.kind() {
-                "assignment_or_method_call_statement" => self.parse_state_assignment(&body_child),
-                "direct_application" => self.parse_state_direct(&body_child),
-                "parser_block_statement" => self.parse_state_block(&body_child),
-                "constant_declaration" => self.parse_const_dec(&body_child),
-                "variable_declaration" => self.parse_var_dec(&body_child),
-                "empty_statement" => None,
-                "conditional_statement" => self.parse_state_conditional(&body_child),
-                _ => None,
-            };
+        if let Some(statement) = body_node.child_by_field_name("statement"){
+            let mut cursor = statement.walk();
+            for body_child in statement.named_children(&mut cursor) {
+                debug!("{:?}",body_child);
+                let child_node_id = match body_child.kind() {
+                    "assignment_or_method_call_statement" => self.parse_state_assignment(&body_child),
+                    "direct_application" => self.parse_state_direct(&body_child),
+                    "parser_block_statement" => self.parse_state_block(&body_child),
+                    "constant_declaration" => self.parse_const_dec(&body_child),
+                    "variable_declaration" => self.parse_var_dec(&body_child),
+                    "empty_statement" => None,
+                    "conditional_statement" => self.parse_state_conditional(&body_child),
+                    _ => None,
+                };
 
-            if let Some(id) = child_node_id {
-                value_node.append(id, &mut self.arena);
+                if let Some(id) = child_node_id {
+                    value_node.append(id, &mut self.arena);
+                }
             }
         }
 

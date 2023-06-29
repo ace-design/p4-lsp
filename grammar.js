@@ -61,23 +61,19 @@ module.exports = grammar({
         ),
 
         preproc_include_declaration: $ => seq(
-            '#',
-            field("KeyWord", 'include'),
+            field("KeyWord", seq('#','include')),
             '<',
             $.file_name,
             '>'
         ),
         preproc_define_declaration: $ => seq(
-            '#',
-            field("KeyWord", 'define'),
+            field("KeyWord", seq('#','define')),
             $.name,
             $.expression
         ),
         
         preproc_undef_declaration: $ => seq(
-            '#',
-            field("KeyWord", 'define'),
-            'undef',
+            field("KeyWord", seq('#','undef')),
             $.name
         ),
         preproc_conditional_declaration: $ => prec.left(seq(
@@ -172,10 +168,12 @@ module.exports = grammar({
         ),
         parser_state_body: $ => seq(
             '{',
-            field("statement", repeat($._parser_statement)),
+            field("statement", optional($.parser_state_body_statement)),
             field("transition_statement", optional($.transition_statement)),
             '}'
         ),
+
+        parser_state_body_statement: $ => repeat1($._parser_statement),
 
         _parser_statement: $ => choice(
             $.assignment_or_method_call_statement,
