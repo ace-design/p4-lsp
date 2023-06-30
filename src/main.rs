@@ -53,7 +53,7 @@ impl LanguageServer for Backend {
             .time_format("%Y-%m-%d %H:%M:%S.%f") //E.g:%H:%M:%S.%f
             .level("debug")
             .output_file()
-            //.output_console() // for vscode
+            // .output_console()
             .build();
 
         if simple_log::new(config).is_err() {
@@ -63,6 +63,8 @@ impl LanguageServer for Backend {
         }
 
         info!("Initializing lsp");
+        let mut completion_temp = CompletionOptions::default();
+        completion_temp.trigger_characters = Some(vec![".".to_string()]);
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 semantic_tokens_provider: Some(
@@ -76,7 +78,7 @@ impl LanguageServer for Backend {
                     ),
                 ),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
-                completion_provider: Some(CompletionOptions::default()),
+                completion_provider: Some(completion_temp),
                 text_document_sync: Some(TextDocumentSyncCapability::Options(
                     TextDocumentSyncOptions {
                         open_close: Some(true),
@@ -121,11 +123,20 @@ impl LanguageServer for Backend {
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
+        debug!("a");
         let file_uri = params.text_document_position.text_document.uri;
         let file = self.files.get(&file_uri).unwrap();
+        debug!("b,{:?}",params.text_document_position.position);
+        let mut trigger_character: Option<String> = None;
+        match params.context {
+            Some(context) => {
+                trigger_character = context.trigger_character;
+            }
+            None => {}
+        }
 
         Ok(Some(CompletionResponse::Array(
-            completion::get_list(params.text_document_position.position, &file).unwrap_or_default(),
+            completion::get_list(params.text_document_position.position, &file, trigger_character).unwrap_or_default(),
         )))
     }
 

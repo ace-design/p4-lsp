@@ -10,6 +10,10 @@ use crate::features::{diagnostics, goto, rename, semantic_tokens};
 use crate::metadata::{Metadata, SymbolTableActions, Symbols};
 use crate::utils;
 
+use crate::metadata::Field;
+
+use indextree::NodeId;
+
 pub struct File {
     pub uri: Url,
     pub source_code: String,
@@ -98,10 +102,17 @@ impl File {
         )
     }
 
-    pub fn get_symbols_at_pos(&self, position: Position) -> Option<Symbols> {
+    pub fn get_symbols_at_pos(&self, position: Position) -> Symbols {
+        return self.metadata
+            .as_ref().unwrap()
+            .symbol_table
+            .get_symbols_in_scope(position);
+    }
+
+    pub fn get_name_field(&self, position: Position) -> Option<Vec<Field>> {
         self.metadata
             .as_ref()?
             .symbol_table
-            .get_symbols_in_scope(position)
+            .get_variable_in_pos(position, &self.source_code)
     }
 }

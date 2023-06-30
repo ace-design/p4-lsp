@@ -108,18 +108,40 @@ pub enum NodeKind {
     StatementDouble,
     StatementExpr,
     StatementDot,
+    Extern,
+    MatchKind,
+    Args,
+    Arg
 }
 
-const SCOPE_NODES: [NodeKind; 4] = [
+const SCOPE_NODES: [NodeKind; 9] = [
     NodeKind::Root,
     NodeKind::ParserDec,
+    NodeKind::TransitionStatement,
     NodeKind::ControlDec,
+    NodeKind::Table,
+    NodeKind::Switch,
+    NodeKind::Obj,
+    NodeKind::Function,
+    NodeKind::Extern,
+];
+const SCOPE_NODES_MID: [NodeKind; 5] = [
     NodeKind::Body,
+    NodeKind::StateParser,
+    NodeKind::ControlTable,
+    NodeKind::Block,
+    NodeKind::Instantiation,
 ];
 
 impl NodeKind {
     pub fn is_scope_node(&self) -> bool {
         SCOPE_NODES.contains(&self)
+    }
+    pub fn is_scope_mid_node(&self) -> bool {
+        SCOPE_NODES_MID.contains(&self)
+    }
+    pub fn is_scope_total_node(&self) -> bool {
+        self.is_scope_node() || self.is_scope_mid_node()
     }
 }
 
