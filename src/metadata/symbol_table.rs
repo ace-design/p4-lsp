@@ -247,7 +247,7 @@ impl SymbolTable {
         v
     }
 
-    fn get_value_symbol(&mut self, child_value : VisitNode, symbol: Symbol){ // TODO
+    fn get_value_symbol(&mut self, child_value : VisitNode, symbol: Symbol){ // todo-issue
         if let Some(child_symbol_new) = child_value.get_value_symbol_node(){
             let value_node = child_symbol_new.get();
             let name = value_node.content.clone();
@@ -636,7 +636,7 @@ impl ScopeSymbolTable {
                             table.symbols.functions.push(x);
                         }
                         let block_node = root_visit_node.get_child_of_kind(NodeKind::Block).unwrap();
-                        // do_loop_parse(block_node, table);
+                        // do_loop_parse(block_node, table); // todo-issue
                     }
                     NodeKind::Instantiation => {
                         if let Some(x) = _create_symbol_for_parse(child_visit_node, NodeKind::Name){
@@ -695,7 +695,7 @@ impl ScopeSymbolTable {
                         }
                     }
                     NodeKind::Block => {
-                        // do_loop_parse(root_visit_node, table);
+                        // do_loop_parse(root_visit_node, table); // todo-issue
                     }
                     /*NodeKind::Entries => {
                         for child_child_visit_node in child_visit_node.get_children() {
@@ -719,8 +719,7 @@ impl ScopeSymbolTable {
                             table.symbols.functions.push(x);
                         }
                         if let Some(block_node) = root_visit_node.get_child_of_kind(NodeKind::Block){
-                            
-                            // do_loop_parse(block_node, table);
+                            // do_loop_parse(block_node, table); // todo-issue
                         }
                     }
                     NodeKind::Function => {
