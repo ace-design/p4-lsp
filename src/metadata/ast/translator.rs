@@ -121,7 +121,7 @@ impl TreesitterTranslator {
     fn parse_extern(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let node_id =
             self.arena
-                .new_node(Node::new(NodeKind::ErrorCst, node, &self.source_code));
+                .new_node(Node::new(NodeKind::Extern, node, &self.source_code));
 
 
         if let Some(annotation) = node.child_by_field_name("annotation"){
@@ -207,7 +207,7 @@ impl TreesitterTranslator {
     fn parse_match_kind(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let node_id =
             self.arena
-                .new_node(Node::new(NodeKind::ErrorCst, node, &self.source_code));
+                .new_node(Node::new(NodeKind::MatchKind, node, &self.source_code));
 
         // Add keyword node
         if let Some(type_node) = node.child_by_field_name("KeyWord"){
@@ -373,7 +373,7 @@ impl TreesitterTranslator {
             let kind = node.kind();
             //debug!("{}", kind);
             let mut name_node : NodeId = last_node;
-            let accept = ["non_type_name","type_name","prefixed_type","apply","key","actions","state","entries","type"];
+            let accept = ["non_type_name","type_name","prefixed_type","apply","key","actions","state","entries","type","identifier"];
             if kind != "expression" && kind != "initializer" {
                 //debug!("{},{}", kind,accept.contains(&kind));
                 match kind {
@@ -404,7 +404,7 @@ impl TreesitterTranslator {
                     _ => {
                         if accept.contains(&kind){
                             name_node = selfV.arena.new_node(Node::new(
-                                NodeKind::ValueSymbol,
+                                NodeKind::Type(Type::Name),
                                 &node,
                                 &selfV.source_code,
                             ));
@@ -1044,7 +1044,6 @@ impl TreesitterTranslator {
             body_syntax_node,
             &self.source_code,
         ));
-        node_id.append(body_node_id, &mut self.arena);
 
         let mut cursor = body_syntax_node.walk();
         for syntax_child in body_syntax_node.named_children(&mut cursor) {
@@ -1064,6 +1063,7 @@ impl TreesitterTranslator {
                 body_node_id.append(id, &mut self.arena);
             }
         }
+        node_id.append(body_node_id, &mut self.arena);
 
         Some(node_id)
     }
@@ -1108,7 +1108,6 @@ impl TreesitterTranslator {
             body_syntax_node,
             &self.source_code,
         ));
-        node_id.append(body_node_id, &mut self.arena);
 
         let mut cursor = body_syntax_node.walk();
         for syntax_child in body_syntax_node.named_children(&mut cursor) {
@@ -1127,23 +1126,9 @@ impl TreesitterTranslator {
                 body_node_id.append(id, &mut self.arena);
             }
         }
+        node_id.append(body_node_id, &mut self.arena);
 
         Some(node_id)
-    }
-
-    fn parse_control_type_dec(&mut self, node: &tree_sitter::Node) -> Option<(NodeId, NodeId)> {
-        let name_node_id = self.arena.new_node(Node::new(
-            NodeKind::Name,
-            &node.child_by_field_name("name")?,
-            &self.source_code,
-        ));
-
-        let params_syntax_node = node.child_by_field_name("parameters").unwrap();
-        let params_node_id = self
-            .parse_params(&params_syntax_node)
-            .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
-
-        Some((name_node_id, params_node_id))
     }
     
     fn parse_params(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -1213,7 +1198,7 @@ impl TreesitterTranslator {
     fn parse_args(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let params_node_id =
             self.arena
-                .new_node(Node::new(NodeKind::Params, &node, &self.source_code));
+                .new_node(Node::new(NodeKind::Args, &node, &self.source_code));
 
         let mut cursor = node.walk();
         for syntax_child in node.named_children(&mut cursor) {
@@ -1222,7 +1207,7 @@ impl TreesitterTranslator {
                 params_node_id.append(self.new_error_node(&syntax_child), &mut self.arena);
             } else if syntax_child.kind() == "argument" {
                 let param_node_id = self.arena.new_node(Node::new(
-                    NodeKind::Param,
+                    NodeKind::Arg,
                     &syntax_child,
                     &self.source_code,
                 ));
@@ -1278,11 +1263,12 @@ impl TreesitterTranslator {
             self.arena
                 .new_node(Node::new(NodeKind::Function, &node, &self.source_code));
         
-        if let Some(x) = self.parse_block(&node.named_child(0)?){
+        
+        if let Some(x) = self.function_prototype(&node.named_child(0)?){
             fn_node_id.append(x, &mut self.arena);
         }
         
-        if let Some(x) = self.function_prototype(&node.named_child(1)?){
+        if let Some(x) = self.parse_block(&node.named_child(1)?){
             fn_node_id.append(x, &mut self.arena);
         }
 
@@ -1423,7 +1409,7 @@ impl TreesitterTranslator {
                     "prefixed_non_type_name" => {
                         debug!("a");
                         let node_id = self.arena.new_node(Node::new(
-                            NodeKind::Name,
+                            NodeKind::Type(Type::Name),
                             &node,
                             &self.source_code,
                         ));
@@ -1566,11 +1552,11 @@ impl TreesitterTranslator {
             for syntax_child in param_list.named_children(&mut cursor) {
                 let child_node_id = match syntax_child.named_child(0)?.kind() {
                     "type_ref" => self.parse_type_ref(&syntax_child, NodeKind::TypeList),
-                    "non_type_name" => {return Some(self.arena.new_node(Node::new(
-                        NodeKind::TypeList(Type::NoName),
+                    "non_type_name" => {Some(self.arena.new_node(Node::new(
+                        NodeKind::TypeList(Type::Name),
                         node,
                         &self.source_code,
-                    )));},
+                    )))},
                     _ => Some(self.new_error_node(&syntax_child)),
                 };
                 if let Some(child_node) = child_node_id {
@@ -2050,7 +2036,7 @@ impl TreesitterTranslator {
 
                         // Add name node
                         let name_node = self.arena.new_node(Node::new(
-                            NodeKind::Name,
+                            NodeKind::Type(Type::Name),
                             &actions_child.child_by_field_name("name").unwrap(),
                             &self.source_code,
                         ));
@@ -2256,7 +2242,7 @@ impl TreesitterTranslator {
             
             // Add keyword node
             if let Some(type_node) = transition_statement.child_by_field_name("KeyWord"){
-                node_id.append(self.arena.new_node(Node::new(
+                transition_node.append(self.arena.new_node(Node::new(
                         NodeKind::KeyWord,
                         &type_node,
                         &self.source_code,
@@ -2267,7 +2253,7 @@ impl TreesitterTranslator {
 
             if let Some(name) = transition_statement.child_by_field_name("name"){
                 transition_node.append(self.arena.new_node(Node::new(
-                    NodeKind::Name,
+                    NodeKind::Type(Type::Name),
                     &name,
                     &self.source_code,
                 )), &mut self.arena);
@@ -2276,7 +2262,7 @@ impl TreesitterTranslator {
 
                 // Add keyword node
                 if let Some(type_node) = t.child_by_field_name("KeyWord"){
-                    node_id.append(self.arena.new_node(Node::new(
+                    transition_node.append(self.arena.new_node(Node::new(
                             NodeKind::KeyWord,
                             &type_node,
                             &self.source_code,
@@ -2311,7 +2297,7 @@ impl TreesitterTranslator {
                             match body_child.child_by_field_name("name"){
                                 Some(x) => {
                                     t.append(self.arena.new_node(Node::new(
-                                            NodeKind::Name,
+                                            NodeKind::Type(Type::Name),
                                             &x,
                                             &self.source_code,
                                         )),
