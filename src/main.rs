@@ -1,3 +1,4 @@
+use std::env;
 use std::sync::RwLock;
 
 use features::semantic_tokens;
@@ -36,21 +37,26 @@ struct Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
-        let result = WriteLogger::init(
-            LevelFilter::Debug,
-            ConfigBuilder::new()
-                .add_filter_ignore(String::from("cranelift"))
-                .add_filter_ignore(String::from("wasmtime"))
-                .add_filter_ignore(String::from("extism"))
-                .build(),
-            File::create("/tmp/p4-lsp.log").unwrap(),
-        );
+        let log_file_path = env::temp_dir().join("p4-lsp.log");
 
-        if result.is_err() {
-            self.client
-                .log_message(MessageType::ERROR, "Log file couldn't be created.")
-                .await;
+        if let Ok(log_file) = File::create(log_file_path) {
+            let result = WriteLogger::init(
+                LevelFilter::Debug,
+                ConfigBuilder::new()
+                    .add_filter_ignore(String::from("cranelift"))
+                    .add_filter_ignore(String::from("wasmtime"))
+                    .add_filter_ignore(String::from("extism"))
+                    .build(),
+                log_file,
+            );
+    
+            if result.is_err() {
+                self.client
+                    .log_message(MessageType::ERROR, "Log file couldn't be created.")
+                    .await;
+            }
         }
+        
 
         info!("Initializing lsp");
 
