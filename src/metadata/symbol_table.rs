@@ -173,7 +173,7 @@ impl SymbolTable {
     pub fn new(ast: &Ast) -> SymbolTable {
         let mut table = SymbolTable::default();
 
-        table.root_id = Some(table.parse_scope(ast.visit_root()));
+        table.root_id = Some(table.parse_scope(ast.visit_root()).unwrap());
         table.parse_usages(ast.visit_root());
 
         table
@@ -202,67 +202,50 @@ impl SymbolTable {
         self.root_id
     }
 
-    fn parse_scope(&mut self, visit_node: VisitNode) -> NodeId {
-        let table = ScopeSymbolTable::parse(visit_node.clone());
+    fn parse_scope(&mut self, visit_node: VisitNode) -> Option<NodeId> {
+        let table_option = ScopeSymbolTable::parse(visit_node.clone());
+        if let Some(table) = table_option{
 
-        let node_id = self.arena.new_node(table);
+            let node_id = self.arena.new_node(table);
 
-        for child_visit in visit_node
-            .get_children()
-        {
-            let child_visit_id = child_visit.get();
-            let kind = &child_visit_id.kind;
-            if kind.is_scope_node(){
-                let subtable = self.parse_scope(child_visit);
-                node_id.append(subtable, &mut self.arena);
-            } else if kind.is_scope_mid_node(){
-                let subtable = self.parse_scope_vect(child_visit);
-                for el in subtable{
-                    node_id.append(el, &mut self.arena);
+            for child_visit in visit_node
+                .get_children()
+            {
+                let child_visit_id = child_visit.get();
+                let kind = &child_visit_id.kind;
+                if kind.is_scope_node(){
+                    let subtable = self.parse_scope(child_visit);
+                    if let Some(x) = subtable{
+                        node_id.append(x, &mut self.arena);
+                    }
                 }
             }
+
+            return Some(node_id)
         }
-
-        node_id
-    }
-
-    fn parse_scope_vect(&mut self, visit_node: VisitNode) -> Vec<NodeId> {
-        let mut v: Vec<NodeId> = vec!();
-
-        for child_visit in visit_node
-            .get_children()
-        {
-            let child_visit_id = child_visit.get();
-            let kind = &child_visit_id.kind;
-            if kind.is_scope_node(){
-                v.push(self.parse_scope(child_visit));
-            } else if kind.is_scope_mid_node(){
-                let subtable = self.parse_scope_vect(child_visit);
-                for el in subtable{
-                    v.push(el);
-                }
-            }
-        }
-
-        v
+        None
     }
 
     fn get_value_symbol(&mut self, child_value : VisitNode, symbol: Symbol){ // todo-issue
         if let Some(child_symbol_new) = child_value.get_value_symbol_node(){
             let value_node = child_symbol_new.get();
-            let name = value_node.content.clone();
+            let name: String = value_node.content.clone();
             if let Some(new_field) = symbol.contains_fields(name){
                 let name = new_field.get_name();
                 let pos = new_field.get_definition_range().start;
+                let mut a : Option<Symbol> = None;
                 if let Some(symbol_parent) = self.get_symbol_at_pos_mut(name, pos){
                     symbol_parent.usages.push(value_node.range);
-                    //self.get_value_symbol(child_symbol_new.clone(), symbol_parent.clone());
+                    a = Some(symbol_parent.clone());
+                }
+                if let Some(x) = a {
+                    self.get_value_symbol(child_symbol_new.clone(), x);
                 }
             }
         }
     }
 
-    fn parse_usages(&mut self, visit_node: VisitNode) { // NameStatement,Args,TransitionStatement,
+    fn parse_usages(&mut self, visit_node: VisitNode) { //
         for child_visit in visit_node.get_descendants() {
             let child_visit_id = child_visit.get();
             //debug!("{:?}", child_visit_id);
@@ -471,7 +454,7 @@ impl ScopeSymbolTable {
         &self.symbols
     }
 
-    fn parse(root_visit_node: VisitNode) -> ScopeSymbolTable {
+    fn parse(root_visit_node: VisitNode) -> Option<ScopeSymbolTable> {
         fn _create_symbol_for_parse(child_visit_node: VisitNode, kind : NodeKind) -> Option<Symbol>{
             if let Some(name_node) = child_visit_node.get_child_of_kind(kind){
                 let name = name_node.get().content.clone();
@@ -489,7 +472,8 @@ impl ScopeSymbolTable {
             }
             return None
         }
-        fn do_loop_parse(root_visit_node: VisitNode, table: &mut ScopeSymbolTable) {
+
+        fn do_loop_parse(root_visit_node: VisitNode, table: &mut ScopeSymbolTable){
             for child_visit_node in root_visit_node.get_children() {
                 let child_node = child_visit_node.get();
                 //debug!("{:?}",child_node);
@@ -636,7 +620,6 @@ impl ScopeSymbolTable {
                             table.symbols.functions.push(x);
                         }
                         let block_node = root_visit_node.get_child_of_kind(NodeKind::Block).unwrap();
-                        // do_loop_parse(block_node, table); // todo-issue
                     }
                     NodeKind::Instantiation => {
                         if let Some(x) = _create_symbol_for_parse(child_visit_node, NodeKind::Name){
@@ -694,16 +677,6 @@ impl ScopeSymbolTable {
                             table.symbols.functions.push(x);
                         }
                     }
-                    NodeKind::Block => {
-                        // do_loop_parse(root_visit_node, table); // todo-issue
-                    }
-                    /*NodeKind::Entries => {
-                        for child_child_visit_node in child_visit_node.get_children() {
-                            if let Some(x) = _create_symbol_for_parse(child_child_visit_node, NodeKind::Name){
-                                table.symbols.functions.push(x);
-                            }
-                        }
-                    }*/
                     NodeKind::TableKw => {
                         if let Some(x) = _create_symbol_for_parse(child_visit_node, NodeKind::Name){
                             table.symbols.functions.push(x);
@@ -717,9 +690,6 @@ impl ScopeSymbolTable {
                     NodeKind::SwitchLabel => {
                         if let Some(x) = _create_symbol_for_parse(child_visit_node, NodeKind::Name){
                             table.symbols.functions.push(x);
-                        }
-                        if let Some(block_node) = root_visit_node.get_child_of_kind(NodeKind::Block){
-                            // do_loop_parse(block_node, table); // todo-issue
                         }
                     }
                     NodeKind::Function => {
@@ -738,11 +708,9 @@ impl ScopeSymbolTable {
                             }
                         }}
                     _ => {
-                        debug!("a");
                     }
                 }
             }
-            //return table.clone()
         }
 
         let root_visit_node_id = root_visit_node.get();
@@ -756,54 +724,58 @@ impl ScopeSymbolTable {
 
         match &root_visit_node_id.kind {
             NodeKind::Root => {
-                
+                do_loop_parse(root_visit_node, &mut table);
+            }
+            NodeKind::Block => {
                 do_loop_parse(root_visit_node, &mut table);
             }
 
             NodeKind::ParserDec => {
-                
                 do_loop_parse(root_visit_node, &mut table);
-                let body_node = root_visit_node.get_child_of_kind(NodeKind::Body).unwrap();
-                
-                do_loop_parse(body_node, &mut table);
-            }
-            NodeKind::TransitionStatement => {
-                if let Some(body_node) = root_visit_node.get_child_of_kind(NodeKind::Body){
-                    
-                    do_loop_parse(body_node, &mut table);
-                }
             }
             NodeKind::ControlDec => {
-                
                 do_loop_parse(root_visit_node, &mut table);
-                let body_node = root_visit_node.get_child_of_kind(NodeKind::Body).unwrap();
-                
-                do_loop_parse(body_node, &mut table);
             }
             NodeKind::Table => {               
                 do_loop_parse(root_visit_node, &mut table);
             }
             NodeKind::Switch => {
-                
                 do_loop_parse(root_visit_node, &mut table);
             }
             NodeKind::Obj => {
-                
                 do_loop_parse(root_visit_node, &mut table);
             }
             NodeKind::Function => {
-                
                 do_loop_parse(root_visit_node, &mut table);
             }
             NodeKind::Methods => {
-                
                 do_loop_parse(root_visit_node, &mut table);
             }
-            _ => {}
+            NodeKind::ControlAction => {
+                do_loop_parse(root_visit_node, &mut table);
+            }
+            NodeKind::Body => {
+                do_loop_parse(root_visit_node, &mut table);
+            }
+            NodeKind::StateParser => {
+                do_loop_parse(root_visit_node, &mut table);
+            }
+            NodeKind::ControlTable => {
+                do_loop_parse(root_visit_node, &mut table);
+            }
+            NodeKind::Instantiation => {
+                do_loop_parse(root_visit_node, &mut table);
+            }
+            NodeKind::SwitchLabel => {
+                do_loop_parse(root_visit_node, &mut table);
+            }
+            _ => {
+                return None;
+            }
 
         }
 
-        table
+        Some(table)
     }
 }
 

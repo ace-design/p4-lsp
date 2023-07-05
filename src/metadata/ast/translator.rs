@@ -1395,19 +1395,13 @@ impl TreesitterTranslator {
         Some(node_id)
     }
     fn parse_name_assignment(&mut self, node_t: &tree_sitter::Node) -> Option<NodeId> {
-        debug!("0");
         let node_first = node_t.clone();
         let mut last_node: Option<NodeId> = None;
-        debug!("1");
         if let Some(mut node) = node_t.child(0){
-            debug!("2");
             let mut bool = true;
             while bool {
-                debug!("3");
-                debug!("{:?}", node);
                 match node.kind(){
                     "prefixed_non_type_name" => {
-                        debug!("a");
                         let node_id = self.arena.new_node(Node::new(
                             NodeKind::Type(Type::Name),
                             &node,
@@ -1420,7 +1414,6 @@ impl TreesitterTranslator {
                         bool = false;
                     }
                     "lvalue_dot" => {
-                        debug!("b");
                         let node_id = self.arena.new_node(Node::new(
                             NodeKind::StatementDot,
                             &node,
@@ -1446,7 +1439,6 @@ impl TreesitterTranslator {
                         }
                     }
                     "lvalue_bra" => {
-                        debug!("c");
                         let node_id = self.arena.new_node(Node::new(
                             NodeKind::StatementExpr,
                             &node,
@@ -1470,7 +1462,6 @@ impl TreesitterTranslator {
                         }
                     }
                     "lvalue_double_dot" => {
-                        debug!("d");
                         let node_id = self.arena.new_node(Node::new(
                             NodeKind::StatementDouble,
                             &node,
@@ -1498,7 +1489,6 @@ impl TreesitterTranslator {
                         }
                     }
                     _ => {
-                        debug!("e");
                         bool = false;
                     }
                 }
