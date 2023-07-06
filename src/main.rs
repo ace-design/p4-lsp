@@ -49,19 +49,20 @@ impl LanguageServer for Backend {
                     .build(),
                 log_file,
             );
-    
+
             if result.is_err() {
                 self.client
                     .log_message(MessageType::ERROR, "Log file couldn't be created.")
                     .await;
             }
         }
-        
 
         info!("Initializing lsp");
 
         self.plugin_manager.write().unwrap().load_plugins();
 
+        let mut completion_temp = CompletionOptions::default();
+        completion_temp.trigger_characters = Some(vec![".".to_string()]);
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 semantic_tokens_provider: Some(
@@ -75,7 +76,7 @@ impl LanguageServer for Backend {
                     ),
                 ),
                 hover_provider: Some(HoverProviderCapability::Simple(true)),
-                completion_provider: Some(CompletionOptions::default()),
+                completion_provider: Some(completion_temp),
                 text_document_sync: Some(TextDocumentSyncCapability::Options(
                     TextDocumentSyncOptions {
                         open_close: Some(true),
@@ -239,8 +240,6 @@ impl LanguageServer for Backend {
                 params.new_name,
             ))
         };
-
-        debug!("rename: {:?}", response);
 
         response
     }

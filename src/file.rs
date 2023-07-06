@@ -90,7 +90,7 @@ impl File {
     }
 
     pub fn get_completion_list(&self, position: Position) -> Option<Vec<CompletionItem>> {
-        completion::get_list(position, &self.symbol_table_manager)
+        completion::get_list(position, &self.source_code, &self.symbol_table_manager)
     }
 
     pub fn get_hover_info(&self, position: Position) -> Option<HoverContents> {

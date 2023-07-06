@@ -46,23 +46,92 @@ pub enum NodeKind {
     ConstantDec,
     VariableDec,
     ParserDec,
+    StateParser,
     ControlDec,
     Type(Type),
+    TypeList(Type),
     Direction(Direction),
     TypeDec(TypeDecType),
     Expression,
     Name,
     Param,
     Params,
+    Field,
+    Fields,
+    Option,
+    Options,
     Error,
     Value,
+    ValueSymbol,
+    ControlAction,
+    Block,
+    Assignment,
+    Conditional,
+    BodyIf,
+    BodyElse,
+    Return,
+    ValueSet,
+    ParamsList,
+    TransitionStatement,
+    Row,
+    Instantiation,
+    Obj,
+    Function,
+    FunctionName,
+    Switch,
+    SwitchLabel,
+    ParserBlock,
+    DirectApplication,
+    ControlTable,
+    Table,
+    Keys,
+    Key,
+    Actions,
+    Action,
+    Entries,
+    Entrie,
+    TableKw,
+    PreprocInclude,
+    PreprocDefine,
+    PreprocUndef,
+    ErrorCst,
+    Methods,
+    Method,
+    Annotations,
+    Annotation,
+    Token,
+    KvList,
+    Kv,
+    KeyWord,
+    ParamType,
+    NameStatement,
+    StatementDouble,
+    StatementExpr,
+    StatementDot,
+    Extern,
+    MatchKind,
+    Args,
+    Arg,
 }
 
-const SCOPE_NODES: [NodeKind; 4] = [
+const SCOPE_NODES: [NodeKind; 17] = [
     NodeKind::Root,
     NodeKind::ParserDec,
+    NodeKind::TransitionStatement,
     NodeKind::ControlDec,
+    NodeKind::Table,
+    NodeKind::Switch,
+    NodeKind::Obj,
+    NodeKind::Function,
+    NodeKind::Block,
+    NodeKind::Extern,
     NodeKind::Body,
+    NodeKind::StateParser,
+    NodeKind::ControlTable,
+    NodeKind::Block,
+    NodeKind::Instantiation,
+    NodeKind::ControlAction,
+    NodeKind::SwitchLabel,
 ];
 
 impl NodeKind {
@@ -95,6 +164,8 @@ pub trait Visitable {
     fn get_child_of_kind(&self, kind: NodeKind) -> Option<VisitNode>;
     fn get_subscopes(&self) -> Vec<VisitNode>;
     fn get_type_node(&self) -> Option<VisitNode>;
+    fn get_value_node(&self) -> Option<VisitNode>;
+    fn get_value_symbol_node(&self) -> Option<VisitNode>;
     fn get_type(&self) -> Option<Type>;
     fn get_node_at_position(&self, position: Position) -> Option<VisitNode>;
 }
@@ -153,6 +224,28 @@ impl Visitable for VisitNode<'_> {
                 Some(VisitNode::new(self.arena, child.id))
             } else {
                 None
+            }
+        })
+    }
+
+    fn get_value_node(&self) -> Option<VisitNode> {
+        self.get_children().into_iter().find_map(|child| {
+            let node = child.get();
+            if matches!(node.kind, NodeKind::Value) {
+                Some(VisitNode::new(self.arena, child.id))
+            } else {
+                None
+            }
+        })
+    }
+
+    fn get_value_symbol_node(&self) -> Option<VisitNode> {
+        self.get_children().into_iter().find_map(|child| {
+            let node = child.get();
+            if matches!(node.kind, NodeKind::ValueSymbol) {
+                return Some(VisitNode::new(self.arena, child.id));
+            } else {
+                return None;
             }
         })
     }
