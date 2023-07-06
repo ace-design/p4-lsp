@@ -97,14 +97,6 @@ control MyIngress(inout headers hdr,
     bit<16> test4 = test3.test.t.aa + test + 0x10;
 
     action drop() {
-        test4 = test3.test.t.aa + test + 0x10 + (0x10 + 0x10) + 0x10 + [0:10];
-        test<bit,bit>(test2,test3);
-        hdr.asfsdf.fgdfhf.
-        ethernet_t t = hdr.ethernet;
-        test(test4);
-        test2<test>(test3);
-        a = hdr
-        if (t){}
         mark_to_drop(standard_metadata);
     }
 
