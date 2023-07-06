@@ -216,7 +216,6 @@ impl LanguageServer for Backend {
     }
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
-        debug!("COMPLETION");
         let completion_list = {
             let workspace = self.workspace.read().unwrap();
 
@@ -241,8 +240,6 @@ impl LanguageServer for Backend {
                 params.new_name,
             ))
         };
-
-        debug!("rename: {:?}", response);
 
         response
     }

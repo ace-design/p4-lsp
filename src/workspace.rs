@@ -67,10 +67,7 @@ impl Workspace {
     pub fn get_completion(&self, url: Url, position: Position) -> Option<Vec<CompletionItem>> {
         let file = self.files.get(&url)?;
 
-        let list = file.get_completion_list(position);
-        info!("Completion List: {:?}", list);
-
-        list
+        file.get_completion_list(position)
     }
 
     pub fn get_hover_info(&self, url: Url, position: Position) -> Option<HoverContents> {

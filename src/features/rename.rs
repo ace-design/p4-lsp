@@ -36,8 +36,6 @@ pub fn rename(
         new_name: new_name.clone(),
     });
 
-    debug!("{:?}", symbol);
-
     Some(WorkspaceEdit::new(build_changes(uri, &symbol, new_name)))
 }
 
