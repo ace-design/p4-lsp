@@ -3,8 +3,8 @@ use std::path::PathBuf;
 
 #[derive(Debug, Default)]
 pub struct Settings {
-    include_path: Option<PathBuf>,
-    p4test_path: Option<PathBuf>,
+    pub include_path: Option<PathBuf>,
+    pub p4test_path: Option<PathBuf>,
 }
 
 impl Settings {

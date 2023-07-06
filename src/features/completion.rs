@@ -1,4 +1,6 @@
-use crate::file::File;
+use std::sync::{Arc, Mutex};
+
+use crate::metadata::{SymbolTableQuery, Symbols};
 use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind, Position};
 
 pub struct CompletionBuilder {
@@ -36,11 +38,14 @@ impl CompletionBuilder {
 
 pub fn get_list(
     position: Position,
-    file: &File,
-    _trigger_character: Option<String>,
+    source_code: &str,
+    query: &Arc<Mutex<impl SymbolTableQuery>>,
 ) -> Option<Vec<CompletionItem>> {
-    fn default(position: Position, file: &File) -> Option<Vec<CompletionItem>> {
-        let symbols = file.get_symbols_at_pos(position);
+    fn default(
+        position: Position,
+        query: &Arc<Mutex<impl SymbolTableQuery>>,
+    ) -> Option<Vec<CompletionItem>> {
+        let symbols: Symbols = query.lock().unwrap().get_symbols_at_pos(position);
 
         Some(
             CompletionBuilder::new()
@@ -80,7 +85,9 @@ pub fn get_list(
         )
     }
 
-    match file.get_name_field(position) {
+    let name_field = query.lock().unwrap().get_name_field(position, source_code);
+
+    match name_field {
         Some(fields) => {
             return Some(
                 CompletionBuilder::new()
@@ -92,7 +99,7 @@ pub fn get_list(
             )
         }
         None => {
-            return default(position, file);
+            return default(position, query);
         }
     }
 }

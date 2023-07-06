@@ -1,6 +1,4 @@
 mod diagnostics;
-mod external;
-mod internal;
+mod parse;
 
-use diagnostics::DiagnosticProvider;
 pub use diagnostics::{get_full_diagnostics, get_quick_diagnostics};

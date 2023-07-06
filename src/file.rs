@@ -1,36 +1,46 @@
-use std::sync::MutexGuard;
+use std::sync::{Arc, Mutex};
 
 use tower_lsp::lsp_types::{
-    Diagnostic, DidChangeTextDocumentParams, Location, Position, SemanticTokensResult, Url,
-    WorkspaceEdit,
+    CompletionItem, Diagnostic, HoverContents, Location, Position, SemanticTokensResult,
+    TextDocumentContentChangeEvent, Url, WorkspaceEdit,
 };
 use tree_sitter::{InputEdit, Parser, Tree};
 
-use crate::features::{diagnostics, goto, rename, semantic_tokens};
-use crate::metadata::{Metadata, SymbolTableActions, Symbols};
+use crate::features::{completion, diagnostics, goto, hover, rename, semantic_tokens};
+use crate::metadata::{AstEditor, AstManager, SymbolTableEditor, SymbolTableManager};
 use crate::utils;
-
-use crate::metadata::Field;
 
 pub struct File {
     pub uri: Url,
     pub source_code: String,
     pub tree: Option<Tree>,
-    pub metadata: Option<Metadata>,
+    pub symbol_table_manager: Arc<Mutex<SymbolTableManager>>,
+    pub ast_manager: Arc<Mutex<AstManager>>,
 }
 
 impl File {
     pub fn new(uri: Url, source_code: &str, tree: &Option<Tree>) -> File {
+        let ast_manager = Arc::new(Mutex::new(AstManager::new(
+            source_code,
+            tree.to_owned().unwrap(),
+        )));
+
+        let symbol_table_manager = {
+            let ast_manager = ast_manager.lock().unwrap();
+            Arc::new(Mutex::new(SymbolTableManager::new(ast_manager.get_ast())))
+        };
+
         File {
             uri,
             source_code: source_code.to_string(),
             tree: tree.clone(),
-            metadata: Metadata::new(source_code, tree.as_ref().unwrap().clone()),
+            symbol_table_manager,
+            ast_manager,
         }
     }
 
-    pub fn update(&mut self, params: DidChangeTextDocumentParams, mut parser: MutexGuard<Parser>) {
-        for change in params.content_changes {
+    pub fn update(&mut self, changes: Vec<TextDocumentContentChangeEvent>, parser: &mut Parser) {
+        for change in changes {
             let mut old_tree: Option<&Tree> = None;
             let text: String;
 
@@ -64,55 +74,65 @@ impl File {
             self.tree = parser.parse(text, old_tree);
         }
 
-        self.metadata = Metadata::new(&self.source_code, self.tree.to_owned().unwrap());
+        let mut ast_manager = self.ast_manager.lock().unwrap();
+        let mut st_manager = self.symbol_table_manager.lock().unwrap();
+
+        ast_manager.update(&self.source_code, self.tree.to_owned().unwrap());
+        st_manager.update(ast_manager.get_ast());
     }
 
     pub fn get_quick_diagnostics(&self) -> Vec<Diagnostic> {
-        diagnostics::get_quick_diagnostics(self)
+        diagnostics::get_quick_diagnostics(&self.ast_manager, &self.symbol_table_manager)
     }
 
     pub fn get_full_diagnostics(&self) -> Vec<Diagnostic> {
-        diagnostics::get_full_diagnostics(self)
+        diagnostics::get_full_diagnostics(&self.ast_manager, &self.symbol_table_manager)
+    }
+
+    pub fn get_completion_list(&self, position: Position) -> Option<Vec<CompletionItem>> {
+        completion::get_list(position, &self.source_code, &self.symbol_table_manager)
+    }
+
+    pub fn get_hover_info(&self, position: Position) -> Option<HoverContents> {
+        let tree: &Tree = self.tree.as_ref()?;
+
+        let point = utils::pos_to_point(position);
+
+        let mut node: tree_sitter::Node = tree
+            .root_node()
+            .named_descendant_for_point_range(point, point)?;
+
+        let mut node_hierarchy = node.kind().to_string();
+        while node.kind() != "source_file" {
+            node = node.parent()?;
+            node_hierarchy = [node.kind().into(), node_hierarchy].join(" > ");
+        }
+
+        let hover_content = hover::HoverContentBuilder::new()
+            .add_text(&node_hierarchy)
+            .build();
+
+        Some(hover_content)
     }
 
     pub fn get_semantic_tokens(&self) -> Option<SemanticTokensResult> {
-        Some(semantic_tokens::get_tokens(&self.metadata.as_ref()?.ast))
+        Some(semantic_tokens::get_tokens())
     }
 
     pub fn get_definition_location(&self, position: Position) -> Option<Location> {
-        let range = goto::get_definition_range(
-            &self.metadata.as_ref()?.ast,
-            &self.metadata.as_ref()?.symbol_table,
-            position,
-        )?;
+        let range =
+            goto::get_definition_range(&self.ast_manager, &self.symbol_table_manager, position)?;
         Some(Location::new(self.uri.clone(), range))
     }
 
-    pub fn rename_symbol(&mut self, position: Position, new_name: String) -> Option<WorkspaceEdit> {
-        let metadata = &mut self.metadata.as_mut()?;
-
+    pub fn rename_symbol(&self, position: Position, new_name: String) -> Option<WorkspaceEdit> {
         rename::rename(
-            &metadata.ast,
-            &mut metadata.symbol_table,
+            &self.ast_manager,
+            &self.symbol_table_manager,
+            &self.symbol_table_manager,
             self.uri.clone(),
             new_name,
             position,
         )
-    }
-
-    pub fn get_symbols_at_pos(&self, position: Position) -> Symbols {
-        return self
-            .metadata
-            .as_ref()
-            .unwrap()
-            .symbol_table
-            .get_symbols_in_scope(position);
-    }
-
-    pub fn get_name_field(&self, position: Position) -> Option<Vec<Field>> {
-        self.metadata
-            .as_ref()?
-            .symbol_table
-            .get_variable_in_pos(position, &self.source_code)
     }
 }

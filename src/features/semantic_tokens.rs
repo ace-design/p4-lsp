@@ -2,8 +2,6 @@ use tower_lsp::lsp_types::{
     SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensLegend, SemanticTokensResult,
 };
 
-use crate::metadata::Ast;
-
 pub fn get_legend() -> SemanticTokensLegend {
     SemanticTokensLegend {
         token_types: vec![SemanticTokenType::VARIABLE, SemanticTokenType::FUNCTION],
@@ -11,7 +9,7 @@ pub fn get_legend() -> SemanticTokensLegend {
     }
 }
 
-pub fn get_tokens(_ast: &Ast) -> SemanticTokensResult {
+pub fn get_tokens() -> SemanticTokensResult {
     let tokens: Vec<SemanticToken> = vec![
         SemanticToken {
             delta_line: 0,
