@@ -12,8 +12,6 @@ use crate::utils;
 
 use crate::metadata::Field;
 
-use indextree::NodeId;
-
 pub struct File {
     pub uri: Url,
     pub source_code: String,
@@ -103,8 +101,10 @@ impl File {
     }
 
     pub fn get_symbols_at_pos(&self, position: Position) -> Symbols {
-        return self.metadata
-            .as_ref().unwrap()
+        return self
+            .metadata
+            .as_ref()
+            .unwrap()
             .symbol_table
             .get_symbols_in_scope(position);
     }

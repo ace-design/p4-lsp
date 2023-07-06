@@ -126,7 +126,7 @@ impl LanguageServer for Backend {
         debug!("a");
         let file_uri = params.text_document_position.text_document.uri;
         let file = self.files.get(&file_uri).unwrap();
-        debug!("b,{:?}",params.text_document_position.position);
+        debug!("b,{:?}", params.text_document_position.position);
         let mut trigger_character: Option<String> = None;
         match params.context {
             Some(context) => {
@@ -136,7 +136,12 @@ impl LanguageServer for Backend {
         }
 
         Ok(Some(CompletionResponse::Array(
-            completion::get_list(params.text_document_position.position, &file, trigger_character).unwrap_or_default(),
+            completion::get_list(
+                params.text_document_position.position,
+                &file,
+                trigger_character,
+            )
+            .unwrap_or_default(),
         )))
     }
 

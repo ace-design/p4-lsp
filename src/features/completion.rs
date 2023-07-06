@@ -1,5 +1,4 @@
 use crate::file::File;
-use crate::metadata::{Symbols, Field};
 use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind, Position};
 
 pub struct CompletionBuilder {
@@ -35,7 +34,11 @@ impl CompletionBuilder {
     }
 }
 
-pub fn get_list(position: Position, file: &File, trigger_character: Option<String>) -> Option<Vec<CompletionItem>> {
+pub fn get_list(
+    position: Position,
+    file: &File,
+    _trigger_character: Option<String>,
+) -> Option<Vec<CompletionItem>> {
     fn default(position: Position, file: &File) -> Option<Vec<CompletionItem>> {
         let symbols = file.get_symbols_at_pos(position);
 
@@ -77,16 +80,15 @@ pub fn get_list(position: Position, file: &File, trigger_character: Option<Strin
         )
     }
 
-    match file.get_name_field(position){
+    match file.get_name_field(position) {
         Some(fields) => {
             return Some(
                 CompletionBuilder::new()
-                    .add(&fields
-                    .iter()
-                    .map(|s| s.get_name())
-                    .collect::<Vec<_>>()
-                    ,CompletionItemKind::FIELD,
-                ).build(),
+                    .add(
+                        &fields.iter().map(|s| s.get_name()).collect::<Vec<_>>(),
+                        CompletionItemKind::FIELD,
+                    )
+                    .build(),
             )
         }
         None => {
@@ -94,4 +96,3 @@ pub fn get_list(position: Position, file: &File, trigger_character: Option<Strin
         }
     }
 }
-

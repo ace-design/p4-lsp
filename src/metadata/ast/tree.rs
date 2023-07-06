@@ -5,7 +5,7 @@ use std::fmt;
 use indextree::{Arena, NodeId};
 use tower_lsp::lsp_types::{Position, Range};
 
-use crate::metadata::types::{Type,TypeList};
+use crate::metadata::types::Type;
 use crate::utils;
 
 use super::translator::TreesitterTranslator;
@@ -111,7 +111,7 @@ pub enum NodeKind {
     Extern,
     MatchKind,
     Args,
-    Arg
+    Arg,
 }
 
 const SCOPE_NODES: [NodeKind; 17] = [
@@ -239,14 +239,13 @@ impl Visitable for VisitNode<'_> {
         })
     }
 
-
     fn get_value_symbol_node(&self) -> Option<VisitNode> {
         self.get_children().into_iter().find_map(|child| {
             let node = child.get();
             if matches!(node.kind, NodeKind::ValueSymbol) {
-                return Some(VisitNode::new(self.arena, child.id))
+                return Some(VisitNode::new(self.arena, child.id));
             } else {
-                return None
+                return None;
             }
         })
     }

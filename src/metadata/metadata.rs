@@ -13,6 +13,6 @@ impl Metadata {
         let symbol_table = SymbolTable::new(&ast);
         debug!("\nSymbol Table:\n{}", symbol_table);
 
-        Some(Metadata { ast : ast, symbol_table : symbol_table })
+        Some(Metadata { ast, symbol_table })
     }
 }

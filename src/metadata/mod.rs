@@ -5,4 +5,4 @@ mod types;
 
 pub use ast::{Ast, Node, Visitable};
 pub use metadata::Metadata;
-pub use symbol_table::{Symbol, SymbolTable, SymbolTableActions, Symbols, Field};
+pub use symbol_table::{Field, Symbol, SymbolTable, SymbolTableActions, Symbols};

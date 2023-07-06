@@ -15,29 +15,6 @@ impl HoverContentBuilder {
         self
     }
 
-    pub fn add_list(
-        mut self,
-        list_items: Vec<String>,
-        title: Option<String>,
-    ) -> HoverContentBuilder {
-        let mut text: String = if let Some(title) = title {
-            format!("{title}:\n")
-        } else {
-            String::new()
-        };
-
-        for item in list_items {
-            text.push_str("- ");
-            text.push_str(item.as_str());
-            text.push('\n');
-        }
-        text.push('\n');
-
-        self.items.push(MarkedString::String(text));
-
-        self
-    }
-
     pub fn build(self) -> HoverContents {
         HoverContents::Array(self.items)
     }
