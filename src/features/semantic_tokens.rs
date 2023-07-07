@@ -32,13 +32,3 @@ pub fn get_tokens() -> SemanticTokensResult {
         data: tokens,
     })
 }
-
-// fn new_token(node_type: u32, node: Node) -> SemanticToken {
-//     SemanticToken {
-//         delta_line: 0,
-//         delta_start: 0,
-//         length: 0,
-//         token_type: 0,
-//         token_modifiers_bitset: 0,
-//     }
-// }

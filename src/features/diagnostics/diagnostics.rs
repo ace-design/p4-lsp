@@ -1,10 +1,9 @@
+use std::sync::{Arc, Mutex};
+
 use tower_lsp::lsp_types::Diagnostic;
 
-use super::external::P4Test;
-use super::internal::Parse;
-use crate::file::File;
+use super::parse::Parse;
 use crate::metadata::{AstQuery, SymbolTableQuery};
-use crate::settings::Settings;
 
 macro_rules! diags {
     ($($diag:expr),*) => {
@@ -22,26 +21,21 @@ macro_rules! diags {
 
 pub trait DiagnosticProvider {
     fn get_diagnostics(
-        ast_query: &impl AstQuery,
-        symbol_table_query: &impl SymbolTableQuery,
+        ast_query: &Arc<Mutex<impl AstQuery>>,
+        symbol_table_query: &Arc<Mutex<impl SymbolTableQuery>>,
     ) -> Vec<Diagnostic>;
 }
 
 pub fn get_quick_diagnostics(
-    ast_query: &impl AstQuery,
-    symbol_table_query: &impl SymbolTableQuery,
+    ast_query: &Arc<Mutex<impl AstQuery>>,
+    symbol_table_query: &Arc<Mutex<impl SymbolTableQuery>>,
 ) -> Vec<Diagnostic> {
     diags![Parse::get_diagnostics(ast_query, symbol_table_query)]
 }
 
 pub fn get_full_diagnostics(
-    file: &File,
-    ast_query: &impl AstQuery,
-    symbol_table_query: &impl SymbolTableQuery,
-    settings: &Settings,
+    ast_query: &Arc<Mutex<impl AstQuery>>,
+    symbol_table_query: &Arc<Mutex<impl SymbolTableQuery>>,
 ) -> Vec<Diagnostic> {
-    diags![
-        P4Test::get_diagnostics(file, settings),
-        Parse::get_diagnostics(ast_query, symbol_table_query)
-    ]
+    diags![Parse::get_diagnostics(ast_query, symbol_table_query)]
 }
