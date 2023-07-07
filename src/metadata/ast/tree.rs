@@ -329,15 +329,13 @@ impl Ast {
             indent.to_string() + "|  "
         };
 
-        let mut i = 0;
-        for child in node_id.children(&self.arena) {
+        for (i, child) in node_id.children(&self.arena).enumerate() {
             self._get_debug_tree(
                 child,
                 &indent,
                 i == node_id.children(&self.arena).collect::<Vec<_>>().len() - 1,
                 result,
             );
-            i += 1;
         }
     }
 }

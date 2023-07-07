@@ -29,23 +29,21 @@ impl PluginManager {
                 }
             };
 
-            for path in paths {
-                if let Ok(dir_entry) = path {
-                    info!("Loading plugin: {}", dir_entry.path().display());
-                    let file_content = fs::read(dir_entry.path()).unwrap();
-                    let functions = (*FUNCTIONS).clone();
+            for dir_entry in paths.flatten() {
+                info!("Loading plugin: {}", dir_entry.path().display());
+                let file_content = fs::read(dir_entry.path()).unwrap();
+                let functions = (*FUNCTIONS).clone();
 
-                    match Plugin::create(file_content, functions, true) {
-                        Ok(plugin) => {
-                            self.plugins.push(plugin);
-                        }
-                        Err(err) => {
-                            error!(
-                                "Failed loading plugin: {} Error: {}",
-                                dir_entry.path().display(),
-                                err
-                            );
-                        }
+                match Plugin::create(file_content, functions, true) {
+                    Ok(plugin) => {
+                        self.plugins.push(plugin);
+                    }
+                    Err(err) => {
+                        error!(
+                            "Failed loading plugin: {} Error: {}",
+                            dir_entry.path().display(),
+                            err
+                        );
                     }
                 }
             }

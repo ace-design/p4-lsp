@@ -52,11 +52,11 @@ pub fn get_tokens(ast_query: &Arc<Mutex<impl AstQuery>>) -> SemanticTokensResult
             let mut max_val = 0;
             temp_array.sort_by_key(|&token| token.delta_start); //sorting the start pos
                                                                 //setting the first deltaline to conatin the diff value (line) and setting all other to 0
-            for i in 0..temp_array.len() {
-                if temp_array[i].delta_line > max_val {
-                    max_val = temp_array[i].delta_line;
+            for item in &mut temp_array {
+                if item.delta_line > max_val {
+                    max_val = item.delta_line;
                 }
-                temp_array[i].delta_line = 0;
+                item.delta_line = 0;
             }
             temp_array[0].delta_line = max_val;
 

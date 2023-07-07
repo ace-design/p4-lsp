@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 use crate::metadata::{AstQuery, NodeKind, SymbolTableQuery, VisitNode, Visitable};
 use tower_lsp::lsp_types::{Diagnostic, DiagnosticSeverity};
 
-use super::diagnostics::DiagnosticProvider;
+use super::provider::DiagnosticProvider;
 
 pub struct Parse {}
 

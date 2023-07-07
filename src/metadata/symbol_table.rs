@@ -104,9 +104,9 @@ impl SymbolTableActions for SymbolTable {
                         }
                     }
                 }
-                for index_name in 1..(names.len() - 1) {
-                    let test = names[index_name];
-                    let fields = symbol.contains_fields(test.to_string());
+
+                for name in names.iter().take(names.len() - 1).skip(1) {
+                    let fields = symbol.contains_fields(name.to_string());
                     if let Some(field) = fields {
                         if let Some(x) = field.type_.get_name() {
                             if x == Type::Name {
@@ -394,50 +394,34 @@ impl Symbols {
     }
 
     pub fn find_mut(&mut self, name: &str) -> Option<&mut Symbol> {
-        for symbol in &mut self.types {
-            if symbol.name == name {
-                return Some(symbol);
-            }
+        if let Some(s) = self.types.iter_mut().find(|symbol| symbol.name == name) {
+            return Some(s);
         }
-        for symbol in &mut self.constants {
-            if symbol.name == name {
-                return Some(symbol);
-            }
+        if let Some(s) = self.constants.iter_mut().find(|symbol| symbol.name == name) {
+            return Some(s);
         }
-        for symbol in &mut self.variables {
-            if symbol.name == name {
-                return Some(symbol);
-            }
+        if let Some(s) = self.variables.iter_mut().find(|symbol| symbol.name == name) {
+            return Some(s);
         }
-        for symbol in &mut self.functions {
-            if symbol.name == name {
-                return Some(symbol);
-            }
+        if let Some(s) = self.functions.iter_mut().find(|symbol| symbol.name == name) {
+            return Some(s);
         }
 
         None
     }
 
     pub fn get_mut(&mut self, id: usize) -> Option<&mut Symbol> {
-        for symbol in &mut self.types {
-            if symbol.id == id {
-                return Some(symbol);
-            }
+        if let Some(s) = self.types.iter_mut().find(|symbol| symbol.id == id) {
+            return Some(s);
         }
-        for symbol in &mut self.constants {
-            if symbol.id == id {
-                return Some(symbol);
-            }
+        if let Some(s) = self.constants.iter_mut().find(|symbol| symbol.id == id) {
+            return Some(s);
         }
-        for symbol in &mut self.variables {
-            if symbol.id == id {
-                return Some(symbol);
-            }
+        if let Some(s) = self.variables.iter_mut().find(|symbol| symbol.id == id) {
+            return Some(s);
         }
-        for symbol in &mut self.functions {
-            if symbol.id == id {
-                return Some(symbol);
-            }
+        if let Some(s) = self.functions.iter_mut().find(|symbol| symbol.id == id) {
+            return Some(s);
         }
 
         None
@@ -558,16 +542,14 @@ impl ScopeSymbolTable {
                             type2: NodeKind,
                         ) -> Vec<Field> {
                             let mut fields: Vec<Field> = vec![];
+                            let fields_node: VisitNode =
+                                match child_visit_node.get_child_of_kind(type1) {
+                                    Some(x) => x,
+                                    None => {
+                                        return fields;
+                                    }
+                                };
 
-                            let fields_node: VisitNode;
-                            match child_visit_node.get_child_of_kind(type1) {
-                                Some(x) => {
-                                    fields_node = x;
-                                }
-                                None => {
-                                    return fields;
-                                }
-                            }
                             for field_visit in fields_node.get_children() {
                                 let param_node = field_visit.get();
                                 if param_node.kind == type2 {
@@ -636,12 +618,11 @@ impl ScopeSymbolTable {
                             TypeDecType::Package => {}
                         }
 
-                        let fields_symbol: Option<Vec<Field>>;
-                        if fields.is_empty() {
-                            fields_symbol = None;
+                        let fields_symbol: Option<Vec<Field>> = if fields.is_empty() {
+                            None
                         } else {
-                            fields_symbol = Some(fields);
-                        }
+                            Some(fields)
+                        };
 
                         table.symbols.types.push(Symbol::new(
                             name,

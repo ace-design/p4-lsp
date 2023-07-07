@@ -555,15 +555,12 @@ impl TreesitterTranslator {
                 if let Some(paramters) = type_kind_node.child_by_field_name("parameters_type") {
                     node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
                 }
-                match type_kind_node.child_by_field_name("field_list") {
-                    Some(x) => {
-                        node_id.append(
-                            self.parse_type_fields_dec(&x)
-                                .unwrap_or_else(|| self.new_error_node(&x)),
-                            &mut self.arena,
-                        );
-                    }
-                    None => {}
+                if let Some(x) = type_kind_node.child_by_field_name("field_list") {
+                    node_id.append(
+                        self.parse_type_fields_dec(&x)
+                            .unwrap_or_else(|| self.new_error_node(&x)),
+                        &mut self.arena,
+                    );
                 }
             }
             TypeDecType::HeaderUnion => {
@@ -598,15 +595,12 @@ impl TreesitterTranslator {
                 if let Some(paramters) = type_kind_node.child_by_field_name("parameters_type") {
                     node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
                 }
-                match type_kind_node.child_by_field_name("field_list") {
-                    Some(x) => {
-                        node_id.append(
-                            self.parse_type_fields_dec(&x)
-                                .unwrap_or_else(|| self.new_error_node(&x)),
-                            &mut self.arena,
-                        );
-                    }
-                    None => {}
+                if let Some(x) = type_kind_node.child_by_field_name("field_list") {
+                    node_id.append(
+                        self.parse_type_fields_dec(&x)
+                            .unwrap_or_else(|| self.new_error_node(&x)),
+                        &mut self.arena,
+                    );
                 }
             }
             TypeDecType::Struct => {
@@ -640,15 +634,12 @@ impl TreesitterTranslator {
                 if let Some(paramters) = type_kind_node.child_by_field_name("parameters_type") {
                     node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
                 }
-                match type_kind_node.child_by_field_name("field_list") {
-                    Some(x) => {
-                        node_id.append(
-                            self.parse_type_fields_dec(&x)
-                                .unwrap_or_else(|| self.new_error_node(&x)),
-                            &mut self.arena,
-                        );
-                    }
-                    None => {}
+                if let Some(x) = type_kind_node.child_by_field_name("field_list") {
+                    node_id.append(
+                        self.parse_type_fields_dec(&x)
+                            .unwrap_or_else(|| self.new_error_node(&x)),
+                        &mut self.arena,
+                    );
                 }
             }
             TypeDecType::Enum => {
@@ -671,15 +662,12 @@ impl TreesitterTranslator {
                         &mut self.arena,
                     );
                 }
-                match type_kind_node.child_by_field_name("type") {
-                    Some(x) => {
-                        node_id.append(
-                            self.parse_type_ref(&x, NodeKind::Type)
-                                .unwrap_or_else(|| self.new_error_node(&x)),
-                            &mut self.arena,
-                        );
-                    }
-                    None => {}
+                if let Some(x) = type_kind_node.child_by_field_name("type") {
+                    node_id.append(
+                        self.parse_type_ref(&x, NodeKind::Type)
+                            .unwrap_or_else(|| self.new_error_node(&x)),
+                        &mut self.arena,
+                    );
                 }
                 let name_node = self.arena.new_node(Node::new(
                     NodeKind::Name,
@@ -687,15 +675,12 @@ impl TreesitterTranslator {
                     &self.source_code,
                 ));
                 node_id.append(name_node, &mut self.arena);
-                match type_kind_node.child_by_field_name("option_list") {
-                    Some(x) => {
-                        node_id.append(
-                            self.parse_type_options_dec(&x)
-                                .unwrap_or_else(|| self.new_error_node(&x)),
-                            &mut self.arena,
-                        );
-                    }
-                    None => {}
+                if let Some(x) = type_kind_node.child_by_field_name("option_list") {
+                    node_id.append(
+                        self.parse_type_options_dec(&x)
+                            .unwrap_or_else(|| self.new_error_node(&x)),
+                        &mut self.arena,
+                    );
                 }
             }
             TypeDecType::Parser => {
@@ -847,27 +832,21 @@ impl TreesitterTranslator {
                 }
 
                 // Add name node
-                match field_child.child_by_field_name("name") {
-                    Some(x) => {
-                        field_node_id.append(
-                            self.arena
-                                .new_node(Node::new(NodeKind::Name, &x, &self.source_code)),
-                            &mut self.arena,
-                        );
-                    }
-                    None => {}
+                if let Some(x) = field_child.child_by_field_name("name") {
+                    field_node_id.append(
+                        self.arena
+                            .new_node(Node::new(NodeKind::Name, &x, &self.source_code)),
+                        &mut self.arena,
+                    );
                 }
 
                 // Add type node
-                match field_child.child_by_field_name("type") {
-                    Some(x) => {
-                        field_node_id.append(
-                            self.parse_type_ref(&x, NodeKind::Type)
-                                .unwrap_or_else(|| self.new_error_node(&x)),
-                            &mut self.arena,
-                        );
-                    }
-                    None => {}
+                if let Some(x) = field_child.child_by_field_name("type") {
+                    field_node_id.append(
+                        self.parse_type_ref(&x, NodeKind::Type)
+                            .unwrap_or_else(|| self.new_error_node(&x)),
+                        &mut self.arena,
+                    );
                 }
 
                 fields_node_id.append(field_node_id, &mut self.arena);
@@ -2155,38 +2134,35 @@ impl TreesitterTranslator {
                         }
 
                         // _keyset_expression
-                        match entries_child.named_child(0) {
-                            Some(x) => {
-                                if x.kind() == "tuple_keyset_expression" {
-                                    if let Some(y) = x.child_by_field_name("reduce") {
-                                        entrie_node_id.append(
-                                            self.parse_reduced_simple_keyset_expression(&y)
-                                                .unwrap_or_else(|| self.new_error_node(&y)),
-                                            &mut self.arena,
-                                        );
-                                    } else {
-                                        let t = x.named_child(0)?;
-                                        let tt = x.named_child(1)?;
-                                        entrie_node_id.append(
-                                            self.parse_simple_keyset_expression(&t)
-                                                .unwrap_or_else(|| self.new_error_node(&t)),
-                                            &mut self.arena,
-                                        );
-                                        entrie_node_id.append(
-                                            self.parse_simple_expression_list(&tt)
-                                                .unwrap_or_else(|| self.new_error_node(&tt)),
-                                            &mut self.arena,
-                                        );
-                                    }
-                                } else if x.kind() == "simple_keyset_expression" {
+                        if let Some(x) = entries_child.named_child(0) {
+                            if x.kind() == "tuple_keyset_expression" {
+                                if let Some(y) = x.child_by_field_name("reduce") {
                                     entrie_node_id.append(
-                                        self.parse_simple_keyset_expression(&x)
-                                            .unwrap_or_else(|| self.new_error_node(&x)),
+                                        self.parse_reduced_simple_keyset_expression(&y)
+                                            .unwrap_or_else(|| self.new_error_node(&y)),
+                                        &mut self.arena,
+                                    );
+                                } else {
+                                    let t = x.named_child(0)?;
+                                    let tt = x.named_child(1)?;
+                                    entrie_node_id.append(
+                                        self.parse_simple_keyset_expression(&t)
+                                            .unwrap_or_else(|| self.new_error_node(&t)),
+                                        &mut self.arena,
+                                    );
+                                    entrie_node_id.append(
+                                        self.parse_simple_expression_list(&tt)
+                                            .unwrap_or_else(|| self.new_error_node(&tt)),
                                         &mut self.arena,
                                     );
                                 }
+                            } else if x.kind() == "simple_keyset_expression" {
+                                entrie_node_id.append(
+                                    self.parse_simple_keyset_expression(&x)
+                                        .unwrap_or_else(|| self.new_error_node(&x)),
+                                    &mut self.arena,
+                                );
                             }
-                            None => {}
                         }
 
                         entries_node_id.append(entrie_node_id, &mut self.arena);
@@ -2389,52 +2365,46 @@ impl TreesitterTranslator {
                             ));
 
                             // Add name node
-                            match body_child.child_by_field_name("name") {
-                                Some(x) => {
-                                    t.append(
-                                        self.arena.new_node(Node::new(
-                                            NodeKind::Type(Type::Name),
-                                            &x,
-                                            &self.source_code,
-                                        )),
-                                        &mut self.arena,
-                                    );
-                                }
-                                None => {}
+                            if let Some(x) = body_child.child_by_field_name("name") {
+                                t.append(
+                                    self.arena.new_node(Node::new(
+                                        NodeKind::Type(Type::Name),
+                                        &x,
+                                        &self.source_code,
+                                    )),
+                                    &mut self.arena,
+                                );
                             }
 
-                            match body_child.child_by_field_name("type") {
-                                Some(x) => {
-                                    if x.kind() == "tuple_keyset_expression" {
-                                        if let Some(y) = x.child_by_field_name("reduce") {
-                                            transition_node.append(
-                                                self.parse_reduced_simple_keyset_expression(&y)
-                                                    .unwrap_or_else(|| self.new_error_node(&y)),
-                                                &mut self.arena,
-                                            );
-                                        } else {
-                                            let t = x.named_child(0)?;
-                                            let tt = x.named_child(1)?;
-                                            transition_node.append(
-                                                self.parse_simple_keyset_expression(&t)
-                                                    .unwrap_or_else(|| self.new_error_node(&t)),
-                                                &mut self.arena,
-                                            );
-                                            transition_node.append(
-                                                self.parse_simple_expression_list(&tt)
-                                                    .unwrap_or_else(|| self.new_error_node(&tt)),
-                                                &mut self.arena,
-                                            );
-                                        }
-                                    } else if x.kind() == "simple_keyset_expression" {
+                            if let Some(x) = body_child.child_by_field_name("type") {
+                                if x.kind() == "tuple_keyset_expression" {
+                                    if let Some(y) = x.child_by_field_name("reduce") {
                                         transition_node.append(
-                                            self.parse_simple_keyset_expression(&x)
-                                                .unwrap_or_else(|| self.new_error_node(&x)),
+                                            self.parse_reduced_simple_keyset_expression(&y)
+                                                .unwrap_or_else(|| self.new_error_node(&y)),
+                                            &mut self.arena,
+                                        );
+                                    } else {
+                                        let t = x.named_child(0)?;
+                                        let tt = x.named_child(1)?;
+                                        transition_node.append(
+                                            self.parse_simple_keyset_expression(&t)
+                                                .unwrap_or_else(|| self.new_error_node(&t)),
+                                            &mut self.arena,
+                                        );
+                                        transition_node.append(
+                                            self.parse_simple_expression_list(&tt)
+                                                .unwrap_or_else(|| self.new_error_node(&tt)),
                                             &mut self.arena,
                                         );
                                     }
+                                } else if x.kind() == "simple_keyset_expression" {
+                                    transition_node.append(
+                                        self.parse_simple_keyset_expression(&x)
+                                            .unwrap_or_else(|| self.new_error_node(&x)),
+                                        &mut self.arena,
+                                    );
                                 }
-                                None => {}
                             }
                             expression_body_node.append(t, &mut self.arena);
                         }
