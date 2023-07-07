@@ -123,7 +123,7 @@ pub fn get_visit_nodes(visit_node: VisitNode) -> Vec<ColorData> {
                 };
             }
             Type::Name => {
-                node_type = 0;
+                node_type = 3;
             }
             Type::Specialized => {
                 node_type = 6;
