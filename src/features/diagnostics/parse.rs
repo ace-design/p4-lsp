@@ -17,7 +17,7 @@ impl DiagnosticProvider for Parse {
         let mut errors: Vec<VisitNode> = vec![];
         for node in root.get_descendants() {
             if let NodeKind::Error = node.get().kind {
-                errors.push(node.clone())
+                errors.push(node)
             };
         }
 

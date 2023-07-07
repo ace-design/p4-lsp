@@ -80,13 +80,13 @@ impl TreesitterTranslator {
     fn parse_method_prototype(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let node_id = self
             .arena
-            .new_node(Node::new(NodeKind::Methods, &node, &self.source_code));
+            .new_node(Node::new(NodeKind::Methods, node, &self.source_code));
 
         let mut cursor = node.walk();
         for child in node.named_children(&mut cursor) {
             let child_node_id =
                 self.arena
-                    .new_node(Node::new(NodeKind::Method, &node, &self.source_code));
+                    .new_node(Node::new(NodeKind::Method, node, &self.source_code));
             if let Some(annotation) = child.child_by_field_name("annotation") {
                 node_id.append(
                     self.parse_annotation(&annotation)
@@ -119,7 +119,7 @@ impl TreesitterTranslator {
             node_id.append(child_node_id, &mut self.arena);
         }
 
-        return Some(node_id);
+        Some(node_id)
     }
 
     fn parse_extern(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -175,7 +175,7 @@ impl TreesitterTranslator {
     fn parse_parameters_type(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let node_param_type_id =
             self.arena
-                .new_node(Node::new(NodeKind::ParamType, &node, &self.source_code));
+                .new_node(Node::new(NodeKind::ParamType, node, &self.source_code));
 
         let node_param_type = node.named_child(0)?;
 
@@ -395,7 +395,7 @@ impl TreesitterTranslator {
                     "bool" => {
                         name_node = self_v.arena.new_node(Node::new(
                             NodeKind::Type(Type::Base(BaseType::Bool)),
-                            &node,
+                            node,
                             &self_v.source_code,
                         ));
                         node_value.append(name_node, &mut self_v.arena);
@@ -403,7 +403,7 @@ impl TreesitterTranslator {
                     "integer" => {
                         name_node = self_v.arena.new_node(Node::new(
                             NodeKind::Type(Type::Base(BaseType::Int)),
-                            &node,
+                            node,
                             &self_v.source_code,
                         ));
                         node_value.append(name_node, &mut self_v.arena);
@@ -411,7 +411,7 @@ impl TreesitterTranslator {
                     "string" => {
                         name_node = self_v.arena.new_node(Node::new(
                             NodeKind::Type(Type::Base(BaseType::String)),
-                            &node,
+                            node,
                             &self_v.source_code,
                         ));
                         node_value.append(name_node, &mut self_v.arena);
@@ -420,7 +420,7 @@ impl TreesitterTranslator {
                         if accept.contains(&kind) {
                             name_node = self_v.arena.new_node(Node::new(
                                 NodeKind::Type(Type::Name),
-                                &node,
+                                node,
                                 &self_v.source_code,
                             ));
                             node_value.append(name_node, &mut self_v.arena);
@@ -428,7 +428,7 @@ impl TreesitterTranslator {
                             //debug!("seconde node : {},{:?},{}", kind, node, utils::get_node_text(&node, &selfV.source_code));
                             name_node = self_v.arena.new_node(Node::new(
                                 NodeKind::ValueSymbol,
-                                &node,
+                                node,
                                 &self_v.source_code,
                             ));
                             last_node.append(name_node, &mut self_v.arena);
@@ -446,8 +446,7 @@ impl TreesitterTranslator {
                         while loop_child != 0 {
                             match field_child.child(loop_child - 1) {
                                 Some(x) => {
-                                    name_node =
-                                        loop_value(node_value, name_node.clone(), &x, self_v);
+                                    name_node = loop_value(node_value, name_node, &x, self_v);
                                     loop_child += 1;
                                 }
                                 None => {
@@ -458,15 +457,15 @@ impl TreesitterTranslator {
                     }
                 }
             }
-            return name_node;
+            name_node
         }
 
         let mut node_value =
             self.arena
                 .new_node(Node::new(NodeKind::Value, node, &self.source_code));
-        let last_node = node_value.clone();
+        let last_node = node_value;
 
-        loop_value(&mut node_value, last_node.clone(), node, self);
+        loop_value(&mut node_value, last_node, node, self);
 
         Some(node_value)
     }
@@ -488,7 +487,7 @@ impl TreesitterTranslator {
 
         let node_id = self.arena.new_node(Node::new(
             NodeKind::TypeDec(type_type.clone()),
-            &node,
+            node,
             &self.source_code,
         ));
 
@@ -808,16 +807,14 @@ impl TreesitterTranslator {
                 }
                 if let Some(paramters) = type_kind_node.child_by_field_name("parameters_type") {
                     node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
-                } else {
-                    if let Some(params_syntax_node) =
-                        type_kind_node.child_by_field_name("parameters")
-                    {
-                        node_id.append(
-                            self.parse_params(&params_syntax_node)
-                                .unwrap_or_else(|| self.new_error_node(&params_syntax_node)),
-                            &mut self.arena,
-                        );
-                    }
+                } else if let Some(params_syntax_node) =
+                    type_kind_node.child_by_field_name("parameters")
+                {
+                    node_id.append(
+                        self.parse_params(&params_syntax_node)
+                            .unwrap_or_else(|| self.new_error_node(&params_syntax_node)),
+                        &mut self.arena,
+                    );
                 }
             }
         }
@@ -828,7 +825,7 @@ impl TreesitterTranslator {
     fn parse_type_fields_dec(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let fields_node_id =
             self.arena
-                .new_node(Node::new(NodeKind::Fields, &node, &self.source_code));
+                .new_node(Node::new(NodeKind::Fields, node, &self.source_code));
 
         let mut cursor = node.walk();
         for field_child in node.named_children(&mut cursor) {
@@ -876,13 +873,13 @@ impl TreesitterTranslator {
                 fields_node_id.append(field_node_id, &mut self.arena);
             }
         }
-        return Some(fields_node_id);
+        Some(fields_node_id)
     }
 
     fn parse_type_options_dec(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let options_node_id =
             self.arena
-                .new_node(Node::new(NodeKind::Options, &node, &self.source_code));
+                .new_node(Node::new(NodeKind::Options, node, &self.source_code));
 
         let mut cursor = node.walk();
         for option_child in node.named_children(&mut cursor) {
@@ -914,7 +911,7 @@ impl TreesitterTranslator {
 
             options_node_id.append(new_node_id, &mut self.arena);
         }
-        return Some(options_node_id);
+        Some(options_node_id)
     }
 
     fn parse_type_ref(
@@ -1189,7 +1186,7 @@ impl TreesitterTranslator {
     fn parse_params(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let params_node_id =
             self.arena
-                .new_node(Node::new(NodeKind::Params, &node, &self.source_code));
+                .new_node(Node::new(NodeKind::Params, node, &self.source_code));
 
         let mut cursor = node.walk();
         for syntax_child in node.named_children(&mut cursor) {
@@ -1255,7 +1252,7 @@ impl TreesitterTranslator {
     fn parse_args(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let params_node_id =
             self.arena
-                .new_node(Node::new(NodeKind::Args, &node, &self.source_code));
+                .new_node(Node::new(NodeKind::Args, node, &self.source_code));
 
         let mut cursor = node.walk();
         for syntax_child in node.named_children(&mut cursor) {
@@ -1295,7 +1292,7 @@ impl TreesitterTranslator {
     fn parse_obj_initializer(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let obj_node_id = self
             .arena
-            .new_node(Node::new(NodeKind::Obj, &node, &self.source_code));
+            .new_node(Node::new(NodeKind::Obj, node, &self.source_code));
 
         let mut cursor = node.walk();
         for syntax_child in node.named_children(&mut cursor) {
@@ -1314,7 +1311,7 @@ impl TreesitterTranslator {
     fn function_declaration(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let fn_node_id =
             self.arena
-                .new_node(Node::new(NodeKind::Function, &node, &self.source_code));
+                .new_node(Node::new(NodeKind::Function, node, &self.source_code));
 
         if let Some(x) = self.function_prototype(&node.named_child(0)?) {
             fn_node_id.append(x, &mut self.arena);
@@ -1329,7 +1326,7 @@ impl TreesitterTranslator {
     fn function_prototype(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let fn_node_id =
             self.arena
-                .new_node(Node::new(NodeKind::FunctionName, &node, &self.source_code));
+                .new_node(Node::new(NodeKind::FunctionName, node, &self.source_code));
 
         if let Some(paramters) = node.child_by_field_name("parameters_type") {
             fn_node_id.append(self.parse_parameters_type(&paramters)?, &mut self.arena);
@@ -1364,7 +1361,7 @@ impl TreesitterTranslator {
     fn parse_block(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let block_node_id =
             self.arena
-                .new_node(Node::new(NodeKind::Block, &node, &self.source_code));
+                .new_node(Node::new(NodeKind::Block, node, &self.source_code));
 
         // Add annotation node
         if let Some(annotation) = node.child_by_field_name("annotation") {
@@ -1456,7 +1453,7 @@ impl TreesitterTranslator {
         Some(node_id)
     }
     fn parse_name_assignment(&mut self, node_t: &tree_sitter::Node) -> Option<NodeId> {
-        let node_first = node_t.clone();
+        let node_first = *node_t;
         let mut last_node: Option<NodeId> = None;
         if let Some(mut node) = node_t.child(0) {
             let mut bool = true;
@@ -1471,7 +1468,7 @@ impl TreesitterTranslator {
                         if let Some(new_child) = last_node {
                             node_id.append(new_child, &mut self.arena);
                         }
-                        last_node = Some(node_id.clone());
+                        last_node = Some(node_id);
                         bool = false;
                     }
                     "lvalue_dot" => {
@@ -1489,7 +1486,7 @@ impl TreesitterTranslator {
                         if let Some(new_child) = last_node {
                             node_id.append(new_child, &mut self.arena);
                         }
-                        last_node = Some(node_id.clone());
+                        last_node = Some(node_id);
 
                         node_id.append(node_id_dot, &mut self.arena);
 
@@ -1513,7 +1510,7 @@ impl TreesitterTranslator {
                         if let Some(new_child) = last_node {
                             node_id.append(new_child, &mut self.arena);
                         }
-                        last_node = Some(node_id.clone());
+                        last_node = Some(node_id);
 
                         node_id.append(node_id_expr, &mut self.arena);
 
@@ -1541,7 +1538,7 @@ impl TreesitterTranslator {
                         if let Some(new_child) = last_node {
                             node_id.append(new_child, &mut self.arena);
                         }
-                        last_node = Some(node_id.clone());
+                        last_node = Some(node_id);
 
                         node_id.append(node_id_expr1, &mut self.arena);
                         node_id.append(node_id_expr2, &mut self.arena);
@@ -1568,7 +1565,7 @@ impl TreesitterTranslator {
             name_node.append(new_child, &mut self.arena);
         }
 
-        return Some(name_node);
+        Some(name_node)
     }
     fn parse_state_assignment(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let node_id = self
@@ -1578,8 +1575,8 @@ impl TreesitterTranslator {
         // Add name node
         let name_node = &node.child_by_field_name("name").unwrap();
         node_id.append(
-            self.parse_name_assignment(&name_node)
-                .unwrap_or_else(|| self.new_error_node(&name_node)),
+            self.parse_name_assignment(name_node)
+                .unwrap_or_else(|| self.new_error_node(name_node)),
             &mut self.arena,
         );
 
@@ -1601,7 +1598,7 @@ impl TreesitterTranslator {
         if let Some(param_list) = node.child_by_field_name("type") {
             let params_node_id =
                 self.arena
-                    .new_node(Node::new(NodeKind::ParamsList, &node, &self.source_code));
+                    .new_node(Node::new(NodeKind::ParamsList, node, &self.source_code));
 
             let mut cursor = param_list.walk();
             for syntax_child in param_list.named_children(&mut cursor) {
@@ -1798,7 +1795,7 @@ impl TreesitterTranslator {
             );
             return Some(node_id);
         }
-        return None;
+        None
     }
     fn switch_statement(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let node_id = self
@@ -2455,13 +2452,13 @@ impl TreesitterTranslator {
     fn parse_annotation(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let node_id =
             self.arena
-                .new_node(Node::new(NodeKind::Annotations, &node, &self.source_code));
+                .new_node(Node::new(NodeKind::Annotations, node, &self.source_code));
 
         let mut cursor = node.walk();
         for child in node.named_children(&mut cursor) {
             let child_node_id =
                 self.arena
-                    .new_node(Node::new(NodeKind::Annotation, &node, &self.source_code));
+                    .new_node(Node::new(NodeKind::Annotation, node, &self.source_code));
 
             child_node_id.append(
                 self.arena.new_node(Node::new(
@@ -2498,19 +2495,19 @@ impl TreesitterTranslator {
             node_id.append(child_node_id, &mut self.arena);
         }
 
-        return Some(node_id);
+        Some(node_id)
     }
 
     fn parse_kv_list(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let node_id = self
             .arena
-            .new_node(Node::new(NodeKind::KvList, &node, &self.source_code));
+            .new_node(Node::new(NodeKind::KvList, node, &self.source_code));
 
         let mut cursor = node.walk();
         for child in node.named_children(&mut cursor) {
             let child_node_id =
                 self.arena
-                    .new_node(Node::new(NodeKind::Kv, &node, &self.source_code));
+                    .new_node(Node::new(NodeKind::Kv, node, &self.source_code));
 
             // Add name node
             let node_name = child.named_child(0).unwrap();
@@ -2530,13 +2527,13 @@ impl TreesitterTranslator {
             node_id.append(child_node_id, &mut self.arena);
         }
 
-        return Some(node_id);
+        Some(node_id)
     }
 
     fn parse_annotation_body(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let node_id = self
             .arena
-            .new_node(Node::new(NodeKind::Body, &node, &self.source_code));
+            .new_node(Node::new(NodeKind::Body, node, &self.source_code));
 
         if let Some(body) = node.child_by_field_name("body") {
             node_id.append(
@@ -2562,12 +2559,12 @@ impl TreesitterTranslator {
             );
         }
 
-        return Some(node_id);
+        Some(node_id)
     }
     fn parse_expression_list(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
-        let node_id =
-            self.arena
-                .new_node(Node::new(NodeKind::Expression, &node, &self.source_code));
+        let node_id = self
+            .arena
+            .new_node(Node::new(NodeKind::Expression, node, &self.source_code));
 
         let mut cursor = node.walk();
         for child in node.named_children(&mut cursor) {
@@ -2578,13 +2575,13 @@ impl TreesitterTranslator {
             );
         }
 
-        return Some(node_id);
+        Some(node_id)
     }
 
     fn parse_simple_keyset_expression(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
-        let node_id =
-            self.arena
-                .new_node(Node::new(NodeKind::Expression, &node, &self.source_code));
+        let node_id = self
+            .arena
+            .new_node(Node::new(NodeKind::Expression, node, &self.source_code));
 
         if let Some(value) = node.child_by_field_name("value") {
             node_id.append(
@@ -2601,15 +2598,15 @@ impl TreesitterTranslator {
             );
         }
 
-        return Some(node_id);
+        Some(node_id)
     }
     fn parse_reduced_simple_keyset_expression(
         &mut self,
         node: &tree_sitter::Node,
     ) -> Option<NodeId> {
-        let node_id =
-            self.arena
-                .new_node(Node::new(NodeKind::Expression, &node, &self.source_code));
+        let node_id = self
+            .arena
+            .new_node(Node::new(NodeKind::Expression, node, &self.source_code));
 
         if let Some(value) = node.child_by_field_name("value") {
             node_id.append(
@@ -2626,12 +2623,12 @@ impl TreesitterTranslator {
             );
         }
 
-        return Some(node_id);
+        Some(node_id)
     }
     fn parse_simple_expression_list(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
-        let node_id =
-            self.arena
-                .new_node(Node::new(NodeKind::Expression, &node, &self.source_code));
+        let node_id = self
+            .arena
+            .new_node(Node::new(NodeKind::Expression, node, &self.source_code));
 
         let mut cursor = node.walk();
         for child in node.named_children(&mut cursor) {
@@ -2642,6 +2639,6 @@ impl TreesitterTranslator {
             );
         }
 
-        return Some(node_id);
+        Some(node_id)
     }
 }

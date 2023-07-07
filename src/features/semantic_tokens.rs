@@ -48,7 +48,7 @@ pub fn get_tokens(ast_query: &Arc<Mutex<impl AstQuery>>) -> SemanticTokensResult
 
         prev = item.line;
         //If line is greater than 0 then we save the temp array of tokens
-        if line > 0 && temp_array.len() > 0 {
+        if line > 0 && !temp_array.is_empty() {
             let mut max_val = 0;
             temp_array.sort_by_key(|&token| token.delta_start); //sorting the start pos
                                                                 //setting the first deltaline to conatin the diff value (line) and setting all other to 0
@@ -67,14 +67,14 @@ pub fn get_tokens(ast_query: &Arc<Mutex<impl AstQuery>>) -> SemanticTokensResult
                 .map(|token| {
                     let temp_token = SemanticToken {
                         delta_line: token.delta_line,
-                        delta_start: token.delta_start - prev_start.clone(),
+                        delta_start: token.delta_start - prev_start,
                         length: token.length,
                         token_type: token.token_type,
                         token_modifiers_bitset: 0,
                     };
 
                     prev_start = token.delta_start;
-                    return temp_token;
+                    temp_token
                 })
                 .collect();
 
@@ -102,7 +102,7 @@ pub fn get_visit_nodes(visit_node: VisitNode) -> Vec<ColorData> {
     let childrens = visit_node.get_children();
     let mut array: Vec<ColorData> = Vec::new();
     for child in &childrens {
-        array.append(&mut get_visit_nodes(child.clone()));
+        array.append(&mut get_visit_nodes(*child));
     }
 
     //Setting the node kidn with associated index from token type vector
@@ -155,14 +155,14 @@ pub fn get_visit_nodes(visit_node: VisitNode) -> Vec<ColorData> {
     if node_type != temp_cmp {
         let temp_length = ((node_visit.range.end.character - node_visit.range.start.character)
             as i32)
-            .abs() as u32;
+            .unsigned_abs();
         array.push(ColorData {
             length: temp_length,
             start: node_visit.range.start.character,
             line: node_visit.range.start.line,
-            node_type: node_type,
+            node_type,
         });
     }
 
-    return array;
+    array
 }

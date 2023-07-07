@@ -55,7 +55,7 @@ impl SymbolTableEditor for SymbolTableManager {
             SymbolTableEdit::Rename {
                 symbol_id,
                 new_name,
-            } => self.symbol_table.rename_symbol(symbol_id, new_name.clone()),
+            } => self.symbol_table.rename_symbol(symbol_id, new_name),
         }
     }
 

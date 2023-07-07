@@ -55,7 +55,7 @@ impl SymbolTableActions for SymbolTable {
             }
         }
 
-        return symbols;
+        symbols
     }
 
     fn get_variable_in_pos(&self, position: Position, source_code_t: &str) -> Option<Vec<Field>> {
@@ -77,14 +77,14 @@ impl SymbolTableActions for SymbolTable {
             }
         }
         text = text.split_whitespace().collect::<Vec<&str>>().join("");
-        if text.contains(".") {
-            let t: Vec<&str> = source_code.split("\n").collect::<Vec<&str>>();
+        if text.contains('.') {
+            let t: Vec<&str> = source_code.split('\n').collect::<Vec<&str>>();
             let l = t.len();
             let position_start = Position {
                 line: l as u32,
                 character: (t[l - 1].len() + 1) as u32,
             };
-            let names: Vec<&str> = text.split(".").collect();
+            let names: Vec<&str> = text.split('.').collect();
 
             let symbols: &Option<&Symbol> =
                 &self.get_symbol_at_pos(names[0].to_string(), position_start);
@@ -136,9 +136,9 @@ impl SymbolTableActions for SymbolTable {
                 }
             }
 
-            return Some(vec![]); //Some(name_fields)
+            Some(vec![]) //Some(name_fields)
         } else {
-            return None;
+            None
         }
     }
 
@@ -226,7 +226,7 @@ impl SymbolTable {
     }
 
     fn parse_scope(&mut self, visit_node: VisitNode) -> Option<NodeId> {
-        let table_option = ScopeSymbolTable::parse(visit_node.clone());
+        let table_option = ScopeSymbolTable::parse(visit_node);
         if let Some(table) = table_option {
             let node_id = self.arena.new_node(table);
 
@@ -260,7 +260,7 @@ impl SymbolTable {
                     a = Some(symbol_parent.clone());
                 }
                 if let Some(x) = a {
-                    self.get_value_symbol(child_symbol_new.clone(), x);
+                    self.get_value_symbol(child_symbol_new, x);
                 }
             }
         }
@@ -293,10 +293,10 @@ impl SymbolTable {
                                     let pos = value_node.range.start;
                                     let symbol_tt = &self.get_symbol_at_pos(name, pos);
 
-                                    if let Some(symbol_t) = symbol_tt.clone() {
+                                    if let Some(symbol_t) = *symbol_tt {
                                         let mut symbol = symbol_t.to_owned();
                                         symbol.usages.push(value_node.range);
-                                        self.get_value_symbol(child_value.clone(), symbol);
+                                        self.get_value_symbol(child_value, symbol);
                                     } else {
                                         self.undefined_list.push(value_node.range)
                                     }
@@ -390,13 +390,7 @@ impl Symbols {
                 return Some(symbol);
             }
         }
-        for symbol in &self.functions {
-            if symbol.name == name {
-                return Some(symbol);
-            }
-        }
-
-        None
+        self.functions.iter().find(|&symbol| symbol.name == name)
     }
 
     pub fn find_mut(&mut self, name: &str) -> Option<&mut Symbol> {
@@ -472,19 +466,19 @@ impl fmt::Display for ScopeSymbolTable {
         output.push('\n');
 
         for s in &self.symbols.types {
-            output.push_str(format!("{: <8} | {}\n", "type", s.to_string()).as_str());
+            output.push_str(format!("{: <8} | {}\n", "type", s).as_str());
         }
 
         for s in &self.symbols.constants {
-            output.push_str(format!("{: <8} | {}\n", "constant", s.to_string()).as_str());
+            output.push_str(format!("{: <8} | {}\n", "constant", s).as_str());
         }
 
         for s in &self.symbols.variables {
-            output.push_str(format!("{: <8} | {}\n", "variable", s.to_string()).as_str());
+            output.push_str(format!("{: <8} | {}\n", "variable", s).as_str());
         }
 
         for s in &self.symbols.functions {
-            output.push_str(format!("{: <8} | {}\n", "function", s.to_string()).as_str());
+            output.push_str(format!("{: <8} | {}\n", "function", s).as_str());
         }
 
         fmt.write_str(&output)
@@ -517,7 +511,7 @@ impl ScopeSymbolTable {
                     None,
                 ));
             }
-            return None;
+            None
         }
 
         fn do_loop_parse(root_visit_node: VisitNode, table: &mut ScopeSymbolTable) {
@@ -598,7 +592,7 @@ impl ScopeSymbolTable {
                                     ));
                                 }
                             }
-                            return fields;
+                            fields
                         }
 
                         let name_node = child_visit_node.get_child_of_kind(NodeKind::Name).unwrap();
@@ -643,7 +637,7 @@ impl ScopeSymbolTable {
                         }
 
                         let fields_symbol: Option<Vec<Field>>;
-                        if fields.len() == 0 {
+                        if fields.is_empty() {
                             fields_symbol = None;
                         } else {
                             fields_symbol = Some(fields);
@@ -687,13 +681,11 @@ impl ScopeSymbolTable {
                         if let Some(x) = _create_symbol_for_parse(child_visit_node, NodeKind::Name)
                         {
                             table.symbols.functions.push(x);
-                        } else {
-                            if let Some(fn_node) =
-                                root_visit_node.get_child_of_kind(NodeKind::FunctionName)
-                            {
-                                if let Some(x) = _create_symbol_for_parse(fn_node, NodeKind::Name) {
-                                    table.symbols.functions.push(x);
-                                }
+                        } else if let Some(fn_node) =
+                            root_visit_node.get_child_of_kind(NodeKind::FunctionName)
+                        {
+                            if let Some(x) = _create_symbol_for_parse(fn_node, NodeKind::Name) {
+                                table.symbols.functions.push(x);
                             }
                         }
                     }
@@ -849,9 +841,9 @@ impl Symbol {
                         return Some(y.clone());
                     }
                 }
-                return None;
+                None
             }
-            None => return None,
+            None => None,
         }
     }
 }
@@ -885,7 +877,7 @@ impl TypeSymbol {
     }
 
     pub fn get_name(&self) -> Option<Type> {
-        self.name.clone()
+        self.name
     }
 
     pub fn get_node(&self) -> Option<super::Node> {

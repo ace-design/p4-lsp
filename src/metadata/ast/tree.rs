@@ -136,7 +136,7 @@ const SCOPE_NODES: [NodeKind; 17] = [
 
 impl NodeKind {
     pub fn is_scope_node(&self) -> bool {
-        SCOPE_NODES.contains(&self)
+        SCOPE_NODES.contains(self)
     }
 }
 
@@ -189,14 +189,14 @@ impl Visitable for VisitNode<'_> {
 
     fn get_children(&self) -> Vec<VisitNode> {
         self.id
-            .children(&self.arena)
+            .children(self.arena)
             .map(|id| VisitNode::new(self.arena, id))
             .collect::<Vec<VisitNode>>()
     }
 
     fn get_descendants(&self) -> Vec<VisitNode> {
         self.id
-            .descendants(&self.arena)
+            .descendants(self.arena)
             .map(|id| VisitNode::new(self.arena, id))
             .collect::<Vec<VisitNode>>()
     }
@@ -204,7 +204,7 @@ impl Visitable for VisitNode<'_> {
     fn get_child_of_kind(&self, kind: NodeKind) -> Option<VisitNode> {
         let id = self
             .id
-            .children(&self.arena)
+            .children(self.arena)
             .find(|id| self.arena.get(*id).unwrap().get().kind == kind)?;
 
         Some(VisitNode::new(self.arena, id))
@@ -245,7 +245,7 @@ impl Visitable for VisitNode<'_> {
             if matches!(node.kind, NodeKind::ValueSymbol) {
                 return Some(VisitNode::new(self.arena, child.id));
             } else {
-                return None;
+                None
             }
         })
     }
