@@ -1,4 +1,4 @@
-use crate::metadata::{AstQuery, Node, NodeKind, VisitNode, Visitable};
+use crate::metadata::{AstQuery, NodeKind, VisitNode, Visitable};
 use crate::metadata::{BaseType, Type};
 use std::sync::{Arc, Mutex};
 use tower_lsp::lsp_types::{
@@ -18,7 +18,7 @@ lazy_static::lazy_static! {
 }
 pub fn get_legend() -> SemanticTokensLegend {
     SemanticTokensLegend {
-        token_types: unsafe { TOKENS_TYPES.clone() },
+        token_types: TOKENS_TYPES.clone(),
         token_modifiers: vec![],
     }
 }
@@ -53,7 +53,7 @@ pub fn get_tokens(ast_query: &Arc<Mutex<impl AstQuery>>) -> SemanticTokensResult
             temp_array.sort_by_key(|&token| token.delta_start); //sorting the start pos
                                                                 //setting the first deltaline to conatin the diff value (line) and setting all other to 0
             for i in 0..temp_array.len() {
-                if (temp_array[i].delta_line > max_val) {
+                if temp_array[i].delta_line > max_val {
                     max_val = temp_array[i].delta_line;
                 }
                 temp_array[i].delta_line = 0;
@@ -135,7 +135,7 @@ pub fn get_visit_nodes(visit_node: VisitNode) -> Vec<ColorData> {
         NodeKind::Name => {
             node_type = 0;
         }
-        NodeKind::Direction(dir_node) => {
+        NodeKind::Direction(_dir_node) => {
             node_type = 1;
         }
         NodeKind::KeyWord => {
@@ -152,7 +152,7 @@ pub fn get_visit_nodes(visit_node: VisitNode) -> Vec<ColorData> {
         }
     };
     //only pushing node types that we support currently
-    if (node_type != temp_cmp) {
+    if node_type != temp_cmp {
         let temp_length = ((node_visit.range.end.character - node_visit.range.start.character)
             as i32)
             .abs() as u32;
