@@ -1,4 +1,4 @@
-mod diagnostics;
 mod parse;
+mod provider;
 
-pub use diagnostics::{get_full_diagnostics, get_quick_diagnostics};
+pub use provider::{get_full_diagnostics, get_quick_diagnostics};

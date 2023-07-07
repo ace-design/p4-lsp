@@ -98,8 +98,6 @@ pub fn get_list(
                     .build(),
             )
         }
-        None => {
-            return default(position, query);
-        }
+        None => default(position, query),
     }
 }
