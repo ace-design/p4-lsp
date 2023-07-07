@@ -20,7 +20,7 @@ pub fn get_tokens() -> SemanticTokensResult {
         },
         SemanticToken {
             delta_line: 0,
-            delta_start: 5,
+            delta_start: 54,
             length: 5,
             token_type: 1,
             token_modifiers_bitset: 0,
