@@ -1,3 +1,4 @@
+
 // This P4 file contains only a preamble, it is not meant to be used on its own.
 
 #ifndef _COMMON_CONFIGP4
@@ -24,9 +25,6 @@
   #define TARGET_V1 1
  #endif
 #endif
-
-#include "common/headers.p4"
-#include "common/util.p4"
 
 #ifdef TARGET_V1
 struct mac_learn_digest {

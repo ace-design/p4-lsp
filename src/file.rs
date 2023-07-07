@@ -116,7 +116,7 @@ impl File {
     }
 
     pub fn get_semantic_tokens(&self) -> Option<SemanticTokensResult> {
-        Some(semantic_tokens::get_tokens())
+        Some(semantic_tokens::get_tokens(&self.ast_manager))
     }
 
     pub fn get_definition_location(&self, position: Position) -> Option<Location> {
