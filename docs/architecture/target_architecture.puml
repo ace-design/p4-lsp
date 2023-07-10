@@ -1,0 +1,115 @@
+@startuml
+interface LSP
+interface Plugin
+component Server { 
+  port ASTRules
+  port TreesitterGrammar
+  port PluginPort
+  port ClientPort
+
+  component Backend
+  component PluginManager
+  ClientPort - Backend
+  Backend --> PluginManager
+
+  component Workspace
+  Backend --> Workspace
+
+  component File
+  Workspace "1" *-- "*" File
+
+  component TreesitterTree
+  TreesitterGrammar <.. TreesitterTree
+
+  component SymbolTableManager
+  interface STQuery
+  interface STEditor
+
+  component AstManager
+  component AstGenerator 
+  interface AstQuery
+  interface AstEditor 
+
+  component SymbolTable
+  component Ast
+
+  SymbolTableManager --> SymbolTable
+  STQuery -- SymbolTableManager
+  STEditor -- SymbolTableManager
+
+  AstManager --> Ast
+  AstManager <.. AstGenerator
+  ASTRules <.. AstGenerator
+  AstQuery -- AstManager
+  AstEditor -- AstManager
+
+  component Features {
+    port Functions
+
+    component Diagnostics
+    Diagnostics ..> AstQuery
+    Diagnostics ..> STQuery 
+
+    component Completion
+    Completion ..> STQuery 
+
+    component GoToDef
+    GoToDef ..> AstQuery 
+    GoToDef ..> STQuery 
+
+    component Hover #Yellow
+    Hover ..> AstQuery 
+    Hover ..> STQuery
+
+    component Rename
+    Rename ..> AstQuery
+    Rename ..> STQuery
+    Rename ..> STEditor
+
+    component SyntaxHighlighting
+    SyntaxHighlighting ..> AstQuery
+
+    component Format #Yellow
+    Format ..> AstQuery
+    Format ..> AstEditor
+
+    component Folding #Yellow
+    Folding ..> AstQuery
+
+    component DocumentSymbols #Yellow
+    DocumentSymbols ..> STQuery
+
+    component InlayHint #Yellow
+    InlayHint ..> STQuery
+  }
+
+  File ..> Functions : use
+  File "1" *-- "1" SymbolTableManager
+  File "1" *-- "1" AstManager 
+  File "1" *-- "1" TreesitterTree
+}
+
+node "Installed Plugins" {
+  component Plugin1
+  component Plugin2
+  component Plugin3
+}
+
+node "Language Rules" {
+  component Grammar
+  Grammar --> TreesitterGrammar
+
+  component Rules
+  Rules --> ASTRules
+}
+
+ClientPort - LSP
+PluginPort - Plugin
+
+Plugin1 .> Plugin
+Plugin2 .> Plugin
+Plugin3 .> Plugin
+
+component Client
+Client ..> LSP : use 
+@enduml
