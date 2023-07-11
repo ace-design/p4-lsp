@@ -532,7 +532,7 @@ impl ScopeSymbolTable {
                     | NodeKind::SwitchLabel => {
                         if let Some(x) = _create_symbol_for_parse(child_visit_node, NodeKind::Name)
                         {
-                            table.symbols.constants.push(x);
+                            table.symbols.functions.push(x);
                         }
                     }
                     NodeKind::TypeDec(_type_dec_type) => {
