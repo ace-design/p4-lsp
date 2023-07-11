@@ -84,39 +84,43 @@ impl TreesitterTranslator {
 
         let mut cursor = node.walk();
         for child in node.named_children(&mut cursor) {
-            let child_node_id =
-                self.arena
-                    .new_node(Node::new(NodeKind::Method, node, &self.source_code));
-            if let Some(annotation) = child.child_by_field_name("annotation") {
-                node_id.append(
-                    self.parse_annotation(&annotation)
-                        .unwrap_or_else(|| self.new_error_node(&annotation)),
-                    &mut self.arena,
-                );
-            }
-            if let Some(type_node) = node.child_by_field_name("type") {
-                child_node_id.append(
-                    self.parse_type_ref(&type_node, NodeKind::Type)
-                        .unwrap_or_else(|| self.new_error_node(&type_node)),
-                    &mut self.arena,
-                );
-
-                if let Some(paramters) = node.child_by_field_name("parameters") {
-                    let params_node_id = self
-                        .parse_params(&paramters)
-                        .unwrap_or_else(|| self.new_error_node(&paramters));
-                    child_node_id.append(params_node_id, &mut self.arena);
+            if child.is_error() {
+                node_id.append(self.new_error_node(&child), &mut self.arena);
+            } else {
+                let child_node_id =
+                    self.arena
+                        .new_node(Node::new(NodeKind::Method, node, &self.source_code));
+                if let Some(annotation) = child.child_by_field_name("annotation") {
+                    node_id.append(
+                        self.parse_annotation(&annotation)
+                            .unwrap_or_else(|| self.new_error_node(&annotation)),
+                        &mut self.arena,
+                    );
                 }
-            }
-            if let Some(function) = node.child_by_field_name("function") {
-                child_node_id.append(
-                    self.function_prototype(&function)
-                        .unwrap_or_else(|| self.new_error_node(&function)),
-                    &mut self.arena,
-                );
-            }
+                if let Some(type_node) = node.child_by_field_name("type") {
+                    child_node_id.append(
+                        self.parse_type_ref(&type_node, NodeKind::Type, true)
+                            .unwrap_or_else(|| self.new_error_node(&type_node)),
+                        &mut self.arena,
+                    );
 
-            node_id.append(child_node_id, &mut self.arena);
+                    if let Some(paramters) = node.child_by_field_name("parameters") {
+                        let params_node_id = self
+                            .parse_params(&paramters)
+                            .unwrap_or_else(|| self.new_error_node(&paramters));
+                        child_node_id.append(params_node_id, &mut self.arena);
+                    }
+                }
+                if let Some(function) = node.child_by_field_name("function") {
+                    child_node_id.append(
+                        self.function_prototype(&function)
+                            .unwrap_or_else(|| self.new_error_node(&function)),
+                        &mut self.arena,
+                    );
+                }
+
+                node_id.append(child_node_id, &mut self.arena);
+            }
         }
 
         Some(node_id)
@@ -343,7 +347,7 @@ impl TreesitterTranslator {
         // Add type node
         let type_node = node.child_by_field_name("type").unwrap();
         node_id.append(
-            self.parse_type_ref(&type_node, NodeKind::Type)
+            self.parse_type_ref(&type_node, NodeKind::Type, true)
                 .unwrap_or_else(|| self.new_error_node(&type_node)),
             &mut self.arena,
         );
@@ -415,6 +419,13 @@ impl TreesitterTranslator {
                             &self_v.source_code,
                         ));
                         node_value.append(name_node, &mut self_v.arena);
+                    }
+                    "base_type" => {
+                        let x = self_v.parse_type_ref(&node, NodeKind::Type, false);
+                        if let Some(y) = x {
+                            name_node = y.clone();
+                            node_value.append(name_node, &mut self_v.arena);
+                        }
                     }
                     _ => {
                         if accept.contains(&kind) {
@@ -512,8 +523,11 @@ impl TreesitterTranslator {
                         &mut self.arena,
                     );
                 }
-                let type_node: NodeId = self
-                    .parse_type_ref(&type_kind_node.child_by_field_name("type")?, NodeKind::Type)?;
+                let type_node: NodeId = self.parse_type_ref(
+                    &type_kind_node.child_by_field_name("type")?,
+                    NodeKind::Type,
+                    true,
+                )?;
                 node_id.append(type_node, &mut self.arena);
 
                 let name_node = self.arena.new_node(Node::new(
@@ -664,7 +678,7 @@ impl TreesitterTranslator {
                 }
                 if let Some(x) = type_kind_node.child_by_field_name("type") {
                     node_id.append(
-                        self.parse_type_ref(&x, NodeKind::Type)
+                        self.parse_type_ref(&x, NodeKind::Type, true)
                             .unwrap_or_else(|| self.new_error_node(&x)),
                         &mut self.arena,
                     );
@@ -843,7 +857,7 @@ impl TreesitterTranslator {
                 // Add type node
                 if let Some(x) = field_child.child_by_field_name("type") {
                     field_node_id.append(
-                        self.parse_type_ref(&x, NodeKind::Type)
+                        self.parse_type_ref(&x, NodeKind::Type, true)
                             .unwrap_or_else(|| self.new_error_node(&x)),
                         &mut self.arena,
                     );
@@ -897,8 +911,14 @@ impl TreesitterTranslator {
         &mut self,
         node: &tree_sitter::Node,
         n_kind: fn(Type) -> NodeKind,
+        child_bool: bool,
     ) -> Option<NodeId> {
-        let child = node.named_child(0)?;
+        let child: tree_sitter::Node<'_>;
+        if child_bool {
+            child = node.named_child(0)?;
+        } else {
+            child = node.clone();
+        }
 
         let node: Option<NodeId> = match child.kind() {
             "base_type" => {
@@ -969,7 +989,7 @@ impl TreesitterTranslator {
                                     &self.source_code,
                                 )));
                             }
-                        } else if child_child.kind() == "expression" {
+                        } else{       
                             let node_return: NodeId;
                             if text.starts_with("int") {
                                 node_return = self.arena.new_node(Node::new(
@@ -995,8 +1015,14 @@ impl TreesitterTranslator {
                                     node,
                                     &self.source_code,
                                 ));
+                            }                     
+                            if child_child.kind() == "define_symbol" {
+                                node_return.append(self.arena
+                                    .new_node(Node::new(NodeKind::DefineSymbol, node, &self.source_code)), &mut self.arena);
+
+                            } else if child_child.kind() == "expression" {
+                                node_return.append(self.parse_value(&child_child)?, &mut self.arena);
                             }
-                            node_return.append(self.parse_value(&child_child)?, &mut self.arena);
                             return Some(node_return);
                         }
                         None
@@ -1075,16 +1101,20 @@ impl TreesitterTranslator {
 
         let mut cursor = body_syntax_node.walk();
         for syntax_child in body_syntax_node.named_children(&mut cursor) {
-            let child_node_id = match syntax_child.kind() {
-                // _parser_local_element
-                "constant_declaration" => self.parse_const_dec(&syntax_child),
-                "variable_declaration" => self.parse_var_dec(&syntax_child),
-                "instantiation" => self.instantiation(&syntax_child),
-                "value_set_declaration" => self.parse_val_set(&syntax_child),
+            let child_node_id = if syntax_child.is_error() {
+                Some(self.new_error_node(&syntax_child))
+            } else {
+                match syntax_child.kind() {
+                    // _parser_local_element
+                    "constant_declaration" => self.parse_const_dec(&syntax_child),
+                    "variable_declaration" => self.parse_var_dec(&syntax_child),
+                    "instantiation" => self.instantiation(&syntax_child),
+                    "value_set_declaration" => self.parse_val_set(&syntax_child),
 
-                // parser_state
-                "parser_state" => self.parse_state(&syntax_child),
-                _ => None,
+                    // parser_state
+                    "parser_state" => self.parse_state(&syntax_child),
+                    _ => None,
+                }
             };
 
             if let Some(id) = child_node_id {
@@ -1142,15 +1172,19 @@ impl TreesitterTranslator {
 
         let mut cursor = body_syntax_node.walk();
         for syntax_child in body_syntax_node.named_children(&mut cursor) {
-            let child_node_id = match syntax_child.kind() {
-                "constant_declaration" => self.parse_const_dec(&syntax_child),
-                "variable_declaration" => self.parse_var_dec(&syntax_child),
-                "instantiation" => self.instantiation(&syntax_child),
-                "action_declaration" => self.parse_control_action(&syntax_child),
-                "table_declaration" => self.parse_control_table(&syntax_child),
+            let child_node_id = if syntax_child.is_error() {
+                Some(self.new_error_node(&syntax_child))
+            } else {
+                match syntax_child.kind() {
+                    "constant_declaration" => self.parse_const_dec(&syntax_child),
+                    "variable_declaration" => self.parse_var_dec(&syntax_child),
+                    "instantiation" => self.instantiation(&syntax_child),
+                    "action_declaration" => self.parse_control_action(&syntax_child),
+                    "table_declaration" => self.parse_control_table(&syntax_child),
 
-                "block_statement" => self.parse_block(&syntax_child),
-                _ => None,
+                    "block_statement" => self.parse_block(&syntax_child),
+                    _ => None,
+                }
             };
 
             if let Some(id) = child_node_id {
@@ -1198,7 +1232,7 @@ impl TreesitterTranslator {
                 // Add type node
                 let type_syntax_node = syntax_child.child_by_field_name("type")?;
                 param_node_id.append(
-                    self.parse_type_ref(&type_syntax_node, NodeKind::Type)
+                    self.parse_type_ref(&type_syntax_node, NodeKind::Type, true)
                         .unwrap_or_else(|| self.new_error_node(&type_syntax_node)),
                     &mut self.arena,
                 );
@@ -1275,10 +1309,14 @@ impl TreesitterTranslator {
 
         let mut cursor = node.walk();
         for syntax_child in node.named_children(&mut cursor) {
-            let child_node_id = match syntax_child.kind() {
-                "function_declaration" => self.function_declaration(&syntax_child),
-                "instantiation" => self.instantiation(&syntax_child),
-                _ => None,
+            let child_node_id = if syntax_child.is_error() {
+                Some(self.new_error_node(&syntax_child))
+            } else {
+                match syntax_child.kind() {
+                    "function_declaration" => self.function_declaration(&syntax_child),
+                    "instantiation" => self.instantiation(&syntax_child),
+                    _ => None,
+                }
             };
             if let Some(child_node) = child_node_id {
                 obj_node_id.append(child_node, &mut self.arena);
@@ -1314,7 +1352,7 @@ impl TreesitterTranslator {
         if type_node.kind() == "type_ref" {
             // TODO
             fn_node_id.append(
-                self.parse_type_ref(&type_node, NodeKind::Type)
+                self.parse_type_ref(&type_node, NodeKind::Type, true)
                     .unwrap_or_else(|| self.new_error_node(&type_node)),
                 &mut self.arena,
             );
@@ -1352,19 +1390,25 @@ impl TreesitterTranslator {
         }
         let mut cursor = node.walk();
         for syntax_child in node.named_children(&mut cursor) {
-            let child_node_id = match syntax_child.kind() {
-                "constant_declaration" => self.parse_const_dec(&syntax_child),
-                "variable_declaration" => self.parse_var_dec(&syntax_child),
-                "assignment_or_method_call_statement" => self.parse_state_assignment(&syntax_child),
-                "direct_application" => self.parse_state_direct(&syntax_child),
-                "conditional_statement" => self.parse_state_conditional(&syntax_child),
-                "empty_statement" => None,
-                "block_statement" => self.parse_block(&syntax_child),
+            let child_node_id = if syntax_child.is_error() {
+                Some(self.new_error_node(&syntax_child))
+            } else {
+                match syntax_child.kind() {
+                    "constant_declaration" => self.parse_const_dec(&syntax_child),
+                    "variable_declaration" => self.parse_var_dec(&syntax_child),
+                    "assignment_or_method_call_statement" => {
+                        self.parse_state_assignment(&syntax_child)
+                    }
+                    "direct_application" => self.parse_state_direct(&syntax_child),
+                    "conditional_statement" => self.parse_state_conditional(&syntax_child),
+                    "empty_statement" => None,
+                    "block_statement" => self.parse_block(&syntax_child),
 
-                "exit_statement" => None,
-                "return_statement" => self.return_statement(&syntax_child),
-                "switch_statement" => self.switch_statement(&syntax_child),
-                _ => None,
+                    "exit_statement" => None,
+                    "return_statement" => self.return_statement(&syntax_child),
+                    "switch_statement" => self.switch_statement(&syntax_child),
+                    _ => None,
+                }
             };
             if let Some(child_node) = child_node_id {
                 block_node_id.append(child_node, &mut self.arena);
@@ -1407,7 +1451,7 @@ impl TreesitterTranslator {
         // Add type node
         let type_node = node.child_by_field_name("type").unwrap();
         node_id.append(
-            self.parse_type_ref(&type_node, NodeKind::Type)
+            self.parse_type_ref(&type_node, NodeKind::Type, true)
                 .unwrap_or_else(|| self.new_error_node(&type_node)),
             &mut self.arena,
         );
@@ -1441,7 +1485,7 @@ impl TreesitterTranslator {
                     "prefixed_non_type_name" => {
                         let node_id = self.arena.new_node(Node::new(
                             NodeKind::Type(Type::Name),
-                            &node,
+                            &node.named_child(0).unwrap(),
                             &self.source_code,
                         ));
                         if let Some(new_child) = last_node {
@@ -1456,9 +1500,10 @@ impl TreesitterTranslator {
                             &node,
                             &self.source_code,
                         ));
+                        let t = node.named_child(1).unwrap().named_child(0).unwrap();
                         let node_id_dot = self.arena.new_node(Node::new(
                             NodeKind::ValueSymbol,
-                            &node.named_child(1).unwrap(),
+                            &t,
                             &self.source_code,
                         ));
 
@@ -1581,14 +1626,18 @@ impl TreesitterTranslator {
 
             let mut cursor = param_list.walk();
             for syntax_child in param_list.named_children(&mut cursor) {
-                let child_node_id = match syntax_child.named_child(0)?.kind() {
-                    "type_ref" => self.parse_type_ref(&syntax_child, NodeKind::TypeList),
-                    "non_type_name" => Some(self.arena.new_node(Node::new(
-                        NodeKind::TypeList(Type::Name),
-                        node,
-                        &self.source_code,
-                    ))),
-                    _ => Some(self.new_error_node(&syntax_child)),
+                let child_node_id = if syntax_child.is_error() {
+                    Some(self.new_error_node(&syntax_child))
+                } else {
+                    match syntax_child.named_child(0)?.kind() {
+                        "type_ref" => self.parse_type_ref(&syntax_child, NodeKind::TypeList, true),
+                        "non_type_name" => Some(self.arena.new_node(Node::new(
+                            NodeKind::TypeList(Type::Name),
+                            node,
+                            &self.source_code,
+                        ))),
+                        _ => Some(self.new_error_node(&syntax_child)),
+                    }
                 };
                 if let Some(child_node) = child_node_id {
                     params_node_id.append(child_node, &mut self.arena);
@@ -1660,15 +1709,21 @@ impl TreesitterTranslator {
         let body = node.child_by_field_name("body")?;
         let mut cursor = body.walk();
         for body_child in body.named_children(&mut cursor) {
-            let child_node_id = match body_child.kind() {
-                "assignment_or_method_call_statement" => self.parse_state_assignment(&body_child),
-                "direct_application" => self.parse_state_direct(&body_child),
-                "parser_block_statement" => self.parse_state_block(&body_child),
-                "constant_declaration" => self.parse_const_dec(&body_child),
-                "variable_declaration" => self.parse_var_dec(&body_child),
-                "empty_statement" => None,
-                "conditional_statement" => self.parse_state_conditional(&body_child),
-                _ => None,
+            let child_node_id = if body_child.is_error() {
+                Some(self.new_error_node(&body_child))
+            } else {
+                match body_child.kind() {
+                    "assignment_or_method_call_statement" => {
+                        self.parse_state_assignment(&body_child)
+                    }
+                    "direct_application" => self.parse_state_direct(&body_child),
+                    "parser_block_statement" => self.parse_state_block(&body_child),
+                    "constant_declaration" => self.parse_const_dec(&body_child),
+                    "variable_declaration" => self.parse_var_dec(&body_child),
+                    "empty_statement" => None,
+                    "conditional_statement" => self.parse_state_conditional(&body_child),
+                    _ => None,
+                }
             };
 
             if let Some(id) = child_node_id {
@@ -1733,17 +1788,23 @@ impl TreesitterTranslator {
 
         let mut cursor = node.walk();
         for body_child in node.named_children(&mut cursor) {
-            let child_node_id = match body_child.kind() {
-                "assignment_or_method_call_statement" => self.parse_state_assignment(&body_child),
-                "direct_application" => self.parse_state_direct(&body_child),
-                "conditional_statement" => self.parse_state_conditional(&body_child),
-                "empty_statement" => None,
-                "block_statement" => self.parse_block(&body_child),
+            let child_node_id = if body_child.is_error() {
+                Some(self.new_error_node(&body_child))
+            } else {
+                match body_child.kind() {
+                    "assignment_or_method_call_statement" => {
+                        self.parse_state_assignment(&body_child)
+                    }
+                    "direct_application" => self.parse_state_direct(&body_child),
+                    "conditional_statement" => self.parse_state_conditional(&body_child),
+                    "empty_statement" => None,
+                    "block_statement" => self.parse_block(&body_child),
 
-                "exit_statement" => None,
-                "return_statement" => self.return_statement(&body_child),
-                "switch_statement" => self.switch_statement(&body_child),
-                _ => None,
+                    "exit_statement" => None,
+                    "return_statement" => self.return_statement(&body_child),
+                    "switch_statement" => self.switch_statement(&body_child),
+                    _ => None,
+                }
             };
 
             if let Some(id) = child_node_id {
@@ -1801,7 +1862,9 @@ impl TreesitterTranslator {
         let body_node = node.child_by_field_name("body")?;
         let mut cursor = body_node.walk();
         for body_child in body_node.named_children(&mut cursor) {
-            if body_child.kind() == "switch_case" {
+            if body_child.is_error() {
+                node_id.append(self.new_error_node(&body_child), &mut self.arena);
+            } else if body_child.kind() == "switch_case" {
                 let label: NodeId =
                     self.arena
                         .new_node(Node::new(NodeKind::SwitchLabel, node, &self.source_code));
@@ -1851,7 +1914,7 @@ impl TreesitterTranslator {
         // Add type node
         let type_node = node.child_by_field_name("type").unwrap();
         node_id.append(
-            self.parse_type_ref(&type_node, NodeKind::Type)
+            self.parse_type_ref(&type_node, NodeKind::Type, true)
                 .unwrap_or_else(|| self.new_error_node(&type_node)),
             &mut self.arena,
         );
@@ -1891,7 +1954,7 @@ impl TreesitterTranslator {
         // Add type node
         let type_node = node.child_by_field_name("type").unwrap();
         node_id.append(
-            self.parse_type_ref(&type_node, NodeKind::Type)
+            self.parse_type_ref(&type_node, NodeKind::Type, true)
                 .unwrap_or_else(|| self.new_error_node(&type_node)),
             &mut self.arena,
         );
@@ -2005,196 +2068,205 @@ impl TreesitterTranslator {
         let mut cursor = table_syntax_node.walk();
         for table_child in table_syntax_node.named_children(&mut cursor) {
             let mut child_node_id: Option<NodeId> = None;
-
-            match table_child.kind() {
-                "keys_table" => {
-                    let keys = table_child.child_by_field_name("keys").unwrap();
-                    let keys_node_id = self.arena.new_node(Node::new(
-                        NodeKind::Keys,
-                        &table_child,
-                        &self.source_code,
-                    ));
-                    let mut cursor = keys.walk();
-                    for keys_child in keys.named_children(&mut cursor) {
-                        // Add name node
-                        let key_node_id = self.arena.new_node(Node::new(
-                            NodeKind::Key,
-                            &keys_child,
+            if table_child.is_error() {
+                child_node_id = Some(self.new_error_node(&table_child));
+            } else {
+                match table_child.kind() {
+                    "keys_table" => {
+                        let keys = table_child.child_by_field_name("keys").unwrap();
+                        let keys_node_id = self.arena.new_node(Node::new(
+                            NodeKind::Keys,
+                            &table_child,
                             &self.source_code,
                         ));
-                        // Add annotation node
-                        if let Some(annotation) = keys_child.child_by_field_name("annotation") {
-                            key_node_id.append(
-                                self.parse_annotation(&annotation)
-                                    .unwrap_or_else(|| self.new_error_node(&annotation)),
-                                &mut self.arena,
-                            );
-                        }
-
-                        // Add name node
-                        let name_node = self.arena.new_node(Node::new(
-                            NodeKind::Name,
-                            &keys_child.child_by_field_name("name").unwrap(),
-                            &self.source_code,
-                        ));
-                        key_node_id.append(name_node, &mut self.arena);
-
-                        // Add value node
-                        let value_node = keys_child.child_by_field_name("expression").unwrap();
-                        key_node_id.append(
-                            self.parse_value(&value_node)
-                                .unwrap_or_else(|| self.new_error_node(&value_node)),
-                            &mut self.arena,
-                        );
-
-                        keys_node_id.append(key_node_id, &mut self.arena);
-                    }
-                    child_node_id = Some(keys_node_id);
-                }
-                "action_table" => {
-                    let actions = table_child.child_by_field_name("actions").unwrap();
-                    let actions_node_id = self.arena.new_node(Node::new(
-                        NodeKind::Actions,
-                        &table_child,
-                        &self.source_code,
-                    ));
-                    let mut cursor = actions.walk();
-                    for actions_child in actions.named_children(&mut cursor) {
-                        // Add name node
-                        let action_node_id = self.arena.new_node(Node::new(
-                            NodeKind::Action,
-                            &actions_child,
-                            &self.source_code,
-                        ));
-                        // Add annotation node
-                        if let Some(annotation) = actions_child.child_by_field_name("annotation") {
-                            action_node_id.append(
-                                self.parse_annotation(&annotation)
-                                    .unwrap_or_else(|| self.new_error_node(&annotation)),
-                                &mut self.arena,
-                            );
-                        }
-
-                        // Add name node
-                        let name_node = self.arena.new_node(Node::new(
-                            NodeKind::Type(Type::Name),
-                            &actions_child.child_by_field_name("name").unwrap(),
-                            &self.source_code,
-                        ));
-                        action_node_id.append(name_node, &mut self.arena);
-
-                        if let Some(params_syntax_node) = node.child_by_field_name("args") {
-                            let params_node_id = self
-                                .parse_args(&params_syntax_node)
-                                .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
-                            node_id.append(params_node_id, &mut self.arena);
-                        }
-
-                        actions_node_id.append(action_node_id, &mut self.arena);
-                    }
-                    child_node_id = Some(actions_node_id);
-                }
-                "entries_table" => {
-                    let entries = table_child.child_by_field_name("entries").unwrap();
-                    let entries_node_id = self.arena.new_node(Node::new(
-                        NodeKind::Entries,
-                        &table_child,
-                        &self.source_code,
-                    ));
-                    let mut cursor = entries.walk();
-                    for entries_child in entries.named_children(&mut cursor) {
-                        // Add name node
-                        let entrie_node_id = self.arena.new_node(Node::new(
-                            NodeKind::Entrie,
-                            &entries_child,
-                            &self.source_code,
-                        ));
-                        // Add annotation node
-                        if let Some(annotation) = entries_child.child_by_field_name("annotation") {
-                            entrie_node_id.append(
-                                self.parse_annotation(&annotation)
-                                    .unwrap_or_else(|| self.new_error_node(&annotation)),
-                                &mut self.arena,
-                            );
-                        }
-
-                        // Add name node
-                        let name_node = self.arena.new_node(Node::new(
-                            NodeKind::Name,
-                            &entries_child.child_by_field_name("name").unwrap(),
-                            &self.source_code,
-                        ));
-                        entrie_node_id.append(name_node, &mut self.arena);
-
-                        if let Some(params_syntax_node) = node.child_by_field_name("args") {
-                            let params_node_id = self
-                                .parse_args(&params_syntax_node)
-                                .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
-                            node_id.append(params_node_id, &mut self.arena);
-                        }
-
-                        // _keyset_expression
-                        if let Some(x) = entries_child.named_child(0) {
-                            if x.kind() == "tuple_keyset_expression" {
-                                if let Some(y) = x.child_by_field_name("reduce") {
-                                    entrie_node_id.append(
-                                        self.parse_reduced_simple_keyset_expression(&y)
-                                            .unwrap_or_else(|| self.new_error_node(&y)),
-                                        &mut self.arena,
-                                    );
-                                } else {
-                                    let t = x.named_child(0)?;
-                                    let tt = x.named_child(1)?;
-                                    entrie_node_id.append(
-                                        self.parse_simple_keyset_expression(&t)
-                                            .unwrap_or_else(|| self.new_error_node(&t)),
-                                        &mut self.arena,
-                                    );
-                                    entrie_node_id.append(
-                                        self.parse_simple_expression_list(&tt)
-                                            .unwrap_or_else(|| self.new_error_node(&tt)),
-                                        &mut self.arena,
-                                    );
-                                }
-                            } else if x.kind() == "simple_keyset_expression" {
-                                entrie_node_id.append(
-                                    self.parse_simple_keyset_expression(&x)
-                                        .unwrap_or_else(|| self.new_error_node(&x)),
+                        let mut cursor = keys.walk();
+                        for keys_child in keys.named_children(&mut cursor) {
+                            // Add name node
+                            let key_node_id = self.arena.new_node(Node::new(
+                                NodeKind::Key,
+                                &keys_child,
+                                &self.source_code,
+                            ));
+                            // Add annotation node
+                            if let Some(annotation) = keys_child.child_by_field_name("annotation") {
+                                key_node_id.append(
+                                    self.parse_annotation(&annotation)
+                                        .unwrap_or_else(|| self.new_error_node(&annotation)),
                                     &mut self.arena,
                                 );
                             }
+
+                            // Add name node
+                            let name_node = self.arena.new_node(Node::new(
+                                NodeKind::Name,
+                                &keys_child.child_by_field_name("name").unwrap(),
+                                &self.source_code,
+                            ));
+                            key_node_id.append(name_node, &mut self.arena);
+
+                            // Add value node
+                            let value_node = keys_child.child_by_field_name("expression").unwrap();
+                            key_node_id.append(
+                                self.parse_value(&value_node)
+                                    .unwrap_or_else(|| self.new_error_node(&value_node)),
+                                &mut self.arena,
+                            );
+
+                            keys_node_id.append(key_node_id, &mut self.arena);
                         }
-
-                        entries_node_id.append(entrie_node_id, &mut self.arena);
+                        child_node_id = Some(keys_node_id);
                     }
-                    child_node_id = Some(entries_node_id);
-                }
-                "name_table" => {
-                    let name = table_child.child_by_field_name("name").unwrap();
-                    let table_kw_node_id = self.arena.new_node(Node::new(
-                        NodeKind::TableKw,
-                        &table_child,
-                        &self.source_code,
-                    ));
+                    "action_table" => {
+                        let actions = table_child.child_by_field_name("actions").unwrap();
+                        let actions_node_id = self.arena.new_node(Node::new(
+                            NodeKind::Actions,
+                            &table_child,
+                            &self.source_code,
+                        ));
+                        let mut cursor = actions.walk();
+                        for actions_child in actions.named_children(&mut cursor) {
+                            // Add name node
+                            let action_node_id = self.arena.new_node(Node::new(
+                                NodeKind::Action,
+                                &actions_child,
+                                &self.source_code,
+                            ));
+                            // Add annotation node
+                            if let Some(annotation) =
+                                actions_child.child_by_field_name("annotation")
+                            {
+                                action_node_id.append(
+                                    self.parse_annotation(&annotation)
+                                        .unwrap_or_else(|| self.new_error_node(&annotation)),
+                                    &mut self.arena,
+                                );
+                            }
 
-                    // Add name node
-                    let name_node =
-                        self.arena
-                            .new_node(Node::new(NodeKind::Name, &name, &self.source_code));
-                    table_kw_node_id.append(name_node, &mut self.arena);
+                            // Add name node
+                            let name_node = self.arena.new_node(Node::new(
+                                NodeKind::Type(Type::Name),
+                                &actions_child.child_by_field_name("name").unwrap(),
+                                &self.source_code,
+                            ));
+                            action_node_id.append(name_node, &mut self.arena);
 
-                    // Add value node
-                    if let Some(expr) = table_child.child_by_field_name("expression") {
-                        let value_node = expr.named_child(0).unwrap();
-                        table_kw_node_id.append(
-                            self.parse_value(&value_node)
-                                .unwrap_or_else(|| self.new_error_node(&value_node)),
-                            &mut self.arena,
-                        );
+                            if let Some(params_syntax_node) = node.child_by_field_name("args") {
+                                let params_node_id = self
+                                    .parse_args(&params_syntax_node)
+                                    .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
+                                node_id.append(params_node_id, &mut self.arena);
+                            }
+
+                            actions_node_id.append(action_node_id, &mut self.arena);
+                        }
+                        child_node_id = Some(actions_node_id);
                     }
-                    child_node_id = Some(table_kw_node_id);
+                    "entries_table" => {
+                        let entries = table_child.child_by_field_name("entries").unwrap();
+                        let entries_node_id = self.arena.new_node(Node::new(
+                            NodeKind::Entries,
+                            &table_child,
+                            &self.source_code,
+                        ));
+                        let mut cursor = entries.walk();
+                        for entries_child in entries.named_children(&mut cursor) {
+                            // Add name node
+                            let entrie_node_id = self.arena.new_node(Node::new(
+                                NodeKind::Entrie,
+                                &entries_child,
+                                &self.source_code,
+                            ));
+                            // Add annotation node
+                            if let Some(annotation) =
+                                entries_child.child_by_field_name("annotation")
+                            {
+                                entrie_node_id.append(
+                                    self.parse_annotation(&annotation)
+                                        .unwrap_or_else(|| self.new_error_node(&annotation)),
+                                    &mut self.arena,
+                                );
+                            }
+
+                            // Add name node
+                            let name_node = self.arena.new_node(Node::new(
+                                NodeKind::Name,
+                                &entries_child.child_by_field_name("name").unwrap(),
+                                &self.source_code,
+                            ));
+                            entrie_node_id.append(name_node, &mut self.arena);
+
+                            if let Some(params_syntax_node) = node.child_by_field_name("args") {
+                                let params_node_id = self
+                                    .parse_args(&params_syntax_node)
+                                    .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
+                                node_id.append(params_node_id, &mut self.arena);
+                            }
+
+                            // _keyset_expression
+                            if let Some(x) = entries_child.named_child(0) {
+                                if x.kind() == "tuple_keyset_expression" {
+                                    if let Some(y) = x.child_by_field_name("reduce") {
+                                        entrie_node_id.append(
+                                            self.parse_reduced_simple_keyset_expression(&y)
+                                                .unwrap_or_else(|| self.new_error_node(&y)),
+                                            &mut self.arena,
+                                        );
+                                    } else {
+                                        let t = x.named_child(0)?;
+                                        let tt = x.named_child(1)?;
+                                        entrie_node_id.append(
+                                            self.parse_simple_keyset_expression(&t)
+                                                .unwrap_or_else(|| self.new_error_node(&t)),
+                                            &mut self.arena,
+                                        );
+                                        entrie_node_id.append(
+                                            self.parse_simple_expression_list(&tt)
+                                                .unwrap_or_else(|| self.new_error_node(&tt)),
+                                            &mut self.arena,
+                                        );
+                                    }
+                                } else if x.kind() == "simple_keyset_expression" {
+                                    entrie_node_id.append(
+                                        self.parse_simple_keyset_expression(&x)
+                                            .unwrap_or_else(|| self.new_error_node(&x)),
+                                        &mut self.arena,
+                                    );
+                                }
+                            }
+
+                            entries_node_id.append(entrie_node_id, &mut self.arena);
+                        }
+                        child_node_id = Some(entries_node_id);
+                    }
+                    "name_table" => {
+                        let name = table_child.child_by_field_name("name").unwrap();
+                        let table_kw_node_id = self.arena.new_node(Node::new(
+                            NodeKind::TableKw,
+                            &table_child,
+                            &self.source_code,
+                        ));
+
+                        // Add name node
+                        let name_node = self.arena.new_node(Node::new(
+                            NodeKind::Name,
+                            &name,
+                            &self.source_code,
+                        ));
+                        table_kw_node_id.append(name_node, &mut self.arena);
+
+                        // Add value node
+                        if let Some(expr) = table_child.child_by_field_name("expression") {
+                            let value_node = expr.named_child(0).unwrap();
+                            table_kw_node_id.append(
+                                self.parse_value(&value_node)
+                                    .unwrap_or_else(|| self.new_error_node(&value_node)),
+                                &mut self.arena,
+                            );
+                        }
+                        child_node_id = Some(table_kw_node_id);
+                    }
+                    _ => {}
                 }
-                _ => {}
             }
 
             if let Some(id) = child_node_id {
@@ -2276,17 +2348,21 @@ impl TreesitterTranslator {
         if let Some(statement) = body_node.child_by_field_name("statement") {
             let mut cursor = statement.walk();
             for body_child in statement.named_children(&mut cursor) {
-                let child_node_id = match body_child.kind() {
-                    "assignment_or_method_call_statement" => {
-                        self.parse_state_assignment(&body_child)
+                let child_node_id = if body_child.is_error() {
+                    Some(self.new_error_node(&body_child))
+                } else {
+                    match body_child.kind() {
+                        "assignment_or_method_call_statement" => {
+                            self.parse_state_assignment(&body_child)
+                        }
+                        "direct_application" => self.parse_state_direct(&body_child),
+                        "parser_block_statement" => self.parse_state_block(&body_child),
+                        "constant_declaration" => self.parse_const_dec(&body_child),
+                        "variable_declaration" => self.parse_var_dec(&body_child),
+                        "empty_statement" => None,
+                        "conditional_statement" => self.parse_state_conditional(&body_child),
+                        _ => None,
                     }
-                    "direct_application" => self.parse_state_direct(&body_child),
-                    "parser_block_statement" => self.parse_state_block(&body_child),
-                    "constant_declaration" => self.parse_const_dec(&body_child),
-                    "variable_declaration" => self.parse_var_dec(&body_child),
-                    "empty_statement" => None,
-                    "conditional_statement" => self.parse_state_conditional(&body_child),
-                    _ => None,
                 };
 
                 if let Some(id) = child_node_id {
@@ -2357,7 +2433,10 @@ impl TreesitterTranslator {
                     ));
                     let mut cursor = select_expression_body_node.walk();
                     for body_child in select_expression_body_node.named_children(&mut cursor) {
-                        if body_child.kind() == "select_case" {
+                        if body_child.is_error() {
+                            expression_body_node
+                                .append(self.new_error_node(&body_child), &mut self.arena);
+                        } else if body_child.kind() == "select_case" {
                             let t = self.arena.new_node(Node::new(
                                 NodeKind::Row,
                                 &body_node,
@@ -2426,43 +2505,47 @@ impl TreesitterTranslator {
 
         let mut cursor = node.walk();
         for child in node.named_children(&mut cursor) {
-            let child_node_id =
-                self.arena
-                    .new_node(Node::new(NodeKind::Annotation, node, &self.source_code));
+            if child.is_error() {
+                node_id.append(self.new_error_node(&child), &mut self.arena);
+            } else {
+                let child_node_id =
+                    self.arena
+                        .new_node(Node::new(NodeKind::Annotation, node, &self.source_code));
 
-            child_node_id.append(
-                self.arena.new_node(Node::new(
-                    NodeKind::Name,
-                    &child.child_by_field_name("name").unwrap(),
-                    &self.source_code,
-                )),
-                &mut self.arena,
-            );
-
-            if let Some(body) = child.child_by_field_name("body") {
                 child_node_id.append(
-                    self.parse_annotation_body(&body)
-                        .unwrap_or_else(|| self.new_error_node(&body)),
+                    self.arena.new_node(Node::new(
+                        NodeKind::Name,
+                        &child.child_by_field_name("name").unwrap(),
+                        &self.source_code,
+                    )),
                     &mut self.arena,
                 );
-            }
-            if let Some(struct_body) = node.child_by_field_name("struct") {
-                if struct_body.kind() == "expression_list" {
+
+                if let Some(body) = child.child_by_field_name("body") {
                     child_node_id.append(
-                        self.parse_expression_list(&struct_body)
-                            .unwrap_or_else(|| self.new_error_node(&struct_body)),
-                        &mut self.arena,
-                    );
-                } else if struct_body.kind() == "kv_list" {
-                    child_node_id.append(
-                        self.parse_kv_list(&struct_body)
-                            .unwrap_or_else(|| self.new_error_node(&struct_body)),
+                        self.parse_annotation_body(&body)
+                            .unwrap_or_else(|| self.new_error_node(&body)),
                         &mut self.arena,
                     );
                 }
-            }
+                if let Some(struct_body) = node.child_by_field_name("struct") {
+                    if struct_body.kind() == "expression_list" {
+                        child_node_id.append(
+                            self.parse_expression_list(&struct_body)
+                                .unwrap_or_else(|| self.new_error_node(&struct_body)),
+                            &mut self.arena,
+                        );
+                    } else if struct_body.kind() == "kv_list" {
+                        child_node_id.append(
+                            self.parse_kv_list(&struct_body)
+                                .unwrap_or_else(|| self.new_error_node(&struct_body)),
+                            &mut self.arena,
+                        );
+                    }
+                }
 
-            node_id.append(child_node_id, &mut self.arena);
+                node_id.append(child_node_id, &mut self.arena);
+            }
         }
 
         Some(node_id)
@@ -2475,26 +2558,30 @@ impl TreesitterTranslator {
 
         let mut cursor = node.walk();
         for child in node.named_children(&mut cursor) {
-            let child_node_id =
-                self.arena
-                    .new_node(Node::new(NodeKind::Kv, node, &self.source_code));
+            if child.is_error() {
+                node_id.append(self.new_error_node(&child), &mut self.arena);
+            } else {
+                let child_node_id =
+                    self.arena
+                        .new_node(Node::new(NodeKind::Kv, node, &self.source_code));
 
-            // Add name node
-            let node_name = child.named_child(0).unwrap();
-            let name_node =
-                self.arena
-                    .new_node(Node::new(NodeKind::Name, &node_name, &self.source_code));
-            child_node_id.append(name_node, &mut self.arena);
+                // Add name node
+                let node_name = child.named_child(0).unwrap();
+                let name_node =
+                    self.arena
+                        .new_node(Node::new(NodeKind::Name, &node_name, &self.source_code));
+                child_node_id.append(name_node, &mut self.arena);
 
-            // Add value node
-            let node_value = child.named_child(1).unwrap();
-            child_node_id.append(
-                self.parse_value(&node_value)
-                    .unwrap_or_else(|| self.new_error_node(&node_value)),
-                &mut self.arena,
-            );
+                // Add value node
+                let node_value = child.named_child(1).unwrap();
+                child_node_id.append(
+                    self.parse_value(&node_value)
+                        .unwrap_or_else(|| self.new_error_node(&node_value)),
+                    &mut self.arena,
+                );
 
-            node_id.append(child_node_id, &mut self.arena);
+                node_id.append(child_node_id, &mut self.arena);
+            }
         }
 
         Some(node_id)

@@ -112,6 +112,7 @@ pub enum NodeKind {
     MatchKind,
     Args,
     Arg,
+    DefineSymbol,
 }
 
 const SCOPE_NODES: [NodeKind; 17] = [
