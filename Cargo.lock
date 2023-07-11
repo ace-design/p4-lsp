@@ -2289,7 +2289,6 @@ dependencies = [
 [[package]]
 name = "tree-sitter-p4"
 version = "0.0.1"
-source = "git+https://github.com/ace-design/tree-sitter-p4#27200e8e6f42445146eb56fc58f37361eaf4c751"
 dependencies = [
  "cc",
  "tree-sitter",

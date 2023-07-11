@@ -45,7 +45,7 @@ impl TreesitterTranslator {
         let tree = self.tree.clone();
         let mut cursor = tree.walk();
         for child in tree.root_node().named_children(&mut cursor) {
-            //debug!("{:?}",child);
+            debug!("{:?}",child);
             let new_child = if child.is_error() {
                 Some(self.new_error_node(&child))
             } else {
@@ -269,32 +269,44 @@ impl TreesitterTranslator {
             self.arena
                 .new_node(Node::new(NodeKind::PreprocDefine, node, &self.source_code));
 
+        debug!("0");
         // Add keyword node
-        if let Some(type_node) = node.child_by_field_name("KeyWord") {
+        let type_node = node.child_by_field_name("KeyWord").unwrap();
             node_id.append(
                 self.arena
                     .new_node(Node::new(NodeKind::KeyWord, &type_node, &self.source_code)),
                 &mut self.arena,
             );
-        }
 
+        debug!("1");
         // Add name node
-        let node_name = node.named_child(0).unwrap();
+        /*let node_name = node.child_by_field_name("name").unwrap();
         let name_node =
             self.arena
                 .new_node(Node::new(NodeKind::Name, &node_name, &self.source_code));
-        node_id.append(name_node, &mut self.arena);
+        node_id.append(name_node, &mut self.arena);*/
 
-        // Add value node
-        let node_value = node.named_child(1).unwrap();
-        node_id.append(
-            self.parse_value(&node_value)
-                .unwrap_or_else(|| self.new_error_node(&node_value)),
-            &mut self.arena,
-        );
+        debug!("2");
+        // Add param node
+        /*let node_name = node.child_by_field_name("param").unwrap();
+        let name_node =
+            self.arena
+                .new_node(Node::new(NodeKind::Name, &node_name, &self.source_code));
+        node_id.append(name_node, &mut self.arena);*/
 
-        node_id.append(name_node, &mut self.arena);
+        debug!("3");
+        // Add body node
+        if let Some(node_body) = node.child_by_field_name("body"){
+            node_id.append(self.arena
+                .new_node(Node::new(NodeKind::Body, &node_body, &self.source_code)),
+                //self.parse_value(&node_value)
+                //.unwrap_or_else(|| self.new_error_node(&node_value)),
+                &mut self.arena,
+            );
+        }
 
+        debug!("4");
+        
         Some(node_id)
     }
     fn parse_preproc_undef(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {

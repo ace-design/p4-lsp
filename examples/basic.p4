@@ -81,7 +81,17 @@ parser MyParser(packet_in packet,
 control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
     apply {  }
 }
+// expand key decrypt
+#define get_exp_key(ROUND) action get_exp_key_r##ROUND##(){                     \
+                              t0_inv = meta.aes.expandkey_r##ROUND##[127:96];   \
+                              t1_inv = meta.aes.expandkey_r##ROUND##[95:64];    \
+                              t2_inv = meta.aes.expandkey_r##ROUND##[63:32];    \
+                              t3_inv = meta.aes.expandkey_r##ROUND##[31:0];     \
+}
 
+#define dsgdsgsd 24
+
+#define afsfds
 
 /*************************************************************************
 **************  I N G R E S S   P R O C E S S I N G   *******************
