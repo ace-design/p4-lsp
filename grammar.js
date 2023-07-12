@@ -101,15 +101,16 @@ module.exports = grammar({
             optional(/\s/),
             '(',
             optional(
-                field("param", seq(
-                    $.identifier,
-                    optional($.identifier_list)
-                ))
+                field("param", $.param_define)
             ),
             ')',
-            field("body", $.body_define)
+            field("body_macro", $.body_define)
         ), // todo
-        identifier_list: $ => repeat1(seq(',',$.identifier)),
+        param_define: $ => seq(
+            $.identifier,
+            optional($._identifier_list)
+        ),
+        _identifier_list: $ => repeat1(seq(',', $.identifier)),
         body_define: $ => seq(optional(/[^\/]*\\/),/.*/),
         null_value: $ => /\s/,
         
