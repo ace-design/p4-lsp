@@ -330,6 +330,7 @@ pub struct Symbols {
     pub constants: Vec<Symbol>,
     pub variables: Vec<Symbol>,
     pub functions: Vec<Symbol>,
+    pub preproc: Vec<Symbol>,
 }
 
 impl Symbols {
@@ -515,15 +516,18 @@ impl ScopeSymbolTable {
                             table.symbols.variables.push(x);
                         }
                     }
+                    NodeKind::PreprocDefine | NodeKind::PreprocInclude | NodeKind::PreprocUndef => {
+                        if let Some(x) = _create_symbol_for_parse(child_visit_node, NodeKind::Name)
+                        {
+                            table.symbols.preproc.push(x);
+                        }
+                    }
                     NodeKind::ParserDec
                     | NodeKind::ControlDec
                     | NodeKind::ControlAction
                     | NodeKind::Instantiation
                     | NodeKind::MatchKind
                     | NodeKind::ErrorCst
-                    | NodeKind::PreprocInclude
-                    | NodeKind::PreprocDefine
-                    | NodeKind::PreprocUndef
                     | NodeKind::StateParser
                     | NodeKind::ValueSet
                     | NodeKind::ControlTable
