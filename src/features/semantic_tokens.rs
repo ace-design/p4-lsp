@@ -139,7 +139,7 @@ pub fn get_visit_nodes(visit_node: VisitNode) -> Vec<ColorData> {
             node_type = 1;
         }
         NodeKind::KeyWord => {
-            node_type = 5;
+            node_type = 2;
         }
         NodeKind::Expression => {
             node_type = 7;
