@@ -45,7 +45,7 @@ impl TreesitterTranslator {
         let tree = self.tree.clone();
         let mut cursor = tree.walk();
         for child in tree.root_node().named_children(&mut cursor) {
-            debug!("{:?}",child);
+            debug!("{:?}", child);
             let new_child = if child.is_error() {
                 Some(self.new_error_node(&child))
             } else {
@@ -62,7 +62,9 @@ impl TreesitterTranslator {
                     "extern_declaration" => self.parse_extern(&child),
 
                     "preproc_include_declaration" => self.parse_preproc_include(&child),
-                    "preproc_define_declaration" | "preproc_define_declaration_macro" => self.parse_preproc_define(&child),
+                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                        self.parse_preproc_define(&child)
+                    }
                     "preproc_undef_declaration" => self.parse_preproc_undef(&child),
 
                     _ => None,
@@ -271,11 +273,11 @@ impl TreesitterTranslator {
 
         // Add keyword node
         let type_node = node.child_by_field_name("KeyWord").unwrap();
-            node_id.append(
-                self.arena
-                    .new_node(Node::new(NodeKind::KeyWord, &type_node, &self.source_code)),
-                &mut self.arena,
-            );
+        node_id.append(
+            self.arena
+                .new_node(Node::new(NodeKind::KeyWord, &type_node, &self.source_code)),
+            &mut self.arena,
+        );
 
         // Add name node
         let node_name = node.child_by_field_name("name").unwrap();
@@ -285,25 +287,32 @@ impl TreesitterTranslator {
         node_id.append(name_node, &mut self.arena);
 
         // Add param node
-        if let Some(param_node) = node.child_by_field_name("param"){
-            node_id.append(self.parse_params_define(&param_node).unwrap_or_else(|| self.new_error_node(&param_node)), &mut self.arena);
-        }
-
-        // Add body node
-        if let Some(node_body) = node.child_by_field_name("body"){
-            node_id.append(self.parse_value(&node_body).unwrap_or_else(|| self.new_error_node(&node_body)),
+        if let Some(param_node) = node.child_by_field_name("param") {
+            node_id.append(
+                self.parse_params_define(&param_node)
+                    .unwrap_or_else(|| self.new_error_node(&param_node)),
                 &mut self.arena,
             );
         }
 
         // Add body node
-        if let Some(node_body) = node.child_by_field_name("body_macro"){
-            node_id.append(self.arena
-                .new_node(Node::new(NodeKind::Body, &node_body, &self.source_code)),
+        if let Some(node_body) = node.child_by_field_name("body") {
+            node_id.append(
+                self.parse_value(&node_body)
+                    .unwrap_or_else(|| self.new_error_node(&node_body)),
                 &mut self.arena,
             );
         }
-        
+
+        // Add body node
+        if let Some(node_body) = node.child_by_field_name("body_macro") {
+            node_id.append(
+                self.arena
+                    .new_node(Node::new(NodeKind::Body, &node_body, &self.source_code)),
+                &mut self.arena,
+            );
+        }
+
         Some(node_id)
     }
 
@@ -1028,7 +1037,7 @@ impl TreesitterTranslator {
                                     &self.source_code,
                                 )));
                             }
-                        } else{       
+                        } else {
                             let node_return: NodeId;
                             if text.starts_with("int") {
                                 node_return = self.arena.new_node(Node::new(
@@ -1054,13 +1063,19 @@ impl TreesitterTranslator {
                                     node,
                                     &self.source_code,
                                 ));
-                            }                     
+                            }
                             if child_child.kind() == "define_symbol" {
-                                node_return.append(self.arena
-                                    .new_node(Node::new(NodeKind::DefineSymbol, node, &self.source_code)), &mut self.arena);
-
+                                node_return.append(
+                                    self.arena.new_node(Node::new(
+                                        NodeKind::DefineSymbol,
+                                        node,
+                                        &self.source_code,
+                                    )),
+                                    &mut self.arena,
+                                );
                             } else if child_child.kind() == "expression" {
-                                node_return.append(self.parse_value(&child_child)?, &mut self.arena);
+                                node_return
+                                    .append(self.parse_value(&child_child)?, &mut self.arena);
                             }
                             return Some(node_return);
                         }
