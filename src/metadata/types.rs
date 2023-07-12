@@ -9,6 +9,7 @@ pub enum BaseType {
     Int,
     Bit,
     Varbit,
+    Null,
     SizedInt(Option<u32>),
     SizedVarbit(Option<u32>),
     SizedBit(Option<u32>),

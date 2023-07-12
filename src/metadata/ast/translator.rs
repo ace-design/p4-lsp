@@ -62,7 +62,7 @@ impl TreesitterTranslator {
                     "extern_declaration" => self.parse_extern(&child),
 
                     "preproc_include_declaration" => self.parse_preproc_include(&child),
-                    "preproc_define_declaration" => self.parse_preproc_define(&child),
+                    "preproc_define_declaration" | "preproc_define_declaration_macro" => self.parse_preproc_define(&child),
                     "preproc_undef_declaration" => self.parse_preproc_undef(&child),
 
                     _ => None,
@@ -269,7 +269,6 @@ impl TreesitterTranslator {
             self.arena
                 .new_node(Node::new(NodeKind::PreprocDefine, node, &self.source_code));
 
-        debug!("0");
         // Add keyword node
         let type_node = node.child_by_field_name("KeyWord").unwrap();
             node_id.append(
@@ -278,36 +277,56 @@ impl TreesitterTranslator {
                 &mut self.arena,
             );
 
-        debug!("1");
         // Add name node
-        /*let node_name = node.child_by_field_name("name").unwrap();
+        let node_name = node.child_by_field_name("name").unwrap();
         let name_node =
             self.arena
                 .new_node(Node::new(NodeKind::Name, &node_name, &self.source_code));
-        node_id.append(name_node, &mut self.arena);*/
+        node_id.append(name_node, &mut self.arena);
 
-        debug!("2");
         // Add param node
-        /*let node_name = node.child_by_field_name("param").unwrap();
-        let name_node =
-            self.arena
-                .new_node(Node::new(NodeKind::Name, &node_name, &self.source_code));
-        node_id.append(name_node, &mut self.arena);*/
+        if let Some(param_node) = node.child_by_field_name("param"){
+            node_id.append(self.parse_params_define(&param_node).unwrap_or_else(|| self.new_error_node(&param_node)), &mut self.arena);
+        }
 
-        debug!("3");
         // Add body node
         if let Some(node_body) = node.child_by_field_name("body"){
-            node_id.append(self.arena
-                .new_node(Node::new(NodeKind::Body, &node_body, &self.source_code)),
-                //self.parse_value(&node_value)
-                //.unwrap_or_else(|| self.new_error_node(&node_value)),
+            node_id.append(self.parse_value(&node_body).unwrap_or_else(|| self.new_error_node(&node_body)),
                 &mut self.arena,
             );
         }
 
-        debug!("4");
+        // Add body node
+        if let Some(node_body) = node.child_by_field_name("body_macro"){
+            node_id.append(self.arena
+                .new_node(Node::new(NodeKind::Body, &node_body, &self.source_code)),
+                &mut self.arena,
+            );
+        }
         
         Some(node_id)
+    }
+
+    fn parse_params_define(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        let params_node_id =
+            self.arena
+                .new_node(Node::new(NodeKind::Params, node, &self.source_code));
+
+        let mut cursor = node.walk();
+        for syntax_child in node.named_children(&mut cursor) {
+            if syntax_child.is_error() {
+                params_node_id.append(self.new_error_node(&syntax_child), &mut self.arena);
+            } else if syntax_child.kind() == "identifier" {
+                let param_node_id = self.arena.new_node(Node::new(
+                    NodeKind::Param,
+                    &syntax_child,
+                    &self.source_code,
+                ));
+
+                params_node_id.append(param_node_id, &mut self.arena);
+            }
+        }
+        Some(params_node_id)
     }
     fn parse_preproc_undef(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let node_id =
@@ -438,6 +457,14 @@ impl TreesitterTranslator {
                             name_node = y.clone();
                             node_value.append(name_node, &mut self_v.arena);
                         }
+                    }
+                    "null_value" => {
+                        name_node = self_v.arena.new_node(Node::new(
+                            NodeKind::Type(Type::Base(BaseType::Null)),
+                            node,
+                            &self_v.source_code,
+                        ));
+                        node_value.append(name_node, &mut self_v.arena);
                     }
                     _ => {
                         if accept.contains(&kind) {
