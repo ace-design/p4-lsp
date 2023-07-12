@@ -7,6 +7,7 @@ module.exports = grammar({
                     $.block_comment,
                     $.preproc_include_declaration,
                     $.preproc_define_declaration,
+                    $.preproc_define_declaration_macro,
                     $.preproc_undef_declaration,
                     $.preproc_conditional_declaration,
                     $.preproc_conditional_declaration_elif,
@@ -84,12 +85,33 @@ module.exports = grammar({
 
         preproc_define_declaration: $ => seq(
             field("KeyWord", seq('#','define')),
-            //field("name", $.identifier),
-            //field("param", optional(seq("(",$.identifier, optional($.identifier_list),")"))),
+            field("name", $.identifier),
+            /\s/,
+            field("body", choice(
+                $.integer,
+                $.string,
+                $.bool,
+                $.identifier,
+                $.null_value
+            ))
+        ),
+        preproc_define_declaration_macro: $ => seq(
+            field("KeyWord", seq('#','define')),
+            field("name", $.identifier),
+            optional(/\s/),
+            '(',
+            optional(
+                field("param", seq(
+                    $.identifier,
+                    optional($.identifier_list)
+                ))
+            ),
+            ')',
             field("body", $.body_define)
         ), // todo
         identifier_list: $ => repeat1(seq(',',$.identifier)),
         body_define: $ => seq(optional(/[^\/]*\\/),/.*/),
+        null_value: $ => /\s/,
         
         preproc_undef_declaration: $ => seq(
             field("KeyWord", seq('#','undef')),
