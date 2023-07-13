@@ -88,6 +88,8 @@ impl TreesitterTranslator {
         for child in node.named_children(&mut cursor) {
             if child.is_error() {
                 node_id.append(self.new_error_node(&child), &mut self.arena);
+            } else if let Some(t) = self.look_for_preproc_kind(&child) {
+                node_id.append(t, &mut self.arena);
             } else {
                 let child_node_id =
                     self.arena
@@ -119,6 +121,10 @@ impl TreesitterTranslator {
                             .unwrap_or_else(|| self.new_error_node(&function)),
                         &mut self.arena,
                     );
+                }
+
+                for node_preproc in self.look_for_preproc(&child) {
+                    child_node_id.append(node_preproc, &mut self.arena);
                 }
 
                 node_id.append(child_node_id, &mut self.arena);
@@ -174,6 +180,10 @@ impl TreesitterTranslator {
                 &mut self.arena,
             );
         }
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
         //node_id.append(self.parse_type_options_dec(&option_list_node).unwrap_or_else(|| self.new_error_node(&option_list_node)), &mut self.arena);
 
         Some(node_id)
@@ -187,11 +197,24 @@ impl TreesitterTranslator {
 
         let mut cursor = node_param_type.walk();
         for child in node_param_type.named_children(&mut cursor) {
-            let child_id =
-                self.arena
-                    .new_node(Node::new(NodeKind::Name, &child, &self.source_code));
-            node_param_type_id.append(child_id, &mut self.arena);
+            if child.kind() == "preproc_include_declaration" {
+                if let Some(t) = self.parse_preproc_include(&child) {
+                    node_param_type_id.append(t, &mut self.arena);
+                }
+            } else if let Some(t) = self.look_for_preproc_kind(&child) {
+                node_param_type_id.append(t, &mut self.arena);
+            } else {
+                let child_id =
+                    self.arena
+                        .new_node(Node::new(NodeKind::Name, &child, &self.source_code));
+                node_param_type_id.append(child_id, &mut self.arena);
+            }
         }
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_param_type_id.append(node_preproc, &mut self.arena);
+        }
+
         Some(node_param_type_id)
     }
     fn parse_error(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -215,6 +238,10 @@ impl TreesitterTranslator {
                 .unwrap_or_else(|| self.new_error_node(&option_list_node)),
             &mut self.arena,
         );
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
 
         Some(node_id)
     }
@@ -240,7 +267,47 @@ impl TreesitterTranslator {
             &mut self.arena,
         );
 
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
+
         Some(node_id)
+    }
+
+    fn look_for_preproc_kind(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        let kind = node.kind();
+        if kind == "preproc_include_declaration" {
+            return self.parse_preproc_include(&node);
+        } else if kind == "preproc_define_declaration" || kind == "preproc_define_declaration_macro"
+        {
+            return self.parse_preproc_define(&node);
+        } else if kind == "preproc_undef_declaration" {
+            return self.parse_preproc_undef(&node);
+        }
+        None
+    }
+
+    fn look_for_preproc(&mut self, node: &tree_sitter::Node) -> Vec<NodeId> {
+        let mut vec_node: Vec<NodeId> = vec![];
+
+        let mut cursor = node.walk();
+        for child in node.named_children(&mut cursor) {
+            debug!("{:?}", child);
+            let new_child = match child.kind() {
+                "preproc_include_declaration" => self.parse_preproc_include(&child),
+                "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                    self.parse_preproc_define(&child)
+                }
+                "preproc_undef_declaration" => self.parse_preproc_undef(&child),
+                _ => None,
+            };
+
+            if let Some(new_child) = new_child {
+                vec_node.push(new_child);
+            }
+        }
+
+        vec_node
     }
 
     fn parse_preproc_include(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -325,6 +392,8 @@ impl TreesitterTranslator {
         for syntax_child in node.named_children(&mut cursor) {
             if syntax_child.is_error() {
                 params_node_id.append(self.new_error_node(&syntax_child), &mut self.arena);
+            } else if let Some(t) = self.look_for_preproc_kind(&syntax_child) {
+                params_node_id.append(t, &mut self.arena);
             } else if syntax_child.kind() == "identifier" {
                 let param_node_id = self.arena.new_node(Node::new(
                     NodeKind::Param,
@@ -335,6 +404,11 @@ impl TreesitterTranslator {
                 params_node_id.append(param_node_id, &mut self.arena);
             }
         }
+
+        for node_preproc in self.look_for_preproc(&node) {
+            params_node_id.append(node_preproc, &mut self.arena);
+        }
+
         Some(params_node_id)
     }
     fn parse_preproc_undef(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -408,10 +482,15 @@ impl TreesitterTranslator {
             &mut self.arena,
         );
 
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
+
         Some(node_id)
     }
 
     fn parse_value(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        // todo-preproc
         fn loop_value(
             node_value: &mut NodeId,
             last_node: NodeId,
@@ -865,6 +944,12 @@ impl TreesitterTranslator {
                 }
             }
         }
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
+        for node_preproc in self.look_for_preproc(&type_kind_node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
 
         Some(node_id)
     }
@@ -878,6 +963,8 @@ impl TreesitterTranslator {
         for field_child in node.named_children(&mut cursor) {
             if field_child.is_error() {
                 fields_node_id.append(self.new_error_node(&field_child), &mut self.arena);
+            } else if let Some(t) = self.look_for_preproc_kind(&field_child) {
+                fields_node_id.append(t, &mut self.arena);
             } else if field_child.kind() == "struct_field" {
                 let field_node_id = self.arena.new_node(Node::new(
                     NodeKind::Field,
@@ -926,6 +1013,8 @@ impl TreesitterTranslator {
         for option_child in node.named_children(&mut cursor) {
             let new_node_id = if option_child.is_error() {
                 self.new_error_node(&option_child)
+            } else if let Some(t) = self.look_for_preproc_kind(&option_child) {
+                t
             } else {
                 //let node_text = utils::get_node_text(&option_child, &self.source_code);
                 //let text = node_text.as_str().trim();
@@ -968,7 +1057,7 @@ impl TreesitterTranslator {
             child = node.clone();
         }
 
-        let node: Option<NodeId> = match child.kind() {
+        let node_id: Option<NodeId> = match child.kind() {
             "base_type" => {
                 let node_text = utils::get_node_text(&child, &self.source_code);
                 let text = node_text.as_str().trim();
@@ -1011,6 +1100,7 @@ impl TreesitterTranslator {
                     ))),
                     _ => {
                         let child_child = child.named_child(0).unwrap();
+                        let mut node_id: Option<NodeId> = None;
                         if child_child.kind() == "integer" {
                             let size = Some(
                                 utils::get_node_text(&child_child, &self.source_code)
@@ -1019,19 +1109,19 @@ impl TreesitterTranslator {
                             );
 
                             if text.starts_with("int") {
-                                return Some(self.arena.new_node(Node::new(
+                                node_id = Some(self.arena.new_node(Node::new(
                                     n_kind(Type::Base(BaseType::SizedInt(size))),
                                     node,
                                     &self.source_code,
                                 )));
                             } else if text.starts_with("bit") {
-                                return Some(self.arena.new_node(Node::new(
+                                node_id = Some(self.arena.new_node(Node::new(
                                     n_kind(Type::Base(BaseType::SizedBit(size))),
                                     node,
                                     &self.source_code,
                                 )));
                             } else if text.starts_with("varbit") {
-                                return Some(self.arena.new_node(Node::new(
+                                node_id = Some(self.arena.new_node(Node::new(
                                     n_kind(Type::Base(BaseType::SizedVarbit(size))),
                                     node,
                                     &self.source_code,
@@ -1068,7 +1158,7 @@ impl TreesitterTranslator {
                                 node_return.append(
                                     self.arena.new_node(Node::new(
                                         NodeKind::DefineSymbol,
-                                        node,
+                                        &child_child,
                                         &self.source_code,
                                     )),
                                     &mut self.arena,
@@ -1077,9 +1167,17 @@ impl TreesitterTranslator {
                                 node_return
                                     .append(self.parse_value(&child_child)?, &mut self.arena);
                             }
-                            return Some(node_return);
+
+                            node_id = Some(node_return);
                         }
-                        None
+                        if let Some(t) = node_id {
+                            for node_preproc in self.look_for_preproc(&child_child) {
+                                t.append(node_preproc, &mut self.arena);
+                            }
+                            Some(t)
+                        } else {
+                            node_id
+                        }
                     }
                 }
             }
@@ -1106,7 +1204,19 @@ impl TreesitterTranslator {
             _ => None,
         };
 
-        node
+        if let Some(node_id_t) = node_id {
+            for node_preproc in self.look_for_preproc(&node) {
+                node_id_t.append(node_preproc, &mut self.arena);
+            }
+            if child_bool {
+                for node_preproc in self.look_for_preproc(&child) {
+                    node_id_t.append(node_preproc, &mut self.arena);
+                }
+            }
+            return Some(node_id_t);
+        }
+
+        node_id
     }
 
     fn parse_parser(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -1167,6 +1277,12 @@ impl TreesitterTranslator {
 
                     // parser_state
                     "parser_state" => self.parse_state(&syntax_child),
+
+                    "preproc_include_declaration" => self.parse_preproc_include(&syntax_child),
+                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                        self.parse_preproc_define(&syntax_child)
+                    }
+                    "preproc_undef_declaration" => self.parse_preproc_undef(&syntax_child),
                     _ => None,
                 }
             };
@@ -1176,6 +1292,16 @@ impl TreesitterTranslator {
             }
         }
         node_id.append(body_node_id, &mut self.arena);
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
+        for node_preproc in self.look_for_preproc(&declaration_body) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
+        for node_preproc in self.look_for_preproc(&body_syntax_node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
 
         Some(node_id)
     }
@@ -1237,6 +1363,12 @@ impl TreesitterTranslator {
                     "table_declaration" => self.parse_control_table(&syntax_child),
 
                     "block_statement" => self.parse_block(&syntax_child),
+
+                    "preproc_include_declaration" => self.parse_preproc_include(&syntax_child),
+                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                        self.parse_preproc_define(&syntax_child)
+                    }
+                    "preproc_undef_declaration" => self.parse_preproc_undef(&syntax_child),
                     _ => None,
                 }
             };
@@ -1246,6 +1378,13 @@ impl TreesitterTranslator {
             }
         }
         node_id.append(body_node_id, &mut self.arena);
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
+        for node_preproc in self.look_for_preproc(&declaration_body) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
 
         Some(node_id)
     }
@@ -1260,6 +1399,8 @@ impl TreesitterTranslator {
             //debug!("a,{:?}",syntax_child);
             if syntax_child.is_error() {
                 params_node_id.append(self.new_error_node(&syntax_child), &mut self.arena);
+            } else if let Some(t) = self.look_for_preproc_kind(&syntax_child) {
+                params_node_id.append(t, &mut self.arena);
             } else if syntax_child.kind() == "parameter" {
                 let param_node_id = self.arena.new_node(Node::new(
                     NodeKind::Param,
@@ -1326,6 +1467,8 @@ impl TreesitterTranslator {
             //debug!("a,{:?}",syntax_child);
             if syntax_child.is_error() {
                 params_node_id.append(self.new_error_node(&syntax_child), &mut self.arena);
+            } else if let Some(t) = self.look_for_preproc_kind(&syntax_child) {
+                params_node_id.append(t, &mut self.arena);
             } else if syntax_child.kind() == "argument" {
                 let param_node_id =
                     self.arena
@@ -1369,6 +1512,12 @@ impl TreesitterTranslator {
                 match syntax_child.kind() {
                     "function_declaration" => self.function_declaration(&syntax_child),
                     "instantiation" => self.instantiation(&syntax_child),
+
+                    "preproc_include_declaration" => self.parse_preproc_include(&syntax_child),
+                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                        self.parse_preproc_define(&syntax_child)
+                    }
+                    "preproc_undef_declaration" => self.parse_preproc_undef(&syntax_child),
                     _ => None,
                 }
             };
@@ -1390,6 +1539,10 @@ impl TreesitterTranslator {
 
         if let Some(x) = self.parse_block(&node.named_child(1)?) {
             fn_node_id.append(x, &mut self.arena);
+        }
+
+        for node_preproc in self.look_for_preproc(&node) {
+            fn_node_id.append(node_preproc, &mut self.arena);
         }
 
         Some(fn_node_id)
@@ -1427,6 +1580,13 @@ impl TreesitterTranslator {
             );
         }
 
+        for node_preproc in self.look_for_preproc(&node) {
+            fn_node_id.append(node_preproc, &mut self.arena);
+        }
+        for node_preproc in self.look_for_preproc(&type_node) {
+            fn_node_id.append(node_preproc, &mut self.arena);
+        }
+
         Some(fn_node_id)
     }
     fn parse_block(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -1461,6 +1621,12 @@ impl TreesitterTranslator {
                     "exit_statement" => None,
                     "return_statement" => self.return_statement(&syntax_child),
                     "switch_statement" => self.switch_statement(&syntax_child),
+
+                    "preproc_include_declaration" => self.parse_preproc_include(&syntax_child),
+                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                        self.parse_preproc_define(&syntax_child)
+                    }
+                    "preproc_undef_declaration" => self.parse_preproc_undef(&syntax_child),
                     _ => None,
                 }
             };
@@ -1469,10 +1635,15 @@ impl TreesitterTranslator {
             }
         }
 
+        for node_preproc in self.look_for_preproc(&node) {
+            block_node_id.append(node_preproc, &mut self.arena);
+        }
+
         Some(block_node_id)
     }
 
     fn parse_direction(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        // not preproc
         let dir = match utils::get_node_text(node, &self.source_code).as_str() {
             "in" => Direction::In,
             "out" => Direction::Out,
@@ -1525,6 +1696,10 @@ impl TreesitterTranslator {
                     .unwrap_or_else(|| self.new_error_node(&value_node)),
                 &mut self.arena,
             );
+        }
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
         }
 
         Some(node_id)
@@ -1627,6 +1802,33 @@ impl TreesitterTranslator {
                             bool = false;
                         }
                     }
+                    "preproc_include_declaration" => {
+                        if let Some(t) = self.parse_preproc_include(&node) {
+                            if let Some(x) = last_node {
+                                x.append(t, &mut self.arena);
+                            } else {
+                                last_node = Some(t);
+                            }
+                        }
+                    }
+                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                        if let Some(t) = self.parse_preproc_define(&node) {
+                            if let Some(x) = last_node {
+                                x.append(t, &mut self.arena);
+                            } else {
+                                last_node = Some(t);
+                            }
+                        }
+                    }
+                    "preproc_undef_declaration" => {
+                        if let Some(t) = self.parse_preproc_undef(&node) {
+                            if let Some(x) = last_node {
+                                x.append(t, &mut self.arena);
+                            } else {
+                                last_node = Some(t);
+                            }
+                        }
+                    }
                     _ => {
                         bool = false;
                     }
@@ -1641,6 +1843,10 @@ impl TreesitterTranslator {
         ));
         if let Some(new_child) = last_node {
             name_node.append(new_child, &mut self.arena);
+        }
+
+        for node_preproc in self.look_for_preproc(&node_first) {
+            name_node.append(node_preproc, &mut self.arena);
         }
 
         Some(name_node)
@@ -1682,6 +1888,8 @@ impl TreesitterTranslator {
             for syntax_child in param_list.named_children(&mut cursor) {
                 let child_node_id = if syntax_child.is_error() {
                     Some(self.new_error_node(&syntax_child))
+                } else if let Some(t) = self.look_for_preproc_kind(&syntax_child) {
+                    Some(t)
                 } else {
                     match syntax_child.named_child(0)?.kind() {
                         "type_ref" => self.parse_type_ref(&syntax_child, NodeKind::TypeList, true),
@@ -1690,6 +1898,12 @@ impl TreesitterTranslator {
                             node,
                             &self.source_code,
                         ))),
+
+                        "preproc_include_declaration" => self.parse_preproc_include(&syntax_child),
+                        "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                            self.parse_preproc_define(&syntax_child)
+                        }
+                        "preproc_undef_declaration" => self.parse_preproc_undef(&syntax_child),
                         _ => Some(self.new_error_node(&syntax_child)),
                     }
                 };
@@ -1699,6 +1913,10 @@ impl TreesitterTranslator {
             }
 
             node_id.append(params_node_id, &mut self.arena);
+        }
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
         }
 
         Some(node_id)
@@ -1745,6 +1963,10 @@ impl TreesitterTranslator {
             node_id.append(params_node_id, &mut self.arena);
         }
 
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
+
         Some(node_id)
     }
     fn parse_state_block(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -1776,6 +1998,12 @@ impl TreesitterTranslator {
                     "variable_declaration" => self.parse_var_dec(&body_child),
                     "empty_statement" => None,
                     "conditional_statement" => self.parse_state_conditional(&body_child),
+
+                    "preproc_include_declaration" => self.parse_preproc_include(&body_child),
+                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                        self.parse_preproc_define(&body_child)
+                    }
+                    "preproc_undef_declaration" => self.parse_preproc_undef(&body_child),
                     _ => None,
                 }
             };
@@ -1783,6 +2011,10 @@ impl TreesitterTranslator {
             if let Some(id) = child_node_id {
                 node_id.append(id, &mut self.arena);
             }
+        }
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
         }
 
         Some(node_id)
@@ -1833,6 +2065,10 @@ impl TreesitterTranslator {
             );
         }
 
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
+
         Some(node_id)
     }
     fn fn_statement(&mut self, node: tree_sitter::Node<'_>, type_node: NodeKind) -> Option<NodeId> {
@@ -1857,6 +2093,12 @@ impl TreesitterTranslator {
                     "exit_statement" => None,
                     "return_statement" => self.return_statement(&body_child),
                     "switch_statement" => self.switch_statement(&body_child),
+
+                    "preproc_include_declaration" => self.parse_preproc_include(&body_child),
+                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                        self.parse_preproc_define(&body_child)
+                    }
+                    "preproc_undef_declaration" => self.parse_preproc_undef(&body_child),
                     _ => None,
                 }
             };
@@ -1864,6 +2106,10 @@ impl TreesitterTranslator {
             if let Some(id) = child_node_id {
                 node_id.append(id, &mut self.arena);
             }
+        }
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
         }
 
         Some(node_id)
@@ -1889,6 +2135,11 @@ impl TreesitterTranslator {
             );
             return Some(node_id);
         }
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
+
         None
     }
     fn switch_statement(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -1918,6 +2169,8 @@ impl TreesitterTranslator {
         for body_child in body_node.named_children(&mut cursor) {
             if body_child.is_error() {
                 node_id.append(self.new_error_node(&body_child), &mut self.arena);
+            } else if let Some(t) = self.look_for_preproc_kind(&body_child) {
+                node_id.append(t, &mut self.arena);
             } else if body_child.kind() == "switch_case" {
                 let label: NodeId =
                     self.arena
@@ -1938,6 +2191,10 @@ impl TreesitterTranslator {
                 }
                 node_id.append(label, &mut self.arena);
             }
+        }
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
         }
 
         Some(node_id)
@@ -1989,6 +2246,10 @@ impl TreesitterTranslator {
             &mut self.arena,
         );
 
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
+
         Some(node_id)
     }
 
@@ -2035,6 +2296,10 @@ impl TreesitterTranslator {
             node_id.append(params_node_id, &mut self.arena);
         }
 
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
+
         Some(node_id)
     }
     fn parse_control_action(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -2079,6 +2344,10 @@ impl TreesitterTranslator {
             .parse_block(&block_syntax_node)
             .unwrap_or_else(|| self.new_error_node(&block_syntax_node));
         node_id.append(block_node_id, &mut self.arena);
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
 
         Some(node_id)
     }
@@ -2135,38 +2404,48 @@ impl TreesitterTranslator {
                         ));
                         let mut cursor = keys.walk();
                         for keys_child in keys.named_children(&mut cursor) {
-                            // Add name node
-                            let key_node_id = self.arena.new_node(Node::new(
-                                NodeKind::Key,
-                                &keys_child,
-                                &self.source_code,
-                            ));
-                            // Add annotation node
-                            if let Some(annotation) = keys_child.child_by_field_name("annotation") {
+                            if keys_child.is_error() {
+                                keys_node_id
+                                    .append(self.new_error_node(&keys_child), &mut self.arena);
+                            } else if let Some(t) = self.look_for_preproc_kind(&keys_child) {
+                                keys_node_id.append(t, &mut self.arena);
+                            } else {
+                                // Add name node
+                                let key_node_id = self.arena.new_node(Node::new(
+                                    NodeKind::Key,
+                                    &keys_child,
+                                    &self.source_code,
+                                ));
+                                // Add annotation node
+                                if let Some(annotation) =
+                                    keys_child.child_by_field_name("annotation")
+                                {
+                                    key_node_id.append(
+                                        self.parse_annotation(&annotation)
+                                            .unwrap_or_else(|| self.new_error_node(&annotation)),
+                                        &mut self.arena,
+                                    );
+                                }
+
+                                // Add name node
+                                let name_node = self.arena.new_node(Node::new(
+                                    NodeKind::Name,
+                                    &keys_child.child_by_field_name("name").unwrap(),
+                                    &self.source_code,
+                                ));
+                                key_node_id.append(name_node, &mut self.arena);
+
+                                // Add value node
+                                let value_node =
+                                    keys_child.child_by_field_name("expression").unwrap();
                                 key_node_id.append(
-                                    self.parse_annotation(&annotation)
-                                        .unwrap_or_else(|| self.new_error_node(&annotation)),
+                                    self.parse_value(&value_node)
+                                        .unwrap_or_else(|| self.new_error_node(&value_node)),
                                     &mut self.arena,
                                 );
+
+                                keys_node_id.append(key_node_id, &mut self.arena);
                             }
-
-                            // Add name node
-                            let name_node = self.arena.new_node(Node::new(
-                                NodeKind::Name,
-                                &keys_child.child_by_field_name("name").unwrap(),
-                                &self.source_code,
-                            ));
-                            key_node_id.append(name_node, &mut self.arena);
-
-                            // Add value node
-                            let value_node = keys_child.child_by_field_name("expression").unwrap();
-                            key_node_id.append(
-                                self.parse_value(&value_node)
-                                    .unwrap_or_else(|| self.new_error_node(&value_node)),
-                                &mut self.arena,
-                            );
-
-                            keys_node_id.append(key_node_id, &mut self.arena);
                         }
                         child_node_id = Some(keys_node_id);
                     }
@@ -2179,39 +2458,47 @@ impl TreesitterTranslator {
                         ));
                         let mut cursor = actions.walk();
                         for actions_child in actions.named_children(&mut cursor) {
-                            // Add name node
-                            let action_node_id = self.arena.new_node(Node::new(
-                                NodeKind::Action,
-                                &actions_child,
-                                &self.source_code,
-                            ));
-                            // Add annotation node
-                            if let Some(annotation) =
-                                actions_child.child_by_field_name("annotation")
-                            {
-                                action_node_id.append(
-                                    self.parse_annotation(&annotation)
-                                        .unwrap_or_else(|| self.new_error_node(&annotation)),
-                                    &mut self.arena,
-                                );
+                            if actions_child.is_error() {
+                                actions_node_id
+                                    .append(self.new_error_node(&actions_child), &mut self.arena);
+                            } else if let Some(t) = self.look_for_preproc_kind(&actions_child) {
+                                actions_node_id.append(t, &mut self.arena);
+                            } else {
+                                // Add name node
+                                let action_node_id = self.arena.new_node(Node::new(
+                                    NodeKind::Action,
+                                    &actions_child,
+                                    &self.source_code,
+                                ));
+                                // Add annotation node
+                                if let Some(annotation) =
+                                    actions_child.child_by_field_name("annotation")
+                                {
+                                    action_node_id.append(
+                                        self.parse_annotation(&annotation)
+                                            .unwrap_or_else(|| self.new_error_node(&annotation)),
+                                        &mut self.arena,
+                                    );
+                                }
+
+                                // Add name node
+                                let name_node = self.arena.new_node(Node::new(
+                                    NodeKind::Type(Type::Name),
+                                    &actions_child.child_by_field_name("name").unwrap(),
+                                    &self.source_code,
+                                ));
+                                action_node_id.append(name_node, &mut self.arena);
+
+                                if let Some(params_syntax_node) = node.child_by_field_name("args") {
+                                    let params_node_id =
+                                        self.parse_args(&params_syntax_node).unwrap_or_else(|| {
+                                            self.new_error_node(&params_syntax_node)
+                                        });
+                                    node_id.append(params_node_id, &mut self.arena);
+                                }
+
+                                actions_node_id.append(action_node_id, &mut self.arena);
                             }
-
-                            // Add name node
-                            let name_node = self.arena.new_node(Node::new(
-                                NodeKind::Type(Type::Name),
-                                &actions_child.child_by_field_name("name").unwrap(),
-                                &self.source_code,
-                            ));
-                            action_node_id.append(name_node, &mut self.arena);
-
-                            if let Some(params_syntax_node) = node.child_by_field_name("args") {
-                                let params_node_id = self
-                                    .parse_args(&params_syntax_node)
-                                    .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
-                                node_id.append(params_node_id, &mut self.arena);
-                            }
-
-                            actions_node_id.append(action_node_id, &mut self.arena);
                         }
                         child_node_id = Some(actions_node_id);
                     }
@@ -2224,71 +2511,81 @@ impl TreesitterTranslator {
                         ));
                         let mut cursor = entries.walk();
                         for entries_child in entries.named_children(&mut cursor) {
-                            // Add name node
-                            let entrie_node_id = self.arena.new_node(Node::new(
-                                NodeKind::Entrie,
-                                &entries_child,
-                                &self.source_code,
-                            ));
-                            // Add annotation node
-                            if let Some(annotation) =
-                                entries_child.child_by_field_name("annotation")
-                            {
-                                entrie_node_id.append(
-                                    self.parse_annotation(&annotation)
-                                        .unwrap_or_else(|| self.new_error_node(&annotation)),
-                                    &mut self.arena,
-                                );
-                            }
-
-                            // Add name node
-                            let name_node = self.arena.new_node(Node::new(
-                                NodeKind::Name,
-                                &entries_child.child_by_field_name("name").unwrap(),
-                                &self.source_code,
-                            ));
-                            entrie_node_id.append(name_node, &mut self.arena);
-
-                            if let Some(params_syntax_node) = node.child_by_field_name("args") {
-                                let params_node_id = self
-                                    .parse_args(&params_syntax_node)
-                                    .unwrap_or_else(|| self.new_error_node(&params_syntax_node));
-                                node_id.append(params_node_id, &mut self.arena);
-                            }
-
-                            // _keyset_expression
-                            if let Some(x) = entries_child.named_child(0) {
-                                if x.kind() == "tuple_keyset_expression" {
-                                    if let Some(y) = x.child_by_field_name("reduce") {
-                                        entrie_node_id.append(
-                                            self.parse_reduced_simple_keyset_expression(&y)
-                                                .unwrap_or_else(|| self.new_error_node(&y)),
-                                            &mut self.arena,
-                                        );
-                                    } else {
-                                        let t = x.named_child(0)?;
-                                        let tt = x.named_child(1)?;
-                                        entrie_node_id.append(
-                                            self.parse_simple_keyset_expression(&t)
-                                                .unwrap_or_else(|| self.new_error_node(&t)),
-                                            &mut self.arena,
-                                        );
-                                        entrie_node_id.append(
-                                            self.parse_simple_expression_list(&tt)
-                                                .unwrap_or_else(|| self.new_error_node(&tt)),
-                                            &mut self.arena,
-                                        );
-                                    }
-                                } else if x.kind() == "simple_keyset_expression" {
+                            if entries_child.is_error() {
+                                entries_node_id
+                                    .append(self.new_error_node(&entries_child), &mut self.arena);
+                            } else if let Some(t) = self.look_for_preproc_kind(&entries_child) {
+                                entries_node_id.append(t, &mut self.arena);
+                            } else {
+                                // Add name node
+                                let entrie_node_id = self.arena.new_node(Node::new(
+                                    NodeKind::Entrie,
+                                    &entries_child,
+                                    &self.source_code,
+                                ));
+                                // Add annotation node
+                                if let Some(annotation) =
+                                    entries_child.child_by_field_name("annotation")
+                                {
                                     entrie_node_id.append(
-                                        self.parse_simple_keyset_expression(&x)
-                                            .unwrap_or_else(|| self.new_error_node(&x)),
+                                        self.parse_annotation(&annotation)
+                                            .unwrap_or_else(|| self.new_error_node(&annotation)),
                                         &mut self.arena,
                                     );
                                 }
-                            }
 
-                            entries_node_id.append(entrie_node_id, &mut self.arena);
+                                // Add name node
+                                let name_node = self.arena.new_node(Node::new(
+                                    NodeKind::Name,
+                                    &entries_child.child_by_field_name("name").unwrap(),
+                                    &self.source_code,
+                                ));
+                                entrie_node_id.append(name_node, &mut self.arena);
+
+                                if let Some(params_syntax_node) = node.child_by_field_name("args") {
+                                    let params_node_id =
+                                        self.parse_args(&params_syntax_node).unwrap_or_else(|| {
+                                            self.new_error_node(&params_syntax_node)
+                                        });
+                                    node_id.append(params_node_id, &mut self.arena);
+                                }
+
+                                // _keyset_expression
+                                if let Some(x) = entries_child.named_child(0) {
+                                    if x.kind() == "tuple_keyset_expression" {
+                                        if let Some(y) = x.child_by_field_name("reduce") {
+                                            entrie_node_id.append(
+                                                self.parse_reduced_simple_keyset_expression(&y)
+                                                    .unwrap_or_else(|| self.new_error_node(&y)),
+                                                &mut self.arena,
+                                            );
+                                        } else {
+                                            let t = x.named_child(0)?;
+                                            let tt = x.named_child(1)?;
+                                            entrie_node_id.append(
+                                                self.parse_simple_keyset_expression(&t)
+                                                    .unwrap_or_else(|| self.new_error_node(&t)),
+                                                &mut self.arena,
+                                            );
+                                            entrie_node_id.append(
+                                                self.parse_simple_expression_list(&tt)
+                                                    .unwrap_or_else(|| self.new_error_node(&tt)),
+                                                &mut self.arena,
+                                            );
+                                        }
+                                    } else if x.kind() == "simple_keyset_expression" {
+                                        entrie_node_id.append(
+                                            self.parse_simple_keyset_expression(&x)
+                                                .unwrap_or_else(|| self.new_error_node(&x)),
+                                            &mut self.arena,
+                                        );
+                                    } else if let Some(t) = self.look_for_preproc_kind(&x) {
+                                        entrie_node_id.append(t, &mut self.arena);
+                                    }
+                                }
+
+                                entries_node_id.append(entrie_node_id, &mut self.arena);
+                            }
                         }
                         child_node_id = Some(entries_node_id);
                     }
@@ -2318,6 +2615,16 @@ impl TreesitterTranslator {
                             );
                         }
                         child_node_id = Some(table_kw_node_id);
+                    }
+
+                    "preproc_include_declaration" => {
+                        child_node_id = self.parse_preproc_include(&table_child)
+                    }
+                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                        child_node_id = self.parse_preproc_define(&table_child)
+                    }
+                    "preproc_undef_declaration" => {
+                        child_node_id = self.parse_preproc_undef(&table_child)
                     }
                     _ => {}
                 }
@@ -2359,6 +2666,10 @@ impl TreesitterTranslator {
         }
 
         node_id.append(table_node_id, &mut self.arena);
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
 
         Some(node_id)
     }
@@ -2415,6 +2726,12 @@ impl TreesitterTranslator {
                         "variable_declaration" => self.parse_var_dec(&body_child),
                         "empty_statement" => None,
                         "conditional_statement" => self.parse_state_conditional(&body_child),
+
+                        "preproc_include_declaration" => self.parse_preproc_include(&body_child),
+                        "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                            self.parse_preproc_define(&body_child)
+                        }
+                        "preproc_undef_declaration" => self.parse_preproc_undef(&body_child),
                         _ => None,
                     }
                 };
@@ -2424,6 +2741,10 @@ impl TreesitterTranslator {
                 }
             }
         }
+        for node_preproc in self.look_for_preproc(&body_node) {
+            value_node.append(node_preproc, &mut self.arena);
+        }
+
         node_id.append(value_node, &mut self.arena);
 
         if let Some(transition_statement) = body_node.child_by_field_name("transition_statement") {
@@ -2490,6 +2811,8 @@ impl TreesitterTranslator {
                         if body_child.is_error() {
                             expression_body_node
                                 .append(self.new_error_node(&body_child), &mut self.arena);
+                        } else if let Some(t) = self.look_for_preproc_kind(&body_child) {
+                            expression_body_node.append(t, &mut self.arena);
                         } else if body_child.kind() == "select_case" {
                             let t = self.arena.new_node(Node::new(
                                 NodeKind::Row,
@@ -2510,6 +2833,7 @@ impl TreesitterTranslator {
                             }
 
                             if let Some(x) = body_child.child_by_field_name("type") {
+                                // todo - preproc
                                 if x.kind() == "tuple_keyset_expression" {
                                     if let Some(y) = x.child_by_field_name("reduce") {
                                         transition_node.append(
@@ -2544,9 +2868,16 @@ impl TreesitterTranslator {
                     }
                     transition_node.append(expression_body_node, &mut self.arena);
                 }
+                for node_preproc in self.look_for_preproc(&transition_statement) {
+                    transition_node.append(node_preproc, &mut self.arena);
+                }
             }
 
             node_id.append(transition_node, &mut self.arena);
+        }
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
         }
 
         Some(node_id)
@@ -2561,6 +2892,8 @@ impl TreesitterTranslator {
         for child in node.named_children(&mut cursor) {
             if child.is_error() {
                 node_id.append(self.new_error_node(&child), &mut self.arena);
+            } else if let Some(t) = self.look_for_preproc_kind(&child) {
+                node_id.append(t, &mut self.arena);
             } else {
                 let child_node_id =
                     self.arena
@@ -2595,6 +2928,8 @@ impl TreesitterTranslator {
                                 .unwrap_or_else(|| self.new_error_node(&struct_body)),
                             &mut self.arena,
                         );
+                    } else if let Some(t) = self.look_for_preproc_kind(&struct_body) {
+                        child_node_id.append(t, &mut self.arena);
                     }
                 }
 
@@ -2614,6 +2949,8 @@ impl TreesitterTranslator {
         for child in node.named_children(&mut cursor) {
             if child.is_error() {
                 node_id.append(self.new_error_node(&child), &mut self.arena);
+            } else if let Some(t) = self.look_for_preproc_kind(&child) {
+                node_id.append(t, &mut self.arena);
             } else {
                 let child_node_id =
                     self.arena
@@ -2670,6 +3007,10 @@ impl TreesitterTranslator {
             );
         }
 
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
+
         Some(node_id)
     }
     fn parse_expression_list(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -2679,11 +3020,17 @@ impl TreesitterTranslator {
 
         let mut cursor = node.walk();
         for child in node.named_children(&mut cursor) {
-            node_id.append(
-                self.parse_value(&child)
-                    .unwrap_or_else(|| self.new_error_node(&child)),
-                &mut self.arena,
-            );
+            if child.is_error() {
+                node_id.append(self.new_error_node(&child), &mut self.arena);
+            } else if let Some(t) = self.look_for_preproc_kind(&child) {
+                node_id.append(t, &mut self.arena);
+            } else {
+                node_id.append(
+                    self.parse_value(&child)
+                        .unwrap_or_else(|| self.new_error_node(&child)),
+                    &mut self.arena,
+                );
+            }
         }
 
         Some(node_id)
@@ -2707,6 +3054,10 @@ impl TreesitterTranslator {
                     .unwrap_or_else(|| self.new_error_node(&value)),
                 &mut self.arena,
             );
+        }
+
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
         }
 
         Some(node_id)
@@ -2734,6 +3085,10 @@ impl TreesitterTranslator {
             );
         }
 
+        for node_preproc in self.look_for_preproc(&node) {
+            node_id.append(node_preproc, &mut self.arena);
+        }
+
         Some(node_id)
     }
     fn parse_simple_expression_list(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
@@ -2743,11 +3098,17 @@ impl TreesitterTranslator {
 
         let mut cursor = node.walk();
         for child in node.named_children(&mut cursor) {
-            node_id.append(
-                self.parse_simple_keyset_expression(&child)
-                    .unwrap_or_else(|| self.new_error_node(&child)),
-                &mut self.arena,
-            );
+            if child.is_error() {
+                node_id.append(self.new_error_node(&child), &mut self.arena);
+            } else if let Some(t) = self.look_for_preproc_kind(&child) {
+                node_id.append(t, &mut self.arena);
+            } else {
+                node_id.append(
+                    self.parse_simple_keyset_expression(&child)
+                        .unwrap_or_else(|| self.new_error_node(&child)),
+                    &mut self.arena,
+                );
+            }
         }
 
         Some(node_id)

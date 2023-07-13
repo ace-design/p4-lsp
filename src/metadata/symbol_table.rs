@@ -329,6 +329,7 @@ impl SymbolTable {
             for type_node_visit in child_visit.get_children().into_iter() {
                 let type_node = type_node_visit.get();
                 if matches!(type_node.kind, NodeKind::Type(_)) {
+                    //debug!("{:?}:{:?}",child_visit.get(),type_node);
                     let used_type = type_node_visit.get_type().unwrap();
                     match used_type {
                         Type::Base(base_type) => match base_type {
