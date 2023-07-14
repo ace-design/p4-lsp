@@ -4,8 +4,6 @@ use super::tree::{Ast, Direction, Node, NodeKind, TypeDecType};
 use crate::metadata::types::{BaseType, Type};
 use crate::utils;
 
-// todo : argument_list + annotation + expression value
-
 pub struct TreesitterTranslator {
     arena: Arena<Node>,
     source_code: String,
@@ -197,13 +195,11 @@ impl TreesitterTranslator {
 
         let mut cursor = node_param_type.walk();
         for child in node_param_type.named_children(&mut cursor) {
-            if child.kind() == "preproc_include_declaration" {
-                if let Some(t) = self.parse_preproc_include(&child) {
-                    node_param_type_id.append(t, &mut self.arena);
-                }
+            if child.is_error(){
+                node_param_type_id.append(self.new_error_node(&child), &mut self.arena);
             } else if let Some(t) = self.look_for_preproc_kind(&child) {
                 node_param_type_id.append(t, &mut self.arena);
-            } else {
+            } else if !self.is_comment(&child) {
                 let child_id =
                     self.arena
                         .new_node(Node::new(NodeKind::Name, &child, &self.source_code));
@@ -371,7 +367,7 @@ impl TreesitterTranslator {
         }
 
         // Add name node
-        let node_name = node.child(self.get_child(&node, 3)?).unwrap();
+        let node_name = node.child(self.get_named_child(&node, 0)?).unwrap();
         let name_node =
             self.arena
                 .new_node(Node::new(NodeKind::Name, &node_name, &self.source_code));
@@ -1613,7 +1609,6 @@ impl TreesitterTranslator {
         }
         let type_node = node.child_by_field_name("type").unwrap();
         if type_node.kind() == "type_ref" {
-            // TODO
             fn_node_id.append(
                 self.parse_type_ref(&type_node, NodeKind::Type, true)
                     .unwrap_or_else(|| self.new_error_node(&type_node)),
@@ -1763,7 +1758,7 @@ impl TreesitterTranslator {
     fn parse_name_assignment(&mut self, node_t: &tree_sitter::Node) -> Option<NodeId> {
         let node_first = *node_t;
         let mut last_node: Option<NodeId> = None;
-        if let Some(mut node) = node_t.child(self.get_child(&node_t, 0)?) {
+        if let Some(mut node) = node_t.child(self.get_named_child(&node_t, 0)?) {
             let mut bool = true;
             while bool {
                 match node.kind() {
@@ -2897,7 +2892,7 @@ impl TreesitterTranslator {
                             }
 
                             if let Some(x) = body_child.child_by_field_name("type") {
-                                // todo - preproc
+                                // // todo-preproc
                                 if x.kind() == "tuple_keyset_expression" {
                                     if let Some(y) = x.child_by_field_name("reduce") {
                                         transition_node.append(
