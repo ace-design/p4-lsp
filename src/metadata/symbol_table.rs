@@ -17,6 +17,7 @@ pub struct SymbolTable {
     arena: Arena<ScopeSymbolTable>,
     root_id: Option<NodeId>,
     undefined_list: Vec<Range>,
+    error_list: Vec<Range>,
 }
 
 pub trait SymbolTableActions {
@@ -29,7 +30,7 @@ pub trait SymbolTableActions {
         &mut self,
         name: String,
         position: Position,
-    ) -> Option<&mut Symbol>;
+    ) -> Option<(Option<&mut Symbol>,bool)>;
     fn rename_symbol(&mut self, id: usize, new_name: String);
 }
 
@@ -183,19 +184,26 @@ impl SymbolTableActions for SymbolTable {
         &mut self,
         name: String,
         position: Position,
-    ) -> Option<&mut Symbol> {
+    ) -> Option<(Option<&mut Symbol>, bool)> {
         let scope_id = self.get_scope_id(position)?;
 
         for pre_id in scope_id.predecessors(&self.arena) {
             let scope = self.arena.get(pre_id)?.get();
 
             if scope.symbols.contains_preproc(&name) {
-                return self
+                return Some((self
                     .arena
                     .get_mut(pre_id)?
                     .get_mut()
                     .symbols
-                    .find_mut(&name);
+                    .find_mut(&name),true));
+            } else if scope.symbols.contains(&name) {
+                return Some((self
+                    .arena
+                    .get_mut(pre_id)?
+                    .get_mut()
+                    .symbols
+                    .find_mut(&name),false));
             }
         }
 
@@ -342,16 +350,23 @@ impl SymbolTable {
                                     let node_symbol = node_symbol_visit.get();
                                     let name_symbol = node_symbol.content.clone();
                                     let pos_symbol = node_symbol.range.start;
-
-                                    if let Some(symbol) = self.get_symbol_at_pos_mut_preproc(
+                                    if let Some((symbol_option, bool_preproc)) = self.get_symbol_at_pos_mut_preproc(
                                         name_symbol.clone(),
                                         pos_symbol,
-                                    ) {
-                                        if let Some(type_symbol) = symbol.type_.get_name() {
-                                            if type_symbol == Type::Base(BaseType::Int) {
-                                                symbol.usages.push(node_symbol.range);
+                                    ){
+                                        if let Some(symbol) = symbol_option {
+                                            symbol.usages.push(node_symbol.range);
+                                            if bool_preproc{
+                                                if let Some(type_symbol) = symbol.type_.get_name() {
+                                                    if type_symbol == Type::Base(BaseType::Int) {
+                                                    } else {
+                                                        self.error_list.push(node_symbol.range)
+                                                    }
+                                                } else {
+                                                    self.error_list.push(node_symbol.range)
+                                                }
                                             } else {
-                                                self.undefined_list.push(node_symbol.range)
+                                                    self.error_list.push(node_symbol.range)
                                             }
                                         } else {
                                             self.undefined_list.push(node_symbol.range)
@@ -399,6 +414,13 @@ impl SymbolTable {
                 }
             }
         }
+    }
+
+    pub fn get_error(&self) -> Vec<Range> {
+        self.error_list.clone()
+    }
+    pub fn get_undefined(&self) -> Vec<Range> {
+        self.undefined_list.clone()
     }
 }
 impl fmt::Display for SymbolTable {
