@@ -358,7 +358,7 @@ impl SymbolTable {
                                             symbol.usages.push(node_symbol.range);
                                             if bool_preproc{
                                                 if let Some(type_symbol) = symbol.type_.get_name() {
-                                                    if type_symbol == Type::Base(BaseType::Int) {
+                                                    if type_symbol == Type::Base(BaseType::Num){
                                                     } else {
                                                         self.error_list.push(node_symbol.range)
                                                     }
@@ -632,13 +632,28 @@ impl ScopeSymbolTable {
                 let type_ = if value_type {
                     let type_node = child_visit_node.get_value_node();
                     let mut temp: Option<Type> = None;
+                    let mut bool = true;
                     if let Some(value_node) = type_node {
                         for child in value_node.get_children() {
                             let type_node = child.get();
                             if let Some(x) = child.get_type() {
                                 node = Some(type_node.clone());
                                 temp = Some(x);
+                                bool = false;
                                 break;
+                            }
+                        }
+                        if bool{
+                            let expression_node = value_node.get_expression_node();
+                            if let Some(expression_node) = expression_node {
+                                for child in expression_node.get_children() {
+                                    let type_node = child.get();
+                                    if let Some(x) = child.get_type() {
+                                        node = Some(type_node.clone());
+                                        temp = Some(x);
+                                        break;
+                                    }
+                                }
                             }
                         }
                     }

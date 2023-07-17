@@ -53,6 +53,13 @@ pub enum NodeKind {
     Direction(Direction),
     TypeDec(TypeDecType),
     Expression,
+    ExpressionCall,
+    ExpressionUnary,
+    ExpressionBinary,
+    ExpressionBinaryLeft,
+    ExpressionBinaryRight,
+    ExpressionParenthesized,
+    Operator,
     Name,
     Param,
     Params,
@@ -166,6 +173,7 @@ pub trait Visitable {
     fn get_subscopes(&self) -> Vec<VisitNode>;
     fn get_type_node(&self) -> Option<VisitNode>;
     fn get_value_node(&self) -> Option<VisitNode>;
+    fn get_expression_node(&self) -> Option<VisitNode>;
     fn get_value_symbol_node(&self) -> Option<VisitNode>;
     fn get_type(&self) -> Option<Type>;
     fn get_node_at_position(&self, position: Position) -> Option<VisitNode>;
@@ -233,6 +241,17 @@ impl Visitable for VisitNode<'_> {
         self.get_children().into_iter().find_map(|child| {
             let node = child.get();
             if matches!(node.kind, NodeKind::Value) {
+                Some(VisitNode::new(self.arena, child.id))
+            } else {
+                None
+            }
+        })
+    }
+
+    fn get_expression_node(&self) -> Option<VisitNode> {
+        self.get_children().into_iter().find_map(|child| {
+            let node = child.get();
+            if matches!(node.kind, NodeKind::Expression) {
                 Some(VisitNode::new(self.arena, child.id))
             } else {
                 None

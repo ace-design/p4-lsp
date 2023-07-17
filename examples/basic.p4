@@ -1,6 +1,6 @@
 /* -*- P4_16 -*- */
 #include <core.p4>
-#include <v1model.p4>
+#include "v1model.p4"
 
 const bit<16> TYPE_IPV4 = 0x800;
 
@@ -8,9 +8,16 @@ const bit<16> TYPE_IPV4 = 0x800;
 *********************** H E A D E R S  ***********************************
 *************************************************************************/
 
-typedef bit<9>  egressSpec_t;
+#define KEY 12
+#define KEY4 ( 12 / 2 + 3*(3-4*5+4)-3+KEY + TYPE_IPV4(KEY,KEY))
+#define KEY1 ("aaa")
+#define KEY0 (0)
+#define KEY2 (u8'afdsfds')
+#define KEY3
+
 typedef bit<48> macAddr_t;
-typedef bit<32> ip4Addr_t;
+typedef bit<KEY>  egressSpec_t;
+typedef bit<KEY0> ip4Addr_t;
 
 header ethernet_t {
     macAddr_t dstAddr;
@@ -31,6 +38,7 @@ header ipv4_t {
     bit<16>   hdrChecksum;
     ip4Addr_t srcAddr;
     ip4Addr_t dstAddr;
+    #define KEY23 12
 }
 
 struct metadata {
@@ -49,11 +57,13 @@ struct headers {
 parser MyParser(packet_in packet,
                 out headers hdr,
                 inout metadata meta,
+                #define KEY4
                 inout standard_metadata_t standard_metadata) {
     bit<16> test = TYPE_IPV4;
     egressSpec_t test2 = 1;
     bit<16> test3 = 0x80;
     bit<16> test4 = 0x50;
+    #define KEY64
 
     state start {
         transition parse_ethernet;
@@ -63,6 +73,7 @@ parser MyParser(packet_in packet,
         packet.extract(hdr.ethernet);
         transition select(hdr.ethernet.etherType) {
             TYPE_IPV4: parse_ipv4;
+            #define KEY641
             default: accept;
         }
     }
@@ -121,10 +132,12 @@ control MyIngress(inout headers hdr,
         key = {
             hdr.ipv4.dstAddr: lpm;
         }
+        #define KEY64
         actions = {
             ipv4_forward;
             drop;
             NoAction;
+            #define KEY64
         }
         size = 1024;
         default_action = drop();
@@ -191,6 +204,8 @@ MyParser(),
 MyVerifyChecksum(),
 MyIngress(),
 MyEgress(),
+
+    #define KEY64
 MyComputeChecksum(),
 MyDeparser()
 ) main;

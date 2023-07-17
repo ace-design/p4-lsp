@@ -43,7 +43,6 @@ impl TreesitterTranslator {
         let tree = self.tree.clone();
         let mut cursor = tree.walk();
         for child in tree.root_node().named_children(&mut cursor) {
-            debug!("{:?}", child);
             let new_child = if child.is_error() {
                 Some(self.new_error_node(&child))
             } else {
@@ -60,7 +59,7 @@ impl TreesitterTranslator {
                     "extern_declaration" => self.parse_extern(&child),
 
                     "preproc_include_declaration" => self.parse_preproc_include(&child),
-                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                    "preproc_define_declaration" => {
                         self.parse_preproc_define(&child)
                     }
                     "preproc_undef_declaration" => self.parse_preproc_undef(&child),
@@ -320,7 +319,7 @@ impl TreesitterTranslator {
         let kind = node.kind();
         if kind == "preproc_include_declaration" {
             return self.parse_preproc_include(&node);
-        } else if kind == "preproc_define_declaration" || kind == "preproc_define_declaration_macro"
+        } else if kind == "preproc_define_declaration"
         {
             return self.parse_preproc_define(&node);
         } else if kind == "preproc_undef_declaration" {
@@ -334,10 +333,9 @@ impl TreesitterTranslator {
 
         let mut cursor = node.walk();
         for child in node.named_children(&mut cursor) {
-            debug!("{:?}", child);
             let new_child = match child.kind() {
                 "preproc_include_declaration" => self.parse_preproc_include(&child),
-                "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                "preproc_define_declaration" => {
                     self.parse_preproc_define(&child)
                 }
                 "preproc_undef_declaration" => self.parse_preproc_undef(&child),
@@ -395,19 +393,12 @@ impl TreesitterTranslator {
                 .new_node(Node::new(NodeKind::Name, &node_name, &self.source_code));
         node_id.append(name_node, &mut self.arena);
 
-        // Add param node
-        if let Some(param_node) = node.child_by_field_name("param") {
-            node_id.append(
-                self.parse_params_define(&param_node)
-                    .unwrap_or_else(|| self.new_error_node(&param_node)),
-                &mut self.arena,
-            );
-        }
+
 
         // Add body node
         if let Some(node_body) = node.child_by_field_name("body") {
             node_id.append(
-                self.parse_value(&node_body)
+                self.parse_value_preproc(&node_body)
                     .unwrap_or_else(|| self.new_error_node(&node_body)),
                 &mut self.arena,
             );
@@ -420,11 +411,316 @@ impl TreesitterTranslator {
                     .new_node(Node::new(NodeKind::Body, &node_body, &self.source_code)),
                 &mut self.arena,
             );
+
+            // Add param node
+            if let Some(param_node) = node.child_by_field_name("param") {
+                node_id.append(
+                    self.parse_params_define(&param_node)
+                        .unwrap_or_else(|| self.new_error_node(&param_node)),
+                    &mut self.arena,
+                );
+            } else if let Some(param_node) = node.child_by_field_name("dont_know") {
+                node_id.append(
+                    self.parse_params_define(&param_node)
+                        .unwrap_or_else(|| self.new_error_node(&param_node)),
+                    &mut self.arena,
+                );
+            }
+        } else if let Some(value_node) = node.child_by_field_name("dont_know") {
+            node_id.append(
+                self.parse_value_preproc(&value_node)
+                    .unwrap_or_else(|| self.new_error_node(&value_node)),
+                &mut self.arena,
+            );
         }
 
         Some(node_id)
     }
 
+    fn parse_value_preproc(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
+        // todo-preproc
+        fn loop_value(
+            node_value: &mut NodeId,
+            last_node: NodeId,
+            node: &tree_sitter::Node,
+            self_v: &mut TreesitterTranslator,
+        ) -> NodeId {
+            let kind = node.kind();
+            //debug!("{}", kind);
+            let mut name_node: NodeId = last_node;
+                match kind {
+                    "bool" => {
+                        name_node = self_v.arena.new_node(Node::new(
+                            NodeKind::Type(Type::Base(BaseType::Bool)),
+                            node,
+                            &self_v.source_code,
+                        ));
+                        node_value.append(name_node, &mut self_v.arena);
+                    }
+                    "number_preproc" => {
+                        name_node = self_v.arena.new_node(Node::new(
+                            NodeKind::Type(Type::Base(BaseType::Num)),
+                            node,
+                            &self_v.source_code,
+                        ));
+                        node_value.append(name_node, &mut self_v.arena);
+                    }
+                    "string_for_preproc" => {
+                        name_node = self_v.arena.new_node(Node::new(
+                            NodeKind::Type(Type::Base(BaseType::String)),
+                            node,
+                            &self_v.source_code,
+                        ));
+                        node_value.append(name_node, &mut self_v.arena);
+                    }
+                    "identifier" => {
+                        name_node = self_v.arena.new_node(Node::new(
+                            NodeKind::Type(Type::Name),
+                            node,
+                            &self_v.source_code,
+                        ));
+                        node_value.append(name_node, &mut self_v.arena);
+                    }
+                    "null_value" => {
+                        name_node = self_v.arena.new_node(Node::new(
+                            NodeKind::Type(Type::Base(BaseType::Null)),
+                            node,
+                            &self_v.source_code,
+                        ));
+                        node_value.append(name_node, &mut self_v.arena);
+                    }
+                    
+                    "preproc_call_expression" => {
+                        let expression_node = self_v.arena.new_node(Node::new(
+                            NodeKind::ExpressionCall,
+                            node,
+                            &self_v.source_code,
+                        ));
+                        let name_function_node = self_v.arena.new_node(Node::new(
+                            NodeKind::Type(Type::Name),
+                            &node.child_by_field_name("function").unwrap(),
+                            &self_v.source_code,
+                        ));
+                        expression_node.append(name_function_node, &mut self_v.arena);
+
+                        let t = node.child_by_field_name("arguments").unwrap();
+                        let args_function_node = self_v.arena.new_node(Node::new(
+                            NodeKind::Args,
+                            &t,
+                            &self_v.source_code,
+                        ));
+
+                        let mut cursor = t.walk();
+                        for syntax_child in t.named_children(&mut cursor) {
+                            if syntax_child.is_error() {
+                                args_function_node.append(self_v.new_error_node(&syntax_child), &mut self_v.arena);
+                            }  else if syntax_child.kind() == "preproc_expression" {
+                                let arg_function_node = self_v.arena.new_node(Node::new(
+                                    NodeKind::Arg,
+                                    &syntax_child,
+                                    &self_v.source_code,
+                                ));
+                                let t = loop_value(
+                                    &mut arg_function_node.clone(),
+                                    arg_function_node.clone(),
+                                    &syntax_child,
+                                    self_v,
+                                );
+                
+                                //arg_function_node.append(t, &mut self_v.arena);
+                                args_function_node.append(arg_function_node, &mut self_v.arena);
+                            }
+                        }
+
+                        expression_node.append(args_function_node, &mut self_v.arena);
+
+                        name_node = expression_node;
+
+                        node_value.append(name_node, &mut self_v.arena);
+
+                    }
+
+                    "preproc_expression_1" => {
+                        name_node = self_v.arena.new_node(Node::new(
+                            NodeKind::Expression,
+                            node,
+                            &self_v.source_code,
+                        ));
+                        
+                        let t = loop_value(
+                            &mut name_node.clone(),
+                            name_node.clone(),
+                            &node.named_child(self_v.get_named_child(node, 0).unwrap()).unwrap(),
+                            self_v,
+                        );
+                        name_node.append(t, &mut self_v.arena);
+
+                        node_value.append(name_node, &mut self_v.arena);
+                    }                    
+                    "preproc_expression" => {
+                        name_node = self_v.arena.new_node(Node::new(
+                            NodeKind::Expression,
+                            node,
+                            &self_v.source_code,
+                        ));
+                        
+                        let t = loop_value(
+                            &mut name_node.clone(),
+                            name_node.clone(),
+                            &node.named_child(self_v.get_named_child(node, 0).unwrap()).unwrap(),
+                            self_v,
+                        );
+                        name_node.append(t, &mut self_v.arena);
+
+                        node_value.append(name_node, &mut self_v.arena);
+                    }
+                    "preproc_unary_expression" => {
+                        name_node = self_v.arena.new_node(Node::new(
+                            NodeKind::ExpressionUnary,
+                            node,
+                            &self_v.source_code,
+                        ));
+
+                        let name_function_node = self_v.arena.new_node(Node::new(
+                            NodeKind::Operator,
+                            &node.child_by_field_name("operator").unwrap(),
+                            &self_v.source_code,
+                        ));
+                        name_node.append(name_function_node, &mut self_v.arena);
+
+                        let t = node.child_by_field_name("argument").unwrap();
+                        let args_function_node = self_v.arena.new_node(Node::new(
+                            NodeKind::Body,
+                            &t,
+                            &self_v.source_code,
+                        ));
+                        loop_value(
+                            &mut args_function_node.clone(),
+                            args_function_node.clone(),
+                            &t,
+                            self_v,
+                        );
+                        //args_function_node.append(t, &mut self_v.arena);
+                        name_node.append(args_function_node, &mut self_v.arena);
+
+                        node_value.append(name_node, &mut self_v.arena);
+                    }
+                    "preproc_binary_expression" => {
+                        name_node = self_v.arena.new_node(Node::new(
+                            NodeKind::ExpressionBinary,
+                            node,
+                            &self_v.source_code,
+                        ));
+
+                        let mut t = node.child_by_field_name("operator").unwrap();
+                        let operator_node = self_v.arena.new_node(Node::new(
+                            NodeKind::Operator,
+                            &t,
+                            &self_v.source_code,
+                        ));
+                        name_node.append(operator_node, &mut self_v.arena);
+
+                        let mut t = node.child_by_field_name("left").unwrap();
+                        let left_node = self_v.arena.new_node(Node::new(
+                            NodeKind::ExpressionBinaryLeft,
+                            &t,
+                            &self_v.source_code,
+                        ));
+                        loop_value(
+                            &mut left_node.clone(),
+                            left_node.clone(),
+                            &t,
+                            self_v,
+                        );
+                        name_node.append(left_node, &mut self_v.arena);
+
+                        t = node.child_by_field_name("right").unwrap();
+                        let right_node = self_v.arena.new_node(Node::new(
+                            NodeKind::ExpressionBinaryRight,
+                            &t,
+                            &self_v.source_code,
+                        ));
+                        loop_value(
+                            &mut right_node.clone(),
+                            right_node.clone(),
+                            &t,
+                            self_v,
+                        );
+                        name_node.append(right_node, &mut self_v.arena);
+
+                        node_value.append(name_node, &mut self_v.arena);
+                    }
+                    
+                    /*
+                       preproc_binary_expression: $ => {
+                          const table = [
+                            ['+', PREC.ADD],
+                            ['-', PREC.ADD],
+                            ['*', PREC.MULTIPLY],
+                            ['/', PREC.MULTIPLY],
+                            ['%', PREC.MULTIPLY],
+                            ['||', PREC.LOGICAL_OR],
+                            ['&&', PREC.LOGICAL_AND],
+                            ['|', PREC.INCLUSIVE_OR],
+                            ['^', PREC.EXCLUSIVE_OR],
+                            ['&', PREC.BITWISE_AND],
+                            ['==', PREC.EQUAL],
+                            ['!=', PREC.EQUAL],
+                            ['>', PREC.RELATIONAL],
+                            ['>=', PREC.RELATIONAL],
+                            ['<=', PREC.RELATIONAL],
+                            ['<', PREC.RELATIONAL],
+                            ['<<', PREC.SHIFT],
+                            ['>>', PREC.SHIFT],
+                          ];
+                    
+                          return choice(...table.map(([operator, precedence]) => {
+                            return prec.left(precedence, seq(
+                              field('left', $.preproc_expression),
+                              // @ts-ignore
+                              field('operator', operator),
+                              field('right', $.preproc_expression),
+                            ));
+                          }));
+                       }, */
+                    "preproc_parenthesized_expression" => {
+                        name_node = self_v.arena.new_node(Node::new(
+                            NodeKind::ExpressionParenthesized,
+                            node,
+                            &self_v.source_code,
+                        ));
+
+                        let t = node.named_child(self_v.get_named_child(node, 0).unwrap()).unwrap();
+                        loop_value(
+                            &mut name_node.clone(),
+                            name_node.clone(),
+                            &t,
+                            self_v,
+                        );
+                        node_value.append(name_node, &mut self_v.arena);
+                    }
+                    _ => {}
+                }
+            name_node
+        }
+        
+        let mut node_value =
+            self.arena
+                .new_node(Node::new(NodeKind::Value, node, &self.source_code));
+        
+        let kind = node.kind();
+        let child: tree_sitter::Node<'_>;
+        if kind == "preproc_expression_paranthesis" {
+            child = node.named_child(self.get_named_child(&node, 0)?)?;
+        } else {
+            child = node.clone();
+        }
+
+        let last_node = node_value;
+        loop_value(&mut node_value, last_node, &child, self);
+
+        Some(node_value)
+    }
     fn parse_params_define(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let params_node_id =
             self.arena
@@ -1327,7 +1623,7 @@ impl TreesitterTranslator {
                     "parser_state" => self.parse_state(&syntax_child),
 
                     "preproc_include_declaration" => self.parse_preproc_include(&syntax_child),
-                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                    "preproc_define_declaration" => {
                         self.parse_preproc_define(&syntax_child)
                     }
                     "preproc_undef_declaration" => self.parse_preproc_undef(&syntax_child),
@@ -1413,7 +1709,7 @@ impl TreesitterTranslator {
                     "block_statement" => self.parse_block(&syntax_child),
 
                     "preproc_include_declaration" => self.parse_preproc_include(&syntax_child),
-                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                    "preproc_define_declaration" => {
                         self.parse_preproc_define(&syntax_child)
                     }
                     "preproc_undef_declaration" => self.parse_preproc_undef(&syntax_child),
@@ -1562,7 +1858,7 @@ impl TreesitterTranslator {
                     "instantiation" => self.instantiation(&syntax_child),
 
                     "preproc_include_declaration" => self.parse_preproc_include(&syntax_child),
-                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                    "preproc_define_declaration" => {
                         self.parse_preproc_define(&syntax_child)
                     }
                     "preproc_undef_declaration" => self.parse_preproc_undef(&syntax_child),
@@ -1674,7 +1970,7 @@ impl TreesitterTranslator {
                     "switch_statement" => self.switch_statement(&syntax_child),
 
                     "preproc_include_declaration" => self.parse_preproc_include(&syntax_child),
-                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                    "preproc_define_declaration" => {
                         self.parse_preproc_define(&syntax_child)
                     }
                     "preproc_undef_declaration" => self.parse_preproc_undef(&syntax_child),
@@ -1868,7 +2164,7 @@ impl TreesitterTranslator {
                             }
                         }
                     }
-                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                    "preproc_define_declaration" => {
                         if let Some(t) = self.parse_preproc_define(&node) {
                             if let Some(x) = last_node {
                                 x.append(t, &mut self.arena);
@@ -1957,7 +2253,7 @@ impl TreesitterTranslator {
                         ))),
 
                         "preproc_include_declaration" => self.parse_preproc_include(&syntax_child),
-                        "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                        "preproc_define_declaration" => {
                             self.parse_preproc_define(&syntax_child)
                         }
                         "preproc_undef_declaration" => self.parse_preproc_undef(&syntax_child),
@@ -2057,7 +2353,7 @@ impl TreesitterTranslator {
                     "conditional_statement" => self.parse_state_conditional(&body_child),
 
                     "preproc_include_declaration" => self.parse_preproc_include(&body_child),
-                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                    "preproc_define_declaration" => {
                         self.parse_preproc_define(&body_child)
                     }
                     "preproc_undef_declaration" => self.parse_preproc_undef(&body_child),
@@ -2152,7 +2448,7 @@ impl TreesitterTranslator {
                     "switch_statement" => self.switch_statement(&body_child),
 
                     "preproc_include_declaration" => self.parse_preproc_include(&body_child),
-                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                    "preproc_define_declaration" => {
                         self.parse_preproc_define(&body_child)
                     }
                     "preproc_undef_declaration" => self.parse_preproc_undef(&body_child),
@@ -2677,7 +2973,7 @@ impl TreesitterTranslator {
                     "preproc_include_declaration" => {
                         child_node_id = self.parse_preproc_include(&table_child)
                     }
-                    "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                    "preproc_define_declaration" => {
                         child_node_id = self.parse_preproc_define(&table_child)
                     }
                     "preproc_undef_declaration" => {
@@ -2785,7 +3081,7 @@ impl TreesitterTranslator {
                         "conditional_statement" => self.parse_state_conditional(&body_child),
 
                         "preproc_include_declaration" => self.parse_preproc_include(&body_child),
-                        "preproc_define_declaration" | "preproc_define_declaration_macro" => {
+                        "preproc_define_declaration" => {
                             self.parse_preproc_define(&body_child)
                         }
                         "preproc_undef_declaration" => self.parse_preproc_undef(&body_child),

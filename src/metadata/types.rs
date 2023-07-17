@@ -7,6 +7,7 @@ pub enum BaseType {
     MatchKind,
     String,
     Int,
+    Num,
     Bit,
     Varbit,
     Null,
