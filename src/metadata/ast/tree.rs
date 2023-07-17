@@ -275,6 +275,10 @@ impl Visitable for VisitNode<'_> {
     }
 }
 
+pub trait Translator {
+    fn translate(source_code: String, syntax_tree: tree_sitter::Tree) -> Ast;
+}
+
 #[derive(Debug, Clone)]
 pub struct Ast {
     arena: Arena<Node>,

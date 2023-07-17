@@ -1,6 +1,6 @@
 use indextree::{Arena, NodeId};
 
-use super::tree::{Ast, Direction, Node, NodeKind, TypeDecType};
+use super::tree::{Ast, Direction, Node, NodeKind, Translator, TypeDecType};
 use crate::metadata::types::{BaseType, Type};
 use crate::utils;
 
@@ -12,6 +12,15 @@ pub struct TreesitterTranslator {
     tree: tree_sitter::Tree,
 }
 
+impl Translator for TreesitterTranslator {
+    fn translate(source_code: String, syntax_tree: tree_sitter::Tree) -> Ast {
+        let mut translator = TreesitterTranslator::new(source_code, syntax_tree);
+        let root_id = translator.parse_root();
+
+        Ast::initialize(translator.arena, root_id)
+    }
+}
+
 impl TreesitterTranslator {
     fn new(source_code: String, tree: tree_sitter::Tree) -> TreesitterTranslator {
         TreesitterTranslator {
@@ -19,13 +28,6 @@ impl TreesitterTranslator {
             source_code,
             tree,
         }
-    }
-
-    pub fn translate(source_code: String, tree: tree_sitter::Tree) -> Ast {
-        let mut translator = TreesitterTranslator::new(source_code, tree);
-        let root_id = translator.parse_root();
-
-        Ast::initialize(translator.arena, root_id)
     }
 
     fn new_error_node(&mut self, node: &tree_sitter::Node) -> NodeId {
