@@ -650,39 +650,6 @@ impl TreesitterTranslator {
 
                         node_value.append(name_node, &mut self_v.arena);
                     }
-                    
-                    /*
-                       preproc_binary_expression: $ => {
-                          const table = [
-                            ['+', PREC.ADD],
-                            ['-', PREC.ADD],
-                            ['*', PREC.MULTIPLY],
-                            ['/', PREC.MULTIPLY],
-                            ['%', PREC.MULTIPLY],
-                            ['||', PREC.LOGICAL_OR],
-                            ['&&', PREC.LOGICAL_AND],
-                            ['|', PREC.INCLUSIVE_OR],
-                            ['^', PREC.EXCLUSIVE_OR],
-                            ['&', PREC.BITWISE_AND],
-                            ['==', PREC.EQUAL],
-                            ['!=', PREC.EQUAL],
-                            ['>', PREC.RELATIONAL],
-                            ['>=', PREC.RELATIONAL],
-                            ['<=', PREC.RELATIONAL],
-                            ['<', PREC.RELATIONAL],
-                            ['<<', PREC.SHIFT],
-                            ['>>', PREC.SHIFT],
-                          ];
-                    
-                          return choice(...table.map(([operator, precedence]) => {
-                            return prec.left(precedence, seq(
-                              field('left', $.preproc_expression),
-                              // @ts-ignore
-                              field('operator', operator),
-                              field('right', $.preproc_expression),
-                            ));
-                          }));
-                       }, */
                     "preproc_parenthesized_expression" => {
                         name_node = self_v.arena.new_node(Node::new(
                             NodeKind::ExpressionParenthesized,
@@ -710,7 +677,7 @@ impl TreesitterTranslator {
         
         let kind = node.kind();
         let child: tree_sitter::Node<'_>;
-        if kind == "preproc_expression_paranthesis" {
+        if kind == "preproc_expression_paranthesis" || kind == "preproc_define_declaration_param_1" {
             child = node.named_child(self.get_named_child(&node, 0)?)?;
         } else {
             child = node.clone();
@@ -741,10 +708,6 @@ impl TreesitterTranslator {
 
                 params_node_id.append(param_node_id, &mut self.arena);
             }
-        }
-
-        for node_preproc in self.look_for_preproc(&node) {
-            params_node_id.append(node_preproc, &mut self.arena);
         }
 
         Some(params_node_id)
