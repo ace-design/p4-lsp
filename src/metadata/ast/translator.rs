@@ -32,7 +32,7 @@ impl TreesitterTranslator {
 
     fn new_error_node(&mut self, node: &tree_sitter::Node) -> NodeId {
         self.arena
-            .new_node(Node::new(NodeKind::Error, node, &self.source_code))
+            .new_node(Node::new(NodeKind::Error(None), node, &self.source_code))
     }
 
     fn parse_root(&mut self) -> NodeId {

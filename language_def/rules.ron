@@ -1,20 +1,23 @@
-[
-    Rule (
-        name: "Root", // Name of Rule (required)
-        node: Root, // Associated AST Node
-        is_scope: true, // defaults to false
-        children: [
-            Multiple(Kind("constant_declaration"), Rule("ConstantDeclaration")),
-        ]
-    ),
-    Rule (
-        name: "ConstantDeclaration"
-        node: ConstantDec,
-        children: [ 
-            Maybe(Field("annotation"), Rule("annotation")),
-            One(Field("type"), Node(Type)),
-            One(Field("name"), Node(Name)),
-            One(Field("value"), Node(Value)),
-        ]
-    ),
-]
+LanguageDefinition (
+    ast_rules: [
+        Rule (
+            name: "Root", // Name of Rule (required)
+            node: Root, // Associated AST Node
+            is_scope: true, // defaults to false
+            children: [
+                Multiple(Kind("constant_declaration"), Rule("ConstantDeclaration")),
+            ]
+        ),
+        Rule (
+            name: "ConstantDeclaration",
+            node: ConstantDec,
+            children: [ 
+                Maybe(Field("annotation"), Rule("annotation")),
+                One(Field("type"), Node(Type(Name))),
+                One(Field("name"), Node(Name)),
+                One(Field("value"), Node(Value)),
+            ]
+        ),
+    ]
+)
+

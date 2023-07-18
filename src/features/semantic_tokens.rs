@@ -147,9 +147,7 @@ pub fn get_visit_nodes(visit_node: VisitNode) -> Vec<ColorData> {
         NodeKind::ValueSymbol => {
             node_type = 4;
         }
-        _ => {
-            debug!("Error in Tokens {:?}", kind);
-        }
+        _ => {}
     };
     //only pushing node types that we support currently
     if node_type != temp_cmp {

@@ -3,12 +3,13 @@
 use std::fmt;
 
 use indextree::{Arena, NodeId};
+use serde::Deserialize;
 use tower_lsp::lsp_types::{Position, Range};
 
 use crate::metadata::types::Type;
 use crate::utils;
 
-use super::translator::TreesitterTranslator;
+use super::rules_translator::RulesTranslator;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
@@ -20,7 +21,7 @@ pub enum Operator {
     //...
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Deserialize)]
 pub enum TypeDecType {
     TypeDef,
     HeaderType,
@@ -32,14 +33,14 @@ pub enum TypeDecType {
     Package,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Deserialize)]
 pub enum Direction {
     In,
     Out,
     InOut,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Deserialize, PartialEq, Clone)]
 pub enum NodeKind {
     Body,
     Root,
@@ -60,7 +61,7 @@ pub enum NodeKind {
     Fields,
     Option,
     Options,
-    Error,
+    Error(Option<String>),
     Value,
     ValueSymbol,
     ControlAction,
@@ -297,7 +298,7 @@ impl Ast {
     }
 
     pub fn new(source_code: &str, syntax_tree: tree_sitter::Tree) -> Option<Ast> {
-        Some(TreesitterTranslator::translate(
+        Some(RulesTranslator::translate(
             source_code.to_string(),
             syntax_tree,
         ))

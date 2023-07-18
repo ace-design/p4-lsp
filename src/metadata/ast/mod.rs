@@ -1,3 +1,4 @@
+mod rules_translator;
 mod translator;
 mod tree;
 

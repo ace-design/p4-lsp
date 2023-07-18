@@ -1,6 +1,8 @@
 use std::fmt;
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+use serde::Deserialize;
+
+#[derive(Debug, PartialEq, Clone, Copy, Deserialize)]
 pub enum BaseType {
     Bool,
     Error,
@@ -14,7 +16,7 @@ pub enum BaseType {
     SizedBit(Option<u32>),
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Deserialize)]
 pub enum Type {
     Base(BaseType),
     Name,
