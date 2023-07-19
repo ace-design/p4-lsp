@@ -1,14 +1,15 @@
 LanguageDefinition (
     ast_rules: [
-        Rule (
+        Rule(
             name: "Root", // Name of Rule (required)
-            node: Root, // Associated AST Node
+            node: Root, // Associated AST Node (required)
             is_scope: true, // defaults to false
             children: [
                 Multiple(Kind("constant_declaration"), Rule("ConstantDeclaration")),
+                Multiple(Kind("parser_declaration"), Rule("Parser")),
             ]
         ),
-        Rule (
+        Rule(
             name: "ConstantDeclaration",
             node: ConstantDec,
             children: [ 
@@ -18,6 +19,15 @@ LanguageDefinition (
                 One(Field("value"), Node(Value)),
             ]
         ),
+        Rule(
+            name: "Parser",
+            node: ParserDec,
+            children: [
+                Maybe(Field("annotation"), Rule("annotation")),
+                One(Path([Field("declaration"), Field("name")]), Node(Name)),
+                
+            ]
+        )
     ]
 )
 

@@ -62,7 +62,6 @@ impl TreesitterTranslator {
                     "match_kind_declaration" => self.parse_match_kind(&child),
                     "error_declaration" => self.parse_error(&child),
                     "extern_declaration" => self.parse_extern(&child),
-
                     "preproc_include_declaration" => self.parse_preproc_include(&child),
                     "preproc_define_declaration" => self.parse_preproc_define(&child),
                     "preproc_undef_declaration" => self.parse_preproc_undef(&child),
