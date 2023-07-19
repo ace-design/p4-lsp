@@ -182,9 +182,7 @@ impl RulesTranslator {
                 TreesitterNodeQuery::Field(name) => {
                     ts_node.parent().unwrap().field_name_for_child(i as u32) == Some(name)
                 }
-                TreesitterNodeQuery::Path(path) => {
-                    self.get_node_at_path(path, ts_node, i).is_some()
-                }
+                TreesitterNodeQuery::Path(_) => true,
             } {
                 match node_or_rule {
                     NodeOrRule::Node(node_kind) => {
@@ -229,56 +227,6 @@ impl RulesTranslator {
                 &mut self.arena,
             );
         }
-    }
-
-    fn get_node_at_path<'a>(
-        &'a self,
-        path: &Vec<TreesitterNodeQuery>,
-        start_ts_node: &'a tree_sitter::Node,
-        index: usize,
-    ) -> Option<tree_sitter::Node<'a>> {
-        if path.is_empty() {
-            return None;
-        }
-
-        let mut current_ts_node = *start_ts_node;
-        if !match &path[0] {
-            TreesitterNodeQuery::Path(_) => unimplemented!(), // TODO
-            TreesitterNodeQuery::Kind(kind) => current_ts_node.kind() == kind,
-            TreesitterNodeQuery::Field(name) => {
-                current_ts_node
-                    .parent()
-                    .unwrap()
-                    .field_name_for_child(index as u32)
-                    == Some(&name)
-            }
-        } {
-            return None;
-        }
-
-        let mut cursor = current_ts_node.walk();
-        for element in path.iter().skip(1) {
-            let found = current_ts_node
-                .children(&mut cursor)
-                .into_iter()
-                .enumerate()
-                .filter(|node| node.1.is_named())
-                .find(|(i, ts_node)| match element {
-                    TreesitterNodeQuery::Path(_) => unimplemented!(),
-                    TreesitterNodeQuery::Kind(kind) => ts_node.kind() == kind,
-                    TreesitterNodeQuery::Field(name) => {
-                        ts_node.parent().unwrap().field_name_for_child(*i as u32) == Some(&name)
-                    }
-                });
-
-            if let Some((_, node)) = found {
-                current_ts_node = node;
-            } else {
-                return None;
-            }
-        }
-
-        Some(current_ts_node)
     }
 
     fn new_node(&mut self, kind: NodeKind, syntax_node: &tree_sitter::Node) -> NodeId {

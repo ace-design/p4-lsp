@@ -25,7 +25,6 @@ LanguageDefinition (
             children: [
                 Maybe(Field("annotation"), Rule("annotation")),
                 One(Path([Field("declaration"), Field("name")]), Node(Name)),
-                
             ]
         )
     ]
