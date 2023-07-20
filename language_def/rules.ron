@@ -7,6 +7,8 @@ LanguageDefinition (
             children: [
                 Multiple(Kind("constant_declaration"), Rule("ConstantDeclaration")),
                 Multiple(Kind("parser_declaration"), Rule("Parser")),
+                Multiple(Kind("control_declaration"), Rule("Control")),
+                Multiple(Kind("instantiation"), Rule("Instantiation")),
             ]
         ),
         Rule(
@@ -22,10 +24,66 @@ LanguageDefinition (
         Rule(
             name: "Parser",
             node: ParserDec,
+            is_scope: true,
             children: [
                 Maybe(Field("annotation"), Rule("annotation")),
                 One(Path([Field("declaration"), Field("name")]), Node(Name)),
+                One(Path([Field("declaration"), Field("parameters")]), Rule("Parameters")),
+                One(Field("body"), Rule("Body"))
             ]
+        ),
+        Rule(
+            name: "Control",
+            node: ControlDec,
+            is_scope: true,
+            children: [
+                Maybe(Field("annotation"), Rule("annotation")),
+                One(Path([Field("declaration"), Field("name")]), Node(Name)),
+                One(Path([Field("declaration"), Field("parameters")]), Rule("Parameters")),
+                One(Field("body"), Rule("Body"))
+            ]
+        ),
+        Rule(
+            name: "Instantiation",
+            node: Instantiation,
+            children: [ 
+                Maybe(Kind("annotation"), Rule("annotation")),
+                One(Kind("type_ref"), Node(Type(Name))),
+                One(Kind("name"), Node(Name)),
+                One(Kind("argument_list"), Rule("Args")),
+            ]
+        ),
+        Rule(
+            name: "Args",
+            node: Args,
+            children: [
+                Multiple(Kind("argument"), Rule("Arg")),
+            ]
+        ),
+        Rule(
+            name: "Arg",
+            node: Arg,
+        ),
+        Rule(
+            name: "Parameters",
+            node: Params,
+            children: [
+                Multiple(Kind("parameter"), Rule("Parameter")),
+            ]
+        ),
+        Rule(
+            name: "Parameter",
+            node: Param,
+            children: [
+                // Direction
+                One(Field("type"), Node(Type(Name))),
+                One(Field("name"), Node(Name)),
+            ]
+        ),
+        Rule(
+            name: "Body",
+            node: Body,
+            is_scope: true,
         )
     ]
 )
