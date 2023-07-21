@@ -529,7 +529,7 @@ impl ScopeSymbolTable {
                     | NodeKind::ControlTable
                     | NodeKind::TableKw
                     | NodeKind::Row
-                    | NodeKind::SwitchLabel => {
+                    | NodeKind::SwitchCase => {
                         if let Some(x) = _create_symbol_for_parse(child_visit_node, NodeKind::Name)
                         {
                             table.symbols.functions.push(x);
@@ -715,7 +715,7 @@ impl ScopeSymbolTable {
         | NodeKind::StateParser
         | NodeKind::ControlTable
         | NodeKind::Instantiation
-        | NodeKind::SwitchLabel = &root_visit_node_id.kind
+        | NodeKind::SwitchCase = &root_visit_node_id.kind
         {
             do_loop_parse(root_visit_node, &mut table);
         } else {

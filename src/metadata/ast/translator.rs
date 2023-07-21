@@ -1804,7 +1804,7 @@ impl TreesitterTranslator {
             if body_child.kind() == "switch_case" {
                 let label: NodeId =
                     self.arena
-                        .new_node(Node::new(NodeKind::SwitchLabel, node, &self.source_code));
+                        .new_node(Node::new(NodeKind::SwitchCase, node, &self.source_code));
                 let n = body_child.child_by_field_name("name")?;
                 label.append(
                     self.parse_value(&n)

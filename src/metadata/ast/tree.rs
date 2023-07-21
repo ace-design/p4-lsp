@@ -81,7 +81,7 @@ pub enum NodeKind {
     FunctionPrototype,
     FunctionName,
     Switch,
-    SwitchLabel,
+    SwitchCase,
     ParserBlock,
     DirectApplication,
     ControlTable,
@@ -115,6 +115,8 @@ pub enum NodeKind {
     MatchKind,
     Args,
     Arg,
+    EmptyStatement,
+    ExitStatement,
 }
 
 const SCOPE_NODES: [NodeKind; 17] = [
@@ -134,7 +136,7 @@ const SCOPE_NODES: [NodeKind; 17] = [
     NodeKind::Block,
     NodeKind::Instantiation,
     NodeKind::ControlAction,
-    NodeKind::SwitchLabel,
+    NodeKind::SwitchCase,
 ];
 
 impl NodeKind {
