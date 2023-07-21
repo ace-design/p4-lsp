@@ -101,7 +101,8 @@ impl RulesTranslator {
         let children: Vec<tree_sitter::Node> = current_ts_node.children(&mut cursor).collect();
 
         let current_node_id = self.new_node(current_rule.node.clone(), current_ts_node);
-        for error_ts_node in children.iter().filter(|node| node.is_error()) {
+        // TODO: has_error vs is_error
+        for error_ts_node in children.iter().filter(|node| node.has_error()) {
             current_node_id.append(
                 self.new_node(NodeKind::Error(None), error_ts_node),
                 &mut self.arena,

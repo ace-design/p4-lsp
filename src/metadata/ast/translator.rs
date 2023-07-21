@@ -169,7 +169,6 @@ impl TreesitterTranslator {
                 &mut self.arena,
             );
         }
-        //node_id.append(self.parse_type_options_dec(&option_list_node).unwrap_or_else(|| self.new_error_node(&option_list_node)), &mut self.arena);
 
         Some(node_id)
     }

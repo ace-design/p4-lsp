@@ -32,9 +32,9 @@ impl DiagnosticProvider for Parse {
                     )),
                     Some("AST".to_string()),
                     if let Some(msg) = msg {
-                        format!("Parsing error: {}", msg)
+                        format!("Syntax error: {}", msg)
                     } else {
-                        "Parsing error.".to_string()
+                        "Syntax error.".to_string()
                     },
                     None,
                     None,

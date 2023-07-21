@@ -9,14 +9,19 @@ LanguageDefinition (
                 Multiple(Kind("parser_declaration"), Rule("Parser")),
                 Multiple(Kind("control_declaration"), Rule("Control")),
                 Multiple(Kind("instantiation"), Rule("Instantiation")),
+                //Multiple(Kind("type_declaration"), Rule("TypeDeclaration")),
+                Multiple(Kind("action_declaration"), Rule("ActionDeclaration")),
+                Multiple(Kind("function_declaration"), Rule("FunctionDeclaration")),
+                Multiple(Kind("error_declaration"), Rule("ErrorDeclaration")),
+                Multiple(Kind("extern_declaration"), Rule("ExternDeclaration")),
             ]
         ),
         Rule(
             name: "ConstantDeclaration",
             node: ConstantDec,
             children: [ 
-                Maybe(Field("annotation"), Rule("annotation")),
-                One(Field("type"), Node(Type(Name))),
+                Maybe(Field("annotation"), Rule("Annotation")),
+                One(Field("type"), Rule("Type")),
                 One(Field("name"), Node(Name)),
                 One(Field("value"), Node(Value)),
             ]
@@ -26,10 +31,10 @@ LanguageDefinition (
             node: ParserDec,
             is_scope: true,
             children: [
-                Maybe(Field("annotation"), Rule("annotation")),
+                Maybe(Field("annotation"), Rule("Annotation")),
                 One(Path([Field("declaration"), Field("name")]), Node(Name)),
                 One(Path([Field("declaration"), Field("parameters")]), Rule("Parameters")),
-                One(Field("body"), Rule("Body"))
+                One(Field("body"), Rule("Body")),
             ]
         ),
         Rule(
@@ -37,20 +42,91 @@ LanguageDefinition (
             node: ControlDec,
             is_scope: true,
             children: [
-                Maybe(Field("annotation"), Rule("annotation")),
+                Maybe(Field("annotation"), Rule("Annotation")),
                 One(Path([Field("declaration"), Field("name")]), Node(Name)),
                 One(Path([Field("declaration"), Field("parameters")]), Rule("Parameters")),
-                One(Field("body"), Rule("Body"))
+                One(Field("body"), Rule("Body")),
             ]
         ),
         Rule(
             name: "Instantiation",
             node: Instantiation,
+            is_scope: true,
             children: [ 
-                Maybe(Kind("annotation"), Rule("annotation")),
-                One(Kind("type_ref"), Node(Type(Name))),
+                Maybe(Kind("annotation"), Rule("Annotation")),
+                One(Kind("type_ref"), Rule("Type")),
                 One(Kind("name"), Node(Name)),
                 One(Kind("argument_list"), Rule("Args")),
+            ]
+        ),
+        Rule(
+            name: "ActionDeclaration",
+            node: ControlAction,
+            children: [
+                Maybe(Field("annotation"), Rule("Annotation")),
+                One(Field("name"), Node(Name)),
+                Maybe(Field("parameters"), Rule("Parameters")),
+                One(Field("block"), Rule("Block")),
+            ],
+        ),
+        Rule(
+            name: "FunctionDeclaration",
+            node: Function,
+            is_scope: true,
+            children: [
+                One(Kind("function_prototype"), Rule("FunctionPrototype")),
+                One(Kind("block_statement"), Rule("Block")),
+            ]
+        ),
+        Rule(
+            name: "ErrorDeclaration",
+            node: ErrorCst,
+            children: [
+                One(Field("option_list"), Rule("Options")),
+            ]
+        ),
+        Rule(
+            name: "ExternDeclaration",
+            node: Extern,
+            children: [
+                Maybe(Field("annotation"), Rule("Annotation")),
+                Maybe(Field("name"), Node(Name)),
+                // maybe type parameters
+                Maybe(Field("function"), Rule("FunctionPrototype")),
+                Maybe(Field("method"), Rule("MethodList")),
+            ]
+        ),
+        Rule(
+            name: "FunctionPrototype",
+            node: FunctionPrototype,
+            children: [
+                One(Kind("type_or_void"), Rule("Type")),
+                One(Kind("name"), Node(Name)),
+                One(Kind("parameter_list"), Rule("Parameters")),
+            ]
+        ),
+        Rule(
+            name: "MethodList",
+            node: Methods,
+            children: [
+                Multiple(Kind("method_prototype"), Rule("MethodPrototype")),
+            ]
+        ),
+        Rule(
+            name: "MethodPrototype",
+            node: MethodPrototype,
+            children: [
+                Maybe(Field("annotation"), Rule("Annotation")),
+                Maybe(Field("function"), Rule("FunctionPrototype")),
+                Maybe(Field("type"), Rule("Type")),
+                Maybe(Field("parameters"), Rule("Parameters")),
+            ]
+        ),
+        Rule(
+            name: "Options",
+            node: Options,
+            children: [
+                Multiple(Kind("name"), Node(Option)),
             ]
         ),
         Rule(
@@ -84,6 +160,68 @@ LanguageDefinition (
             name: "Body",
             node: Body,
             is_scope: true,
+            children: [
+                Multiple(Kind("constant_declaration"), Rule("ConstantDeclaration")),
+                //Multiple(Kind("variable_declaration"), Rule("VariableDeclaration")),
+                Multiple(Kind("instantiation"), Rule("Instantiation")),
+                //Multiple(Kind("value_set_declaration"), Rule("ValueSetDeclaration")),
+
+                //Multiple(Kind("parser_state"), Rule("ParserState")),
+                Multiple(Kind("action_declaration"), Rule("ActionDeclaration")),
+                //Multiple(Kind("table_declaration"), Rule("TableDeclaration")),
+                Multiple(Kind("block_statement"), Rule("Block")),
+            ]
+        ),
+        Rule(
+            name: "Block",
+            node: Block,
+            is_scope: true,
+            children: [
+                Multiple(Kind("constant_declaration"), Rule("ConstantDeclaration")),
+                Multiple(Kind("variable_declaration"), Rule("VariableDeclaration")),
+                //Multiple(Kind("assignment_or_method_call_statement"), Rule("AssignmentOrMethodCall")),
+                //Multiple(Kind("direct_application"), Rule("DirectApplication")),
+                Multiple(Kind("conditional_statement"), Rule("Conditional")),
+                //Multiple(Kind("empty_statement"), Rule("EmptyStatement")),
+                Multiple(Kind("block_statement"), Rule("Block")),
+                //Multiple(Kind("exit_statement"), Rule("Exit")),
+                Multiple(Kind("return_statement"), Rule("Return")),
+                //Multiple(Kind("switch_statement"), Rule("Switch")),
+            ]
+        ),
+        Rule(
+            name: "VariableDeclaration",
+            node: VariableDec,
+            children: [
+                Maybe(Field("annotation"), Rule("Annotation")),
+                One(Field("type"), Rule("Type")),
+                One(Field("name"), Node(Name)),
+                One(Field("value"), Node(Value)),
+            ]
+        ),
+        Rule(
+            name: "Conditional",
+            node: Conditional,
+            children: [
+                One(Field("expression"), Node(Value)),
+                One(Field("bodyIf"), Rule("Block")),
+                Maybe(Field("bodyElse"), Rule("Block")),
+            ]
+        ),
+        Rule(
+            name: "Return",
+            node: Return,
+            children: [
+                One(Field("value"), Node(Value)),
+            ]
+        ),
+        Rule(
+            name: "Type",
+            node: Type(Name),
+        ),
+        Rule(
+            name: "Annotation",
+            node: Annotations
         )
     ]
 )
