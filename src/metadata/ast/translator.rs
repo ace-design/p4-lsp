@@ -1577,7 +1577,7 @@ impl TreesitterTranslator {
         if let Some(param_list) = node.child_by_field_name("type") {
             let params_node_id =
                 self.arena
-                    .new_node(Node::new(NodeKind::ParamsList, node, &self.source_code));
+                    .new_node(Node::new(NodeKind::TypeArgList, node, &self.source_code));
 
             let mut cursor = param_list.walk();
             for syntax_child in param_list.named_children(&mut cursor) {
@@ -2240,7 +2240,7 @@ impl TreesitterTranslator {
     fn parse_state(&mut self, node: &tree_sitter::Node) -> Option<NodeId> {
         let node_id =
             self.arena
-                .new_node(Node::new(NodeKind::StateParser, node, &self.source_code));
+                .new_node(Node::new(NodeKind::ParserState, node, &self.source_code));
 
         // Add keyword node
         if let Some(type_node) = node.child_by_field_name("KeyWord") {

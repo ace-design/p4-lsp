@@ -164,11 +164,11 @@ LanguageDefinition (
                 Multiple(Kind("constant_declaration"), Rule("ConstantDeclaration")),
                 Multiple(Kind("variable_declaration"), Rule("VariableDeclaration")),
                 Multiple(Kind("instantiation"), Rule("Instantiation")),
-                //Multiple(Kind("value_set_declaration"), Rule("ValueSetDeclaration")),
+                Multiple(Kind("value_set_declaration"), Rule("ValueSetDeclaration")),
 
-                //Multiple(Kind("parser_state"), Rule("ParserState")),
+                Multiple(Kind("parser_state"), Rule("ParserState")),
                 Multiple(Kind("action_declaration"), Rule("ActionDeclaration")),
-                //Multiple(Kind("table_declaration"), Rule("TableDeclaration")),
+                Multiple(Kind("table_declaration"), Rule("ControlTable")),
                 Multiple(Kind("block_statement"), Rule("Block")),
             ]
         ),
@@ -179,11 +179,12 @@ LanguageDefinition (
             children: [
                 Multiple(Kind("constant_declaration"), Rule("ConstantDeclaration")),
                 Multiple(Kind("variable_declaration"), Rule("VariableDeclaration")),
-                //Multiple(Kind("assignment_or_method_call_statement"), Rule("AssignmentOrMethodCall")),
+                Multiple(Kind("assignment_or_method_call_statement"), Rule("AssignmentOrMethodCall")),
                 Multiple(Kind("direct_application"), Rule("DirectApplication")),
                 Multiple(Kind("conditional_statement"), Rule("Conditional")),
                 Multiple(Kind("empty_statement"), Node(EmptyStatement)),
                 Multiple(Kind("block_statement"), Rule("Block")),
+                Multiple(Kind("parser_block_statement"), Rule("Block")),
                 Multiple(Kind("exit_statement"), Node(ExitStatement)),
                 Multiple(Kind("return_statement"), Rule("Return")),
                 Multiple(Kind("switch_statement"), Rule("Switch")),
@@ -196,7 +197,7 @@ LanguageDefinition (
                 Maybe(Field("annotation"), Rule("Annotation")),
                 One(Field("type"), Rule("Type")),
                 One(Field("name"), Node(Name)),
-                One(Field("value"), Node(Value)),
+                Maybe(Field("value"), Node(Value)),
             ]
         ),
         Rule(
@@ -225,6 +226,50 @@ LanguageDefinition (
             ]
         ),
         Rule(
+            name: "AssignmentOrMethodCall",
+            node: Assignment,
+            children: [
+                One(Field("name"), Node(Name)),
+                Maybe(Field("expression"), Node(Value)),
+                Maybe(Field("parameters"), Rule("Args")),
+            ]
+        ),
+        Rule(
+            name: "ControlTable",
+            node: ControlTable,
+            children: [
+                Maybe(Field("annotation"), Rule("Annotation")),
+                One(Field("name"), Node(Name)),
+                One(Field("table"), Rule("Table")),
+            ]
+        ),
+        Rule(
+            name: "Table",
+            node: Table,
+            children: [
+                // TODO
+            ]
+        ),
+        Rule(
+            name: "ParserState",
+            node: ParserState,
+            children: [
+                Maybe(Field("annotation"), Rule("Annotation")),
+                One(Field("name"), Node(Name)),
+                One(Field("body"), Rule("Block")),
+            ]
+        ),
+        Rule(
+            name: "ValueSetDeclaration",
+            node: ValueSet,
+            children: [
+                Maybe(Field("annotation"), Rule("Annotation")),
+                One(Field("type"), Rule("Type")),
+                One(Field("name"), Node(Name)),
+                One(Field("expression"), Node(Value)),
+            ]
+        ),
+        Rule(
             name: "DirectApplication", // Deviates from 'translator.rs', name instead of type 
             node: DirectApplication,
             children: [
@@ -240,6 +285,13 @@ LanguageDefinition (
             node: Return,
             children: [
                 One(Field("value"), Node(Value)),
+            ]
+        ),
+        Rule(
+            name: "TypeArgumentList",
+            node: TypeArgList,
+            children: [
+                Multiple(Kind("type_arg"), Rule("Type")),
             ]
         ),
         Rule(

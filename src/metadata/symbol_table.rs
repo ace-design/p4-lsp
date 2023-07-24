@@ -524,7 +524,7 @@ impl ScopeSymbolTable {
                     | NodeKind::PreprocInclude
                     | NodeKind::PreprocDefine
                     | NodeKind::PreprocUndef
-                    | NodeKind::StateParser
+                    | NodeKind::ParserState
                     | NodeKind::ValueSet
                     | NodeKind::ControlTable
                     | NodeKind::TableKw
@@ -712,7 +712,7 @@ impl ScopeSymbolTable {
         | NodeKind::Methods
         | NodeKind::ControlAction
         | NodeKind::Body
-        | NodeKind::StateParser
+        | NodeKind::ParserState
         | NodeKind::ControlTable
         | NodeKind::Instantiation
         | NodeKind::SwitchCase = &root_visit_node_id.kind
