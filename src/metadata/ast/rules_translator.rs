@@ -68,7 +68,7 @@ impl LanguageDefinition {
     }
 
     pub fn rule_with_name(&self, name: &str) -> Option<&Rule> {
-        self.ast_rules.iter().find(|rule| &rule.name == name)
+        self.ast_rules.iter().find(|rule| rule.name == name)
     }
 
     pub fn get_scope_nodes(&self) -> Vec<NodeKind> {
@@ -110,7 +110,7 @@ impl RulesTranslator {
         }
 
         for child in current_rule.children.iter() {
-            self.query_parse_child(&children, child, current_node_id, &current_ts_node);
+            self.query_parse_child(&children, child, current_node_id, current_ts_node);
         }
 
         current_node_id
@@ -118,7 +118,7 @@ impl RulesTranslator {
 
     fn query_parse_child(
         &mut self,
-        children: &Vec<tree_sitter::Node>,
+        children: &[tree_sitter::Node],
         child: &Child,
         current_node_id: NodeId,
         current_ts_node: &tree_sitter::Node,
@@ -145,7 +145,7 @@ impl RulesTranslator {
                             .parent()
                             .unwrap()
                             .field_name_for_child(i as u32)
-                            == Some(&name)
+                            == Some(name)
                     }
                 } {
                     continue;
@@ -155,7 +155,6 @@ impl RulesTranslator {
                 for element in path.iter().skip(1) {
                     let found = current_ts_node
                         .children(&mut cursor)
-                        .into_iter()
                         .enumerate()
                         .filter(|node| node.1.is_named())
                         .find(|(i, ts_node)| match element {
@@ -163,7 +162,7 @@ impl RulesTranslator {
                             TreesitterNodeQuery::Kind(kind) => ts_node.kind() == kind,
                             TreesitterNodeQuery::Field(name) => {
                                 ts_node.parent().unwrap().field_name_for_child(*i as u32)
-                                    == Some(&name)
+                                    == Some(name)
                             }
                         });
 
@@ -200,7 +199,7 @@ impl RulesTranslator {
                         );
                     }
                     NodeOrRule::Rule(name) => {
-                        let rule = self.language_def.rule_with_name(&name).unwrap().clone();
+                        let rule = self.language_def.rule_with_name(name).unwrap().clone();
                         current_node_id.append(self.parse(&rule, &target_node), &mut self.arena);
                     }
                 }
