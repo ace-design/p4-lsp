@@ -60,6 +60,13 @@ LanguageDefinition (
             ]
         ),
         Rule(
+            name: "TypeDeclaration",
+            node: TypeDec,
+            children: [
+                
+            ]
+        ),
+        Rule(
             name: "ActionDeclaration",
             node: ControlAction,
             children: [
@@ -296,11 +303,11 @@ LanguageDefinition (
         ),
         Rule(
             name: "Type",
-            node: Type(Name), // TODO
+            node: Type, 
         ), 
         Rule(
             name: "Direction",
-            node: Direction(InOut), // TODO
+            node: Direction,  
         ),
         Rule(
             name: "Annotation",

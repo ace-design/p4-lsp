@@ -1,37 +1,34 @@
 use std::env;
 use std::sync::RwLock;
 
-use features::semantic_tokens;
-use plugin_manager::PluginManager;
+use crate::features::semantic_tokens;
+
+use crate::plugin_manager::PluginManager;
+use crate::workspace::Workspace;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
-use tower_lsp::{Client, LanguageServer, LspService, Server};
+use tower_lsp::{Client, LanguageServer};
 
-#[macro_use]
-extern crate log;
 extern crate simplelog;
 
 use simplelog::*;
 
 use std::fs::File;
 
-#[macro_use]
-extern crate lazy_static;
-
-mod features;
-mod file;
-mod metadata;
-mod plugin_manager;
-mod settings;
-mod utils;
-mod workspace;
-
-use workspace::Workspace;
-
-struct Backend {
+pub struct Backend {
     client: Client,
     workspace: RwLock<Workspace>,
     plugin_manager: RwLock<PluginManager>,
+}
+
+impl Backend {
+    pub fn init(client: Client) -> Backend {
+        Backend {
+            client,
+            workspace: Workspace::new().into(),
+            plugin_manager: PluginManager::new().into(),
+        }
+    }
 }
 
 #[tower_lsp::async_trait]
@@ -249,17 +246,4 @@ impl LanguageServer for Backend {
         let mut workspace = self.workspace.write().unwrap();
         (*workspace).update_settings(params.settings);
     }
-}
-
-#[tokio::main]
-async fn main() {
-    let stdin = tokio::io::stdin();
-    let stdout = tokio::io::stdout();
-
-    let (service, socket) = LspService::new(|client| Backend {
-        client,
-        workspace: Workspace::new().into(),
-        plugin_manager: PluginManager::new().into(),
-    });
-    Server::new(stdin, stdout, socket).serve(service).await;
 }

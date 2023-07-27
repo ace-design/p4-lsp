@@ -1,13 +1,13 @@
 use indextree::{Arena, NodeId};
-use serde::Deserialize;
 
 use super::{tree::Translator, Ast, Node, NodeKind};
+use crate::language_def::{Child, LanguageDefinition, NodeOrRule, Rule, TreesitterNodeQuery};
 
 pub struct RulesTranslator {
     arena: Arena<Node>,
     source_code: String,
     tree: tree_sitter::Tree,
-    language_def: LanguageDefinition,
+    language_def: &'static LanguageDefinition,
 }
 
 impl Translator for RulesTranslator {
@@ -19,74 +19,13 @@ impl Translator for RulesTranslator {
     }
 }
 
-#[derive(Debug, Deserialize)]
-struct LanguageDefinition {
-    ast_rules: Vec<Rule>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-struct Rule {
-    name: String,
-    node: NodeKind,
-    #[serde(default)]
-    is_scope: bool,
-    #[serde(default)]
-    children: Vec<Child>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-enum Child {
-    One(TreesitterNodeQuery, NodeOrRule),
-    Maybe(TreesitterNodeQuery, NodeOrRule),
-    Multiple(TreesitterNodeQuery, NodeOrRule),
-}
-
-#[derive(Debug, Deserialize, Clone)]
-enum TreesitterNodeQuery {
-    Path(Vec<TreesitterNodeQuery>),
-    Kind(String),
-    Field(String),
-}
-
-#[derive(Debug, Deserialize, Clone)]
-enum NodeOrRule {
-    Node(NodeKind),
-    Rule(String),
-}
-
-static FILE_CONTENT: &str = include_str!(concat!(
-    env!("CARGO_MANIFEST_DIR"),
-    "/language_def/rules.ron"
-));
-
-impl LanguageDefinition {
-    pub fn load() -> LanguageDefinition {
-        ron::de::from_str(FILE_CONTENT).unwrap_or_else(|e| {
-            error!("Failed to parse rules: {}", e);
-            panic!("Failed to parse rules: {}", e);
-        })
-    }
-
-    pub fn rule_with_name(&self, name: &str) -> Option<&Rule> {
-        self.ast_rules.iter().find(|rule| rule.name == name)
-    }
-
-    pub fn get_scope_nodes(&self) -> Vec<NodeKind> {
-        self.ast_rules
-            .iter()
-            .filter(|rule| rule.is_scope)
-            .map(|rule| rule.node.clone())
-            .collect()
-    }
-}
-
 impl RulesTranslator {
     fn new(source_code: String, syntax_tree: tree_sitter::Tree) -> RulesTranslator {
         RulesTranslator {
             source_code,
             arena: Arena::new(),
             tree: syntax_tree,
-            language_def: LanguageDefinition::load(),
+            language_def: LanguageDefinition::get(),
         }
     }
 

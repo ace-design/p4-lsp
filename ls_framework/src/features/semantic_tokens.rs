@@ -1,5 +1,4 @@
 use crate::metadata::{AstQuery, NodeKind, VisitNode, Visitable};
-use crate::metadata::{BaseType, Type};
 use std::sync::{Arc, Mutex};
 use tower_lsp::lsp_types::{
     SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensLegend, SemanticTokensResult,
@@ -111,31 +110,34 @@ pub fn get_visit_nodes(visit_node: VisitNode) -> Vec<ColorData> {
     let temp_cmp = (TOKENS_TYPES.len() + 1) as u32;
     let mut node_type: u32 = temp_cmp;
     match kind {
-        NodeKind::Type(type_node_visit) => match type_node_visit {
-            Type::Base(base_types) => {
-                match base_types {
-                    BaseType::String => {
-                        node_type = 1;
-                    }
-                    _ => {
-                        node_type = 4;
-                    }
-                };
-            }
-            Type::Name => {
-                node_type = 3;
-            }
-            Type::Specialized => {
-                node_type = 6;
-            }
-            _ => {
-                node_type = 7;
-            }
-        },
+        // NodeKind::Type(type_node_visit) => match type_node_visit {
+        //     Type::Base(base_types) => {
+        //         match base_types {
+        //             BaseType::String => {
+        //                 node_type = 1;
+        //             }
+        //             _ => {
+        //                 node_type = 4;
+        //             }
+        //         };
+        //     }
+        //     Type::Name => {
+        //         node_type = 3;
+        //     }
+        //     Type::Specialized => {
+        //         node_type = 6;
+        //     }
+        //     _ => {
+        //         node_type = 7;
+        //     }
+        // },
+        NodeKind::Type => {
+            node_type = 3;
+        }
         NodeKind::Name => {
             node_type = 0;
         }
-        NodeKind::Direction(_dir_node) => {
+        NodeKind::Direction => {
             node_type = 1;
         }
         NodeKind::KeyWord => {

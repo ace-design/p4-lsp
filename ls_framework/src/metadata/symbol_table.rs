@@ -1,7 +1,7 @@
 use crate::utils;
 use std::fmt;
 
-use crate::metadata::ast::{Ast, NodeKind, TypeDecType, VisitNode, Visitable};
+use crate::metadata::ast::{Ast, NodeKind, VisitNode, Visitable};
 use crate::metadata::types::Type;
 use indextree::{Arena, NodeId};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -266,50 +266,50 @@ impl SymbolTable {
         }
     }
 
-    fn parse_usages(&mut self, visit_node: VisitNode) {
-        for child_visit in visit_node.get_descendants() {
-            for type_node_visit in child_visit.get_children().into_iter() {
-                let type_node = type_node_visit.get();
-                if matches!(type_node.kind, NodeKind::Type(_)) {
-                    let used_type = type_node_visit.get_type().unwrap();
-                    match used_type {
-                        Type::Base(_) => {}
-                        Type::Name => {
-                            let name_symbol = type_node.content.clone();
-                            let pos_symbol = type_node.range.start;
-
-                            if let Some(symbol) =
-                                self.get_symbol_at_pos_mut(name_symbol.clone(), pos_symbol)
-                            {
-                                symbol.usages.push(type_node.range);
-                            } else {
-                                self.undefined_list.push(type_node.range)
-                            }
-
-                            if let Some(value_node_visit) = child_visit.get_value_node() {
-                                for child_value in value_node_visit.get_children() {
-                                    let value_node = child_value.get();
-                                    let name = value_node.content.clone();
-                                    let pos = value_node.range.start;
-                                    let symbol_tt = &self.get_symbol_at_pos(name, pos);
-
-                                    if let Some(symbol_t) = *symbol_tt {
-                                        let mut symbol = symbol_t.to_owned();
-                                        symbol.usages.push(value_node.range);
-                                        self.get_value_symbol(child_value, symbol);
-                                    } else {
-                                        self.undefined_list.push(value_node.range)
-                                    }
-                                }
-                            }
-                        }
-                        Type::Tuple => {}
-                        Type::Header => {}
-                        Type::Specialized => {}
-                    }
-                }
-            }
-        }
+    fn parse_usages(&mut self, _visit_node: VisitNode) {
+        // for child_visit in visit_node.get_descendants() {
+        //     for type_node_visit in child_visit.get_children().into_iter() {
+        //         let type_node = type_node_visit.get();
+        //         if matches!(type_node.kind, NodeKind::Type) {
+        //             let used_type = type_node_visit.get_type().unwrap();
+        //             match used_type {
+        //                 Type::Base(_) => {}
+        //                 Type::Name => {
+        //                     let name_symbol = type_node.content.clone();
+        //                     let pos_symbol = type_node.range.start;
+        //
+        //                     if let Some(symbol) =
+        //                         self.get_symbol_at_pos_mut(name_symbol.clone(), pos_symbol)
+        //                     {
+        //                         symbol.usages.push(type_node.range);
+        //                     } else {
+        //                         self.undefined_list.push(type_node.range)
+        //                     }
+        //
+        //                     if let Some(value_node_visit) = child_visit.get_value_node() {
+        //                         for child_value in value_node_visit.get_children() {
+        //                             let value_node = child_value.get();
+        //                             let name = value_node.content.clone();
+        //                             let pos = value_node.range.start;
+        //                             let symbol_tt = &self.get_symbol_at_pos(name, pos);
+        //
+        //                             if let Some(symbol_t) = *symbol_tt {
+        //                                 let mut symbol = symbol_t.to_owned();
+        //                                 symbol.usages.push(value_node.range);
+        //                                 self.get_value_symbol(child_value, symbol);
+        //                             } else {
+        //                                 self.undefined_list.push(value_node.range)
+        //                             }
+        //                         }
+        //                     }
+        //                 }
+        //                 Type::Tuple => {}
+        //                 Type::Header => {}
+        //                 Type::Specialized => {}
+        //             }
+        //         }
+        //     }
+        // }
     }
 }
 impl fmt::Display for SymbolTable {
@@ -480,10 +480,11 @@ impl ScopeSymbolTable {
                 let name = name_node.get().content.clone();
 
                 let type_node = child_visit_node.get_type_node();
-                let mut node: Option<super::Node> = None;
-                let type_ = if let Some(type_node) = type_node {
-                    node = Some(type_node.get().clone());
-                    type_node.get_type()
+                let node: Option<super::Node> = None;
+                let type_ = if let Some(_type_node) = type_node {
+                    // node = Some(type_node.get().clone());
+                    // type_node.get_type()
+                    None
                 } else {
                     None
                 };
@@ -535,102 +536,102 @@ impl ScopeSymbolTable {
                             table.symbols.functions.push(x);
                         }
                     }
-                    NodeKind::TypeDec(_type_dec_type) => {
-                        fn get_fields_vec(
-                            child_visit_node: VisitNode,
-                            type1: NodeKind,
-                            type2: NodeKind,
-                        ) -> Vec<Field> {
-                            let mut fields: Vec<Field> = vec![];
-                            let fields_node: VisitNode =
-                                match child_visit_node.get_child_of_kind(type1) {
-                                    Some(x) => x,
-                                    None => {
-                                        return fields;
-                                    }
-                                };
-
-                            for field_visit in fields_node.get_children() {
-                                let param_node = field_visit.get();
-                                if param_node.kind == type2 {
-                                    let name_node =
-                                        field_visit.get_child_of_kind(NodeKind::Name).unwrap();
-                                    let name = name_node.get().content.clone();
-
-                                    let type_node = field_visit.get_type_node();
-
-                                    let mut node: Option<super::Node> = None;
-                                    let type_ = if let Some(type_node) = type_node {
-                                        node = Some(type_node.get().clone());
-                                        type_node.get_type()
-                                    } else {
-                                        None
-                                    };
-
-                                    fields.push(Field::new(
-                                        name,
-                                        name_node.get().range,
-                                        TypeSymbol::new(type_, node),
-                                    ));
-                                }
-                            }
-                            fields
-                        }
-
-                        let name_node = child_visit_node.get_child_of_kind(NodeKind::Name).unwrap();
-                        let name = name_node.get().content.clone();
-
-                        let type_node = child_visit_node.get_type_node();
-
-                        let mut node: Option<super::Node> = None;
-                        let type_ = if let Some(type_node) = type_node {
-                            node = Some(type_node.get().clone());
-                            type_node.get_type()
-                        } else {
-                            None
-                        };
-                        let mut fields: Vec<Field> = vec![];
-                        match _type_dec_type {
-                            TypeDecType::TypeDef => {}
-                            TypeDecType::HeaderType
-                            | TypeDecType::HeaderUnion
-                            | TypeDecType::Struct => {
-                                fields = get_fields_vec(
-                                    child_visit_node,
-                                    NodeKind::Fields,
-                                    NodeKind::Field,
-                                );
-                            }
-                            TypeDecType::Enum => {
-                                fields = get_fields_vec(
-                                    child_visit_node,
-                                    NodeKind::Options,
-                                    NodeKind::Option,
-                                );
-                            }
-                            TypeDecType::Parser | TypeDecType::Control => {
-                                fields = get_fields_vec(
-                                    child_visit_node,
-                                    NodeKind::Params,
-                                    NodeKind::Param,
-                                );
-                            }
-                            TypeDecType::Package => {}
-                        }
-
-                        let fields_symbol: Option<Vec<Field>> = if fields.is_empty() {
-                            None
-                        } else {
-                            Some(fields)
-                        };
-
-                        table.symbols.types.push(Symbol::new(
-                            name,
-                            name_node.get().range,
-                            TypeSymbol::new(type_, node),
-                            fields_symbol,
-                        ));
-                    }
+                    // NodeKind::TypeDec(_type_dec_type) => {
+                    //     fn get_fields_vec(
+                    //         child_visit_node: VisitNode,
+                    //         type1: NodeKind,
+                    //         type2: NodeKind,
+                    //     ) -> Vec<Field> {
+                    //         let mut fields: Vec<Field> = vec![];
+                    //         let fields_node: VisitNode =
+                    //             match child_visit_node.get_child_of_kind(type1) {
+                    //                 Some(x) => x,
+                    //                 None => {
+                    //                     return fields;
+                    //                 }
+                    //             };
+                    //
+                    //         for field_visit in fields_node.get_children() {
+                    //             let param_node = field_visit.get();
+                    //             if param_node.kind == type2 {
+                    //                 let name_node =
+                    //                     field_visit.get_child_of_kind(NodeKind::Name).unwrap();
+                    //                 let name = name_node.get().content.clone();
+                    //
+                    //                 let type_node = field_visit.get_type_node();
+                    //
+                    //                 let mut node: Option<super::Node> = None;
+                    //                 let type_ = if let Some(type_node) = type_node {
+                    //                     node = Some(type_node.get().clone());
+                    //                     type_node.get_type()
+                    //                 } else {
+                    //                     None
+                    //                 };
+                    //
+                    //                 fields.push(Field::new(
+                    //                     name,
+                    //                     name_node.get().range,
+                    //                     TypeSymbol::new(type_, node),
+                    //                 ));
+                    //             }
+                    //         }
+                    //         fields
+                    //     }
+                    //
+                    //     let name_node = child_visit_node.get_child_of_kind(NodeKind::Name).unwrap();
+                    //     let name = name_node.get().content.clone();
+                    //
+                    //     let type_node = child_visit_node.get_type_node();
+                    //
+                    //     let mut node: Option<super::Node> = None;
+                    //     let type_ = if let Some(type_node) = type_node {
+                    //         node = Some(type_node.get().clone());
+                    //         type_node.get_type()
+                    //     } else {
+                    //         None
+                    //     };
+                    //     let mut fields: Vec<Field> = vec![];
+                    //     match _type_dec_type {
+                    //         TypeDecType::TypeDef => {}
+                    //         TypeDecType::HeaderType
+                    //         | TypeDecType::HeaderUnion
+                    //         | TypeDecType::Struct => {
+                    //             fields = get_fields_vec(
+                    //                 child_visit_node,
+                    //                 NodeKind::Fields,
+                    //                 NodeKind::Field,
+                    //             );
+                    //         }
+                    //         TypeDecType::Enum => {
+                    //             fields = get_fields_vec(
+                    //                 child_visit_node,
+                    //                 NodeKind::Options,
+                    //                 NodeKind::Option,
+                    //             );
+                    //         }
+                    //         TypeDecType::Parser | TypeDecType::Control => {
+                    //             fields = get_fields_vec(
+                    //                 child_visit_node,
+                    //                 NodeKind::Params,
+                    //                 NodeKind::Param,
+                    //             );
+                    //         }
+                    //         TypeDecType::Package => {}
+                    //     }
+                    //
+                    //     let fields_symbol: Option<Vec<Field>> = if fields.is_empty() {
+                    //         None
+                    //     } else {
+                    //         Some(fields)
+                    //     };
+                    //
+                    //     table.symbols.types.push(Symbol::new(
+                    //         name,
+                    //         name_node.get().range,
+                    //         TypeSymbol::new(type_, node),
+                    //         fields_symbol,
+                    //     ));
+                    // }
                     NodeKind::Params => {
                         for param_visit in child_visit_node.get_children() {
                             let param_node = param_visit.get();
@@ -641,10 +642,11 @@ impl ScopeSymbolTable {
 
                                 let type_node = param_visit.get_type_node();
 
-                                let mut node: Option<super::Node> = None;
-                                let type_ = if let Some(type_node) = type_node {
-                                    node = Some(type_node.get().clone());
-                                    type_node.get_type()
+                                let node: Option<super::Node> = None;
+                                let type_ = if let Some(_type_node) = type_node {
+                                    // node = Some(type_node.get().clone());
+                                    // type_node.get_type()
+                                    None
                                 } else {
                                     None
                                 };

@@ -6,8 +6,7 @@ use indextree::{Arena, NodeId};
 use serde::Deserialize;
 use tower_lsp::lsp_types::{Position, Range};
 
-use crate::metadata::types::Type;
-use crate::utils;
+use crate::{language_def, utils};
 
 use super::rules_translator::RulesTranslator;
 
@@ -49,10 +48,10 @@ pub enum NodeKind {
     ParserDec,
     ParserState,
     ControlDec,
-    Type(Type),
-    TypeList(Type),
-    Direction(Direction),
-    TypeDec(TypeDecType),
+    Type,
+    TypeList,
+    Direction,
+    TypeDec,
     Expression,
     Name,
     Param,
@@ -119,29 +118,11 @@ pub enum NodeKind {
     ExitStatement,
 }
 
-const SCOPE_NODES: [NodeKind; 17] = [
-    NodeKind::Root,
-    NodeKind::ParserDec,
-    NodeKind::TransitionStatement,
-    NodeKind::ControlDec,
-    NodeKind::Table,
-    NodeKind::Switch,
-    NodeKind::Obj,
-    NodeKind::Function,
-    NodeKind::Block,
-    NodeKind::Extern,
-    NodeKind::Body,
-    NodeKind::ParserState,
-    NodeKind::ControlTable,
-    NodeKind::Block,
-    NodeKind::Instantiation,
-    NodeKind::ControlAction,
-    NodeKind::SwitchCase,
-];
-
 impl NodeKind {
     pub fn is_scope_node(&self) -> bool {
-        SCOPE_NODES.contains(self)
+        language_def::LanguageDefinition::get()
+            .get_scope_nodes()
+            .contains(self)
     }
 }
 
@@ -171,7 +152,6 @@ pub trait Visitable {
     fn get_type_node(&self) -> Option<VisitNode>;
     fn get_value_node(&self) -> Option<VisitNode>;
     fn get_value_symbol_node(&self) -> Option<VisitNode>;
-    fn get_type(&self) -> Option<Type>;
     fn get_node_at_position(&self, position: Position) -> Option<VisitNode>;
 }
 
@@ -225,7 +205,7 @@ impl Visitable for VisitNode<'_> {
     fn get_type_node(&self) -> Option<VisitNode> {
         self.get_children().into_iter().find_map(|child| {
             let node = child.get();
-            if matches!(node.kind, NodeKind::Type(_)) {
+            if matches!(node.kind, NodeKind::Type) {
                 Some(VisitNode::new(self.arena, child.id))
             } else {
                 None
@@ -253,14 +233,6 @@ impl Visitable for VisitNode<'_> {
                 None
             }
         })
-    }
-
-    fn get_type(&self) -> Option<Type> {
-        if let NodeKind::Type(type_) = self.get().kind {
-            Some(type_)
-        } else {
-            None
-        }
     }
 
     fn get_node_at_position(&self, position: Position) -> Option<VisitNode> {
