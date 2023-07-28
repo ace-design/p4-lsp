@@ -22,10 +22,10 @@ pub struct Backend {
 }
 
 impl Backend {
-    pub fn init(client: Client) -> Backend {
+    pub fn init(client: Client, ts_language: tree_sitter::Language) -> Backend {
         Backend {
             client,
-            workspace: Workspace::new().into(),
+            workspace: Workspace::new(ts_language).into(),
             plugin_manager: PluginManager::new().into(),
         }
     }

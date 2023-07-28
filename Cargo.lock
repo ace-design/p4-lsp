@@ -1222,7 +1222,6 @@ dependencies = [
  "tokio",
  "tower-lsp",
  "tree-sitter",
- "tree-sitter-p4",
 ]
 
 [[package]]
@@ -1382,6 +1381,7 @@ version = "0.1.0"
 dependencies = [
  "ls_framework",
  "tokio",
+ "tree-sitter-p4",
 ]
 
 [[package]]

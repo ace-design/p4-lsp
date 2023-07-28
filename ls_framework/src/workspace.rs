@@ -5,21 +5,19 @@ use tower_lsp::lsp_types::{
     CompletionItem, Diagnostic, HoverContents, Location, Position, SemanticTokensResult,
     TextDocumentContentChangeEvent, Url, WorkspaceEdit,
 };
-use tree_sitter::Parser;
-use tree_sitter_p4::language;
 
 use crate::{file::File, settings::Settings};
 
 pub struct Workspace {
     settings: Settings,
     files: HashMap<Url, File>,
-    parser: Parser,
+    parser: tree_sitter::Parser,
 }
 
 impl Workspace {
-    pub fn new() -> Workspace {
-        let mut parser = Parser::new();
-        parser.set_language(language()).unwrap();
+    pub fn new(ts_language: tree_sitter::Language) -> Workspace {
+        let mut parser = tree_sitter::Parser::new();
+        parser.set_language(ts_language).unwrap();
 
         Workspace {
             settings: Settings::default(),
