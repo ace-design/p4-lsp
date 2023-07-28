@@ -109,47 +109,49 @@ pub fn get_visit_nodes(visit_node: VisitNode) -> Vec<ColorData> {
     let kind = &node_visit.kind;
     let temp_cmp = (TOKENS_TYPES.len() + 1) as u32;
     let mut node_type: u32 = temp_cmp;
-    match kind {
-        // NodeKind::Type(type_node_visit) => match type_node_visit {
-        //     Type::Base(base_types) => {
-        //         match base_types {
-        //             BaseType::String => {
-        //                 node_type = 1;
-        //             }
-        //             _ => {
-        //                 node_type = 4;
-        //             }
-        //         };
-        //     }
-        //     Type::Name => {
-        //         node_type = 3;
-        //     }
-        //     Type::Specialized => {
-        //         node_type = 6;
-        //     }
-        //     _ => {
-        //         node_type = 7;
-        //     }
-        // },
-        NodeKind::Type => {
-            node_type = 3;
+    if let NodeKind::Node(kind) = kind {
+        match kind.as_str() {
+            // NodeKind::Type(type_node_visit) => match type_node_visit {
+            //     Type::Base(base_types) => {
+            //         match base_types {
+            //             BaseType::String => {
+            //                 node_type = 1;
+            //             }
+            //             _ => {
+            //                 node_type = 4;
+            //             }
+            //         };
+            //     }
+            //     Type::Name => {
+            //         node_type = 3;
+            //     }
+            //     Type::Specialized => {
+            //         node_type = 6;
+            //     }
+            //     _ => {
+            //         node_type = 7;
+            //     }
+            // },
+            "Type" => {
+                node_type = 3;
+            }
+            "Name" => {
+                node_type = 0;
+            }
+            "Direction" => {
+                node_type = 1;
+            }
+            "KeyWord" => {
+                node_type = 2;
+            }
+            "Expression" => {
+                node_type = 7;
+            }
+            "ValueSymbol" => {
+                node_type = 4;
+            }
+            _ => {}
         }
-        NodeKind::Name => {
-            node_type = 0;
-        }
-        NodeKind::Direction => {
-            node_type = 1;
-        }
-        NodeKind::KeyWord => {
-            node_type = 2;
-        }
-        NodeKind::Expression => {
-            node_type = 7;
-        }
-        NodeKind::ValueSymbol => {
-            node_type = 4;
-        }
-        _ => {}
     };
     //only pushing node types that we support currently
     if node_type != temp_cmp {

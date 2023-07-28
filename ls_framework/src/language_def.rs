@@ -15,9 +15,9 @@ pub struct Rule {
 
 #[derive(Debug, Deserialize, Clone)]
 pub enum Child {
-    One(TreesitterNodeQuery, NodeOrRule),
-    Maybe(TreesitterNodeQuery, NodeOrRule),
-    Multiple(TreesitterNodeQuery, NodeOrRule),
+    One(TreesitterNodeQuery, DirectOrRule),
+    Maybe(TreesitterNodeQuery, DirectOrRule),
+    Multiple(TreesitterNodeQuery, DirectOrRule),
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -28,8 +28,8 @@ pub enum TreesitterNodeQuery {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub enum NodeOrRule {
-    Node(NodeKind),
+pub enum DirectOrRule {
+    Direct(NodeKind),
     Rule(String),
 }
 

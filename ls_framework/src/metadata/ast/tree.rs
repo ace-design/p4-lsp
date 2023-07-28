@@ -41,81 +41,8 @@ pub enum Direction {
 
 #[derive(Debug, Deserialize, PartialEq, Clone)]
 pub enum NodeKind {
-    Body,
-    Root,
-    ConstantDec,
-    VariableDec,
-    ParserDec,
-    ParserState,
-    ControlDec,
-    Type,
-    TypeList,
-    Direction,
-    TypeDec,
-    Expression,
-    Name,
-    Param,
-    Params,
-    Field,
-    Fields,
-    Option,
-    Options,
+    Node(String),
     Error(Option<String>),
-    Value,
-    ValueSymbol,
-    ControlAction,
-    Block,
-    Assignment,
-    Conditional,
-    BodyIf,
-    BodyElse,
-    Return,
-    ValueSet,
-    TypeArgList,
-    TransitionStatement,
-    Row,
-    Instantiation,
-    Obj,
-    Function,
-    FunctionPrototype,
-    FunctionName,
-    Switch,
-    SwitchCase,
-    ParserBlock,
-    DirectApplication,
-    ControlTable,
-    Table,
-    Keys,
-    Key,
-    Actions,
-    Action,
-    Entries,
-    Entrie,
-    TableKw,
-    PreprocInclude,
-    PreprocDefine,
-    PreprocUndef,
-    ErrorCst,
-    Methods,
-    Method,
-    MethodPrototype,
-    Annotations,
-    Annotation,
-    Token,
-    KvList,
-    Kv,
-    KeyWord,
-    ParamType,
-    NameStatement,
-    StatementDouble,
-    StatementExpr,
-    StatementDot,
-    Extern,
-    MatchKind,
-    Args,
-    Arg,
-    EmptyStatement,
-    ExitStatement,
 }
 
 impl NodeKind {
@@ -149,9 +76,6 @@ pub trait Visitable {
     fn get_descendants(&self) -> Vec<VisitNode>;
     fn get_child_of_kind(&self, kind: NodeKind) -> Option<VisitNode>;
     fn get_subscopes(&self) -> Vec<VisitNode>;
-    fn get_type_node(&self) -> Option<VisitNode>;
-    fn get_value_node(&self) -> Option<VisitNode>;
-    fn get_value_symbol_node(&self) -> Option<VisitNode>;
     fn get_node_at_position(&self, position: Position) -> Option<VisitNode>;
 }
 
@@ -200,39 +124,6 @@ impl Visitable for VisitNode<'_> {
             .into_iter()
             .filter(|child| child.get().kind.is_scope_node())
             .collect::<Vec<VisitNode>>()
-    }
-
-    fn get_type_node(&self) -> Option<VisitNode> {
-        self.get_children().into_iter().find_map(|child| {
-            let node = child.get();
-            if matches!(node.kind, NodeKind::Type) {
-                Some(VisitNode::new(self.arena, child.id))
-            } else {
-                None
-            }
-        })
-    }
-
-    fn get_value_node(&self) -> Option<VisitNode> {
-        self.get_children().into_iter().find_map(|child| {
-            let node = child.get();
-            if matches!(node.kind, NodeKind::Value) {
-                Some(VisitNode::new(self.arena, child.id))
-            } else {
-                None
-            }
-        })
-    }
-
-    fn get_value_symbol_node(&self) -> Option<VisitNode> {
-        self.get_children().into_iter().find_map(|child| {
-            let node = child.get();
-            if matches!(node.kind, NodeKind::ValueSymbol) {
-                return Some(VisitNode::new(self.arena, child.id));
-            } else {
-                None
-            }
-        })
     }
 
     fn get_node_at_position(&self, position: Position) -> Option<VisitNode> {

@@ -1,7 +1,7 @@
 use indextree::{Arena, NodeId};
 
 use super::{tree::Translator, Ast, Node, NodeKind};
-use crate::language_def::{Child, LanguageDefinition, NodeOrRule, Rule, TreesitterNodeQuery};
+use crate::language_def::{Child, LanguageDefinition, DirectOrRule, Rule, TreesitterNodeQuery};
 
 pub struct RulesTranslator {
     arena: Arena<Node>,
@@ -124,7 +124,7 @@ impl RulesTranslator {
                 TreesitterNodeQuery::Path(_) => true,
             } {
                 match node_or_rule {
-                    NodeOrRule::Node(node_kind) => {
+                    DirectOrRule::Direct(node_kind) => {
                         if ts_node.has_error() {
                             current_node_id.append(
                                 self.new_node(NodeKind::Error(None), ts_node),
@@ -137,7 +137,7 @@ impl RulesTranslator {
                             &mut self.arena,
                         );
                     }
-                    NodeOrRule::Rule(name) => {
+                    DirectOrRule::Rule(name) => {
                         let rule = self.language_def.rule_with_name(name).unwrap().clone();
                         current_node_id.append(self.parse(&rule, &target_node), &mut self.arena);
                     }
