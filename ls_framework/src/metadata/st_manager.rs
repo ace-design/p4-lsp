@@ -45,7 +45,7 @@ impl SymbolTableQuery for SymbolTableManager {
     }
 
     fn get_name_field(&self, position: Position, source_code: &str) -> Option<Vec<Field>> {
-        self.symbol_table.get_variable_in_pos(position, source_code)
+        self.symbol_table.get_variable_at_pos(position, source_code)
     }
 }
 

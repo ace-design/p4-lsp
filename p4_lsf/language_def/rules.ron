@@ -1,4 +1,11 @@
 LanguageDefinition (
+    symbol_types: [
+        //("Constant", CONSTANT),
+        ("Constant", 21),
+        ("Variable", 6),
+        ("Type", 25),
+        ("Function", 3)
+    ],
     ast_rules: [
         Rule(
             name: "Root", // Name of Rule (required)
@@ -19,6 +26,7 @@ LanguageDefinition (
         Rule(
             name: "ConstantDeclaration",
             node: Node("ConstantDec"),
+            symbol: Init("Constant"),
             children: [ 
                 Maybe(Field("annotation"), Rule("Annotation")),
                 One(Field("type"), Rule("Type")),

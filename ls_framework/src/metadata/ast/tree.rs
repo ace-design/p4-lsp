@@ -51,6 +51,18 @@ impl NodeKind {
             .get_scope_nodes()
             .contains(self)
     }
+
+    pub fn get_symbol_init_name(&self) -> Option<String> {
+        let maybe_found = language_def::LanguageDefinition::get()
+            .get_symbol_init_nodes()
+            .into_iter()
+            .find(|(kind, _)| self == kind);
+
+        if let Some((_, name)) = maybe_found {
+            return Some(name);
+        }
+        None
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -188,10 +200,13 @@ impl Ast {
     fn _get_debug_tree(&self, node_id: NodeId, indent: &str, last: bool, result: &mut String) {
         let node = self.arena.get(node_id).unwrap().get();
         let line = format!(
-            "{}{} {:?}\n",
+            "{}{} {}\n",
             indent,
             if last { "+- " } else { "|- " },
-            node.kind
+            match node.kind.clone() {
+                NodeKind::Node(name) => name,
+                NodeKind::Error(_) => String::from("Error"),
+            }
         );
 
         result.push_str(&line);

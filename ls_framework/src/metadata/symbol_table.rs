@@ -1,4 +1,5 @@
 use crate::utils;
+use std::collections::HashMap;
 use std::fmt;
 
 use crate::metadata::ast::{Ast, NodeKind, VisitNode, Visitable};
@@ -21,7 +22,7 @@ pub struct SymbolTable {
 
 pub trait SymbolTableActions {
     fn get_symbols_in_scope(&self, position: Position) -> Symbols;
-    fn get_variable_in_pos(&self, position: Position, source_code: &str) -> Option<Vec<Field>>;
+    fn get_variable_at_pos(&self, position: Position, source_code: &str) -> Option<Vec<Field>>;
     fn get_top_level_symbols(&self) -> Option<Symbols>;
     fn get_symbol_at_pos(&self, name: String, position: Position) -> Option<&Symbol>;
     fn get_symbol_at_pos_mut(&mut self, name: String, position: Position) -> Option<&mut Symbol>;
@@ -49,7 +50,7 @@ impl SymbolTableActions for SymbolTable {
                 if scope.range.start < position && position < scope.range.end {
                     current_scope_id = child_id;
                     subscope_exists = true;
-                    symbols.add(scope.symbols.clone(), position);
+                    symbols.merge(scope.symbols.clone(), position);
                     break;
                 }
             }
@@ -58,7 +59,7 @@ impl SymbolTableActions for SymbolTable {
         symbols
     }
 
-    fn get_variable_in_pos(&self, position: Position, source_code_t: &str) -> Option<Vec<Field>> {
+    fn get_variable_at_pos(&self, position: Position, source_code_t: &str) -> Option<Vec<Field>> {
         let mut source_code = source_code_t.to_string();
         let pos = utils::pos_to_byte(position, &source_code);
         let _ = source_code.split_off(pos);
@@ -89,22 +90,22 @@ impl SymbolTableActions for SymbolTable {
             let symbols: &Option<&Symbol> =
                 &self.get_symbol_at_pos(names[0].to_string(), position_start);
             if let Some(mut symbol) = symbols {
-                if let Some(x) = symbol.type_.get_name() {
-                    if x == Type::Name {
-                        let node = symbol.type_.get_node()?;
-                        let name = node.content.clone();
-                        let pos = node.range.start;
-                        match self.get_symbol_at_pos(name, pos) {
-                            Some(x) => {
-                                symbol = x;
-                            }
-                            None => {
-                                return Some(vec![]);
-                            }
-                        }
-                    }
-                }
-
+                // if let Some(x) = symbol.type_.get_name() {
+                //     if x == Type::Name {
+                //         let node = symbol.type_.get_node()?;
+                //         let name = node.content.clone();
+                //         let pos = node.range.start;
+                //         match self.get_symbol_at_pos(name, pos) {
+                //             Some(x) => {
+                //                 symbol = x;
+                //             }
+                //             None => {
+                //                 return Some(vec![]);
+                //             }
+                //         }
+                //     }
+                // }
+                //
                 for name in names.iter().take(names.len() - 1).skip(1) {
                     let fields = symbol.contains_fields(name.to_string());
                     if let Some(field) = fields {
@@ -196,7 +197,7 @@ impl SymbolTable {
     pub fn new(ast: &Ast) -> SymbolTable {
         let mut table = SymbolTable::default();
 
-        table.root_id = Some(table.parse_scope(ast.visit_root()).unwrap());
+        table.root_id = Some(table.parse_scope(ast.visit_root()));
         table.parse_usages(ast.visit_root());
 
         table
@@ -225,25 +226,21 @@ impl SymbolTable {
         self.root_id
     }
 
-    fn parse_scope(&mut self, visit_node: VisitNode) -> Option<NodeId> {
-        let table_option = ScopeSymbolTable::parse(visit_node);
-        if let Some(table) = table_option {
-            let node_id = self.arena.new_node(table);
+    fn parse_scope(&mut self, visit_node: VisitNode) -> NodeId {
+        let table = ScopeSymbolTable::parse(visit_node);
 
-            for child_visit in visit_node.get_children() {
-                let child_visit_id = child_visit.get();
-                let kind = &child_visit_id.kind;
-                if kind.is_scope_node() {
-                    let subtable = self.parse_scope(child_visit);
-                    if let Some(x) = subtable {
-                        node_id.append(x, &mut self.arena);
-                    }
-                }
-            }
+        let node_id = self.arena.new_node(table);
 
-            return Some(node_id);
+        for child_visit in visit_node
+            .get_children()
+            .into_iter()
+            .filter(|n| n.get().kind.is_scope_node())
+        {
+            let subtable = self.parse_scope(child_visit);
+            node_id.append(subtable, &mut self.arena);
         }
-        None
+
+        node_id
     }
 
     fn parse_usages(&mut self, _visit_node: VisitNode) {
@@ -306,104 +303,72 @@ impl fmt::Display for SymbolTable {
 
 #[derive(Debug, Default, Clone)]
 pub struct Symbols {
-    pub types: Vec<Symbol>,
-    pub constants: Vec<Symbol>,
-    pub variables: Vec<Symbol>,
-    pub functions: Vec<Symbol>,
+    symbols: HashMap<String, Vec<Symbol>>,
 }
 
 impl Symbols {
-    fn position_filter(&mut self, position: Position) {
-        self.types.retain(|s| s.def_position.end < position);
-        self.constants.retain(|s| s.def_position.end < position);
-        self.variables.retain(|s| s.def_position.end < position);
-        self.functions.retain(|s| s.def_position.end < position);
+    pub fn add(&mut self, symbol_type_name: String, symbol: Symbol) {
+        if !self.symbols.contains_key(&symbol_type_name) {
+            self.symbols.insert(symbol_type_name.clone(), Vec::new());
+        }
+
+        self.symbols
+            .get_mut(&symbol_type_name)
+            .unwrap()
+            .push(symbol);
     }
 
-    pub fn add(&mut self, mut other: Symbols, position: Position) {
-        other.position_filter(position);
+    pub fn get_type(&self, symbol_type_name: String) -> Option<&Vec<Symbol>> {
+        self.symbols.get(&symbol_type_name)
+    }
 
-        self.types.append(&mut other.types);
-        self.constants.append(&mut other.constants);
-        self.variables.append(&mut other.variables);
-        self.functions.append(&mut other.functions);
+    fn position_filter(&mut self, position: Position) {
+        for list in self.symbols.values_mut() {
+            list.retain(|s| s.def_position.end < position)
+        }
+    }
+
+    pub fn merge(&mut self, mut other: Symbols, position: Position) {
+        other.position_filter(position);
+        self.symbols.extend(other.symbols);
     }
 
     pub fn contains(&self, name: &str) -> bool {
-        for symbol in &self.types {
-            if symbol.name == name {
-                return true;
-            }
-        }
-        for symbol in &self.constants {
-            if symbol.name == name {
-                return true;
-            }
-        }
-        for symbol in &self.variables {
-            if symbol.name == name {
-                return true;
-            }
-        }
-        for symbol in &self.functions {
-            if symbol.name == name {
-                return true;
-            }
-        }
-
-        false
+        self.symbols
+            .values()
+            .any(|list| list.iter().any(|s| s.name == name))
     }
 
     pub fn find(&self, name: &str) -> Option<&Symbol> {
-        for symbol in &self.types {
-            if symbol.name == name {
+        for list in self.symbols.values() {
+            let maybe_symbol = list.iter().find(|&symbol| symbol.name == name);
+
+            if let Some(symbol) = maybe_symbol {
                 return Some(symbol);
             }
         }
-        for symbol in &self.constants {
-            if symbol.name == name {
-                return Some(symbol);
-            }
-        }
-        for symbol in &self.variables {
-            if symbol.name == name {
-                return Some(symbol);
-            }
-        }
-        self.functions.iter().find(|&symbol| symbol.name == name)
+        None
     }
 
     pub fn find_mut(&mut self, name: &str) -> Option<&mut Symbol> {
-        if let Some(s) = self.types.iter_mut().find(|symbol| symbol.name == name) {
-            return Some(s);
-        }
-        if let Some(s) = self.constants.iter_mut().find(|symbol| symbol.name == name) {
-            return Some(s);
-        }
-        if let Some(s) = self.variables.iter_mut().find(|symbol| symbol.name == name) {
-            return Some(s);
-        }
-        if let Some(s) = self.functions.iter_mut().find(|symbol| symbol.name == name) {
-            return Some(s);
-        }
+        for list in self.symbols.values_mut() {
+            let maybe_symbol = list.iter_mut().find(|symbol| symbol.name == name);
 
+            if let Some(symbol) = maybe_symbol {
+                return Some(symbol);
+            }
+        }
         None
     }
 
     pub fn get_mut(&mut self, id: usize) -> Option<&mut Symbol> {
-        if let Some(s) = self.types.iter_mut().find(|symbol| symbol.id == id) {
-            return Some(s);
-        }
-        if let Some(s) = self.constants.iter_mut().find(|symbol| symbol.id == id) {
-            return Some(s);
-        }
-        if let Some(s) = self.variables.iter_mut().find(|symbol| symbol.id == id) {
-            return Some(s);
-        }
-        if let Some(s) = self.functions.iter_mut().find(|symbol| symbol.id == id) {
-            return Some(s);
-        }
+        for list in self.symbols.values_mut() {
+            let maybe_symbol = list.iter_mut().find(|symbol| symbol.id == id);
 
+            if let Some(symbol) = maybe_symbol {
+                return Some(symbol);
+            }
+        }
         None
     }
 }
@@ -429,20 +394,10 @@ impl fmt::Display for ScopeSymbolTable {
         output.push_str("-".repeat(62).as_str());
         output.push('\n');
 
-        for s in &self.symbols.types {
-            output.push_str(format!("{: <8} | {}\n", "type", s).as_str());
-        }
-
-        for s in &self.symbols.constants {
-            output.push_str(format!("{: <8} | {}\n", "constant", s).as_str());
-        }
-
-        for s in &self.symbols.variables {
-            output.push_str(format!("{: <8} | {}\n", "variable", s).as_str());
-        }
-
-        for s in &self.symbols.functions {
-            output.push_str(format!("{: <8} | {}\n", "function", s).as_str());
+        for list in self.symbols.symbols.values() {
+            for s in list {
+                output.push_str(format!("{: <8} | {}\n", "type", s).as_str());
+            }
         }
 
         fmt.write_str(&output)
@@ -454,8 +409,28 @@ impl ScopeSymbolTable {
         &self.symbols
     }
 
-    fn parse(root_visit_node: VisitNode) -> Option<ScopeSymbolTable> {
-        None
+    fn parse(root_visit_node: VisitNode) -> ScopeSymbolTable {
+        let mut table = ScopeSymbolTable {
+            range: root_visit_node.get().range,
+            ..Default::default()
+        };
+
+        for child_visit_node in root_visit_node.get_children() {
+            let child_node = child_visit_node.get();
+
+            if let Some(symbol_type_name) = child_node.kind.get_symbol_init_name() {
+                let name_node = child_visit_node
+                    .get_child_of_kind(NodeKind::Node(String::from("Name")))
+                    .unwrap();
+                let name = name_node.get().content.clone();
+
+                let symbol = Symbol::new(name, name_node.get().range);
+
+                table.symbols.add(symbol_type_name, symbol);
+            }
+        }
+
+        table
     }
 }
 
@@ -472,7 +447,6 @@ pub struct Symbol {
     id: usize,
     name: String,
     def_position: Range,
-    type_: TypeSymbol,
     usages: Vec<Range>,
     fields: Option<Vec<Field>>,
 }
@@ -484,21 +458,14 @@ pub struct TypeSymbol {
 
 impl fmt::Display for Symbol {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let type_str: String = if let Some(type_) = self.type_.name {
-            type_.to_string()
-        } else {
-            "None".into()
-        };
-
         fmt.write_str(
             format!(
-                "{0: <15} | {1: <10} | {2: <10} | {3: <10}",
+                "{0: <15} | {1: <10} | {2: <10}",
                 self.name,
                 format!(
                     "l:{} c:{}",
                     self.def_position.start.line, self.def_position.start.character
                 ),
-                type_str,
                 self.usages.len()
             )
             .as_str(),
@@ -507,19 +474,13 @@ impl fmt::Display for Symbol {
 }
 
 impl Symbol {
-    pub fn new(
-        name: String,
-        def_position: Range,
-        type_: TypeSymbol,
-        fields: Option<Vec<Field>>,
-    ) -> Symbol {
+    pub fn new(name: String, def_position: Range) -> Symbol {
         Symbol {
             id: get_id(),
             name,
             def_position,
-            type_,
             usages: vec![],
-            fields,
+            fields: None,
         }
     }
 

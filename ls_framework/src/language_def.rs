@@ -1,5 +1,6 @@
 use serde::Deserialize;
 use tokio::sync::OnceCell;
+use tower_lsp::lsp_types::CompletionItemKind;
 
 use crate::metadata::NodeKind;
 
@@ -7,6 +8,8 @@ use crate::metadata::NodeKind;
 pub struct Rule {
     pub name: String,
     pub node: NodeKind,
+    #[serde(default)]
+    pub symbol: Symbol,
     #[serde(default)]
     pub is_scope: bool,
     #[serde(default)]
@@ -33,8 +36,17 @@ pub enum DirectOrRule {
     Rule(String),
 }
 
+#[derive(Debug, Deserialize, Clone, Default)]
+pub enum Symbol {
+    Init(String),
+    Usage,
+    #[default]
+    None,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct LanguageDefinition {
+    pub symbol_types: Vec<(String, CompletionItemKind)>,
     pub ast_rules: Vec<Rule>,
 }
 
@@ -65,6 +77,22 @@ impl LanguageDefinition {
             .iter()
             .filter(|rule| rule.is_scope)
             .map(|rule| rule.node.clone())
+            .collect()
+    }
+
+    pub fn get_symbol_init_nodes(&self) -> Vec<(NodeKind, String)> {
+        self.ast_rules
+            .iter()
+            .filter(|rule| matches!(rule.symbol, Symbol::Init(_)))
+            .map(|rule| {
+                (
+                    rule.node.clone(),
+                    match rule.symbol.clone() {
+                        Symbol::Init(type_name) => type_name,
+                        _ => unreachable!(),
+                    },
+                )
+            })
             .collect()
     }
 }
