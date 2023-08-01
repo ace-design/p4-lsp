@@ -13,14 +13,22 @@ pub struct Rule {
     #[serde(default)]
     pub is_scope: bool,
     #[serde(default)]
-    pub children: Vec<Child>,
+    pub children: Vec<Multiplicity>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
-pub enum Child {
-    One(TreesitterNodeQuery, DirectOrRule),
-    Maybe(TreesitterNodeQuery, DirectOrRule),
-    Multiple(TreesitterNodeQuery, DirectOrRule),
+pub enum Multiplicity {
+    One(Child),
+    Maybe(Child),
+    Multiple(Child),
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Child {
+    pub query: TreesitterNodeQuery,
+    pub rule: DirectOrRule,
+    #[serde(default)]
+    pub symbol_usage: bool,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -54,11 +62,16 @@ static INSTANCE: OnceCell<LanguageDefinition> = OnceCell::const_new();
 
 impl LanguageDefinition {
     pub fn load(language_definition: &str) {
+        let language_def_modified =
+            format!("#![enable(unwrap_variant_newtypes)]\n{language_definition}");
+
         INSTANCE
-            .set(ron::de::from_str(language_definition).unwrap_or_else(|e| {
-                error!("Failed to parse rules: {}", e);
-                panic!("Failed to parse rules: {}", e);
-            }))
+            .set(
+                ron::de::from_str(&language_def_modified).unwrap_or_else(|e| {
+                    error!("Failed to parse rules: {}", e);
+                    panic!("Failed to parse rules: {}", e);
+                }),
+            )
             .unwrap();
     }
 

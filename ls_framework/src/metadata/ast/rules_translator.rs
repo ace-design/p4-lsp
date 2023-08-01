@@ -1,7 +1,9 @@
 use indextree::{Arena, NodeId};
 
 use super::{tree::Translator, Ast, Node, NodeKind};
-use crate::language_def::{Child, LanguageDefinition, DirectOrRule, Rule, TreesitterNodeQuery};
+use crate::language_def::{
+    Child, DirectOrRule, LanguageDefinition, Multiplicity, Rule, TreesitterNodeQuery,
+};
 
 pub struct RulesTranslator {
     arena: Arena<Node>,
@@ -58,14 +60,26 @@ impl RulesTranslator {
     fn query_parse_child(
         &mut self,
         children: &[tree_sitter::Node],
-        child: &Child,
+        child: &Multiplicity,
         current_node_id: NodeId,
         current_ts_node: &tree_sitter::Node,
     ) {
         let (query, node_or_rule) = match child {
-            Child::One(query, node_or_rule) => (query, node_or_rule),
-            Child::Maybe(query, node_or_rule) => (query, node_or_rule),
-            Child::Multiple(query, node_or_rule) => (query, node_or_rule),
+            Multiplicity::One(Child {
+                query,
+                rule: direct_or_rule,
+                symbol_usage: _,
+            }) => (query, direct_or_rule),
+            Multiplicity::Maybe(Child {
+                query,
+                rule: direct_or_rule,
+                symbol_usage: _,
+            }) => (query, direct_or_rule),
+            Multiplicity::Multiple(Child {
+                query,
+                rule: direct_or_rule,
+                symbol_usage: _,
+            }) => (query, direct_or_rule),
         };
 
         let mut counter = 0;
@@ -146,7 +160,7 @@ impl RulesTranslator {
                 counter += 1;
             }
 
-            if matches!(child, Child::One(_, _) | Child::Maybe(_, _)) && counter > 1 {
+            if matches!(child, Multiplicity::One(_) | Multiplicity::Maybe(_)) && counter > 1 {
                 current_node_id.append(
                     self.new_node(
                         NodeKind::Error(Some(format!("Too many '{:?}'.", query))),
@@ -157,7 +171,7 @@ impl RulesTranslator {
             }
         }
 
-        if matches!(child, Child::One(_, _)) && counter == 0 {
+        if matches!(child, Multiplicity::One(_)) && counter == 0 {
             current_node_id.append(
                 self.new_node(
                     NodeKind::Error(Some(format!("Missing '{:?}'.", query))),
