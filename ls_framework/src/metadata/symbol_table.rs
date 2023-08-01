@@ -385,8 +385,8 @@ impl fmt::Display for ScopeSymbolTable {
 
         output.push_str(
             format!(
-                "{0: <8} | {1: <15} | {2: <10} | {3: <10} | {4: <10}\n",
-                "symbol", "name", "position", "type", "usages"
+                "{0: <8} | {1: <15} | {2: <10} | {3: <10}\n",
+                "symbol", "name", "position", "usages"
             )
             .as_str(),
         );
@@ -394,9 +394,9 @@ impl fmt::Display for ScopeSymbolTable {
         output.push_str("-".repeat(62).as_str());
         output.push('\n');
 
-        for list in self.symbols.symbols.values() {
+        for (symbol_type, list) in self.symbols.symbols.iter() {
             for s in list {
-                output.push_str(format!("{: <8} | {}\n", "type", s).as_str());
+                output.push_str(format!("{: <8} | {}\n", symbol_type, s).as_str());
             }
         }
 
