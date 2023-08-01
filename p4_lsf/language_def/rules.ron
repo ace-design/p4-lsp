@@ -4,7 +4,8 @@ LanguageDefinition (
         ("Constant", 21),
         ("Variable", 6),
         ("Type", 25),
-        ("Function", 3)
+        ("Function", 3),
+        ("Parameter", 6),
     ],
     ast_rules: [
         Rule(
@@ -37,6 +38,7 @@ LanguageDefinition (
         Rule(
             name: "Parser",
             node: Node("ParserDec"),
+            symbol: Init("Function"),
             is_scope: true,
             children: [
                 Maybe(Field("annotation"), Rule("Annotation")),
@@ -48,6 +50,7 @@ LanguageDefinition (
         Rule(
             name: "Control",
             node: Node("ControlDec"),
+            symbol: Init("Function"),
             is_scope: true,
             children: [
                 Maybe(Field("annotation"), Rule("Annotation")),
@@ -77,6 +80,8 @@ LanguageDefinition (
         Rule(
             name: "ActionDeclaration",
             node: Node("ControlAction"),
+            symbol: Init("Function"),
+            is_scope: true,
             children: [
                 Maybe(Field("annotation"), Rule("Annotation")),
                 One(Field("name"), Direct(Node("Name"))),
@@ -87,6 +92,7 @@ LanguageDefinition (
         Rule(
             name: "FunctionDeclaration",
             node: Node("Function"),
+            //symbol: Init("Function"),
             is_scope: true,
             children: [
                 One(Kind("function_prototype"), Rule("FunctionPrototype")),
@@ -103,6 +109,7 @@ LanguageDefinition (
         Rule(
             name: "ExternDeclaration",
             node: Node("Extern"),
+            symbol: Init("Function"),
             children: [
                 Maybe(Field("annotation"), Rule("Annotation")),
                 Maybe(Field("name"), Direct(Node("Name"))),
@@ -158,6 +165,7 @@ LanguageDefinition (
         Rule(
             name: "Parameters",
             node: Node("Params"),
+            is_scope: true,
             children: [
                 Multiple(Kind("parameter"), Rule("Parameter")),
             ]
@@ -165,6 +173,7 @@ LanguageDefinition (
         Rule(
             name: "Parameter",
             node: Node("Param"),
+            symbol: Init("Parameter"),
             children: [
                 Maybe(Field("direction"), Rule("Direction")),
                 One(Field("type"), Rule("Type")),
@@ -208,6 +217,7 @@ LanguageDefinition (
         Rule(
             name: "VariableDeclaration",
             node: Node("VariableDec"),
+            symbol: Init("Variable"),
             children: [
                 Maybe(Field("annotation"), Rule("Annotation")),
                 One(Field("type"), Rule("Type")),
