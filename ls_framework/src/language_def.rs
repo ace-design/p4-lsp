@@ -7,7 +7,6 @@ use crate::metadata::NodeKind;
 #[derive(Debug, Deserialize, Clone)]
 pub struct Rule {
     pub name: String,
-    pub node: NodeKind,
     #[serde(default)]
     pub symbol: Symbol,
     #[serde(default)]
@@ -89,7 +88,7 @@ impl LanguageDefinition {
         self.ast_rules
             .iter()
             .filter(|rule| rule.is_scope)
-            .map(|rule| rule.node.clone())
+            .map(|rule| NodeKind::Node(rule.name.clone()))
             .collect()
     }
 
@@ -99,7 +98,7 @@ impl LanguageDefinition {
             .filter(|rule| matches!(rule.symbol, Symbol::Init(_)))
             .map(|rule| {
                 (
-                    rule.node.clone(),
+                    NodeKind::Node(rule.name.clone()),
                     match rule.symbol.clone() {
                         Symbol::Init(type_name) => type_name,
                         _ => unreachable!(),

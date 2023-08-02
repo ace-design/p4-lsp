@@ -10,7 +10,6 @@ LanguageDefinition (
     ast_rules: [
         Rule(
             name: "Root", // Name of Rule (required)
-            node: Node("Root"), // Associated AST Node (required)
             is_scope: true, // defaults to false
             children: [
                 Multiple(query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
@@ -26,7 +25,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "ConstantDeclaration",
-            node: Node("ConstantDec"),
             symbol: Init("Constant"),
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
@@ -37,7 +35,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "Parser",
-            node: Node("ParserDec"),
             symbol: Init("Function"),
             is_scope: true,
             children: [
@@ -49,7 +46,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "Control",
-            node: Node("ControlDec"),
             symbol: Init("Function"),
             is_scope: true,
             children: [
@@ -61,7 +57,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "Instantiation",
-            node: Node("Instantiation"),
             is_scope: true,
             children: [ 
                 Maybe(query: Kind("annotation"), rule: Rule("Annotation")),
@@ -72,7 +67,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "TypeDeclaration",
-            node: Node("TypeDec"),
             children: [
                 Maybe(query: Kind("typedef_declaration"), rule: Rule("TypeDefDeclaration")),
                 Maybe(query: Kind("header_type_declaration"), rule: Rule("HeaderTypeDeclaration")),
@@ -86,7 +80,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "TypeDefDeclaration",
-            node: Node("TypeDefDec"),
             symbol: Init("Type"),
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
@@ -96,7 +89,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "HeaderTypeDeclaration",
-            node: Node("HeaderTypeDec"),
             symbol: Init("Type"),
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
@@ -107,7 +99,6 @@ LanguageDefinition (
         ), 
         Rule(
             name: "HeaderUnionDeclaration",
-            node: Node("HeaderUnionDec"),
             symbol: Init("Type"),
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
@@ -118,7 +109,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "StructDeclaration",
-            node: Node("StructDec"),
             symbol: Init("Type"),
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
@@ -129,7 +119,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "EnumDeclaration", // Maybe split this to EnumDeclaration and SpecifiedEnumDeclaration ?
-            node: Node("EnumDec"),
             symbol: Init("Type"),
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
@@ -142,7 +131,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "ParserTypeDeclaration",
-            node: Node("ParserTypeDec"),
             symbol: Init("Function"),
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
@@ -153,7 +141,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "ControlTypeDeclaration",
-            node: Node("ControlTypeDec"),
             symbol: Init("Function"),
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
@@ -164,7 +151,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "PackageTypeDeclaration",
-            node: Node("PackageTypeDec"),
             //symbol: Init("Function"),
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
@@ -175,14 +161,12 @@ LanguageDefinition (
         ),
         Rule(
             name: "FieldList",
-            node: Node("FieldList"),
             children: [
                 Multiple(query: Kind("struct_field"), rule: Rule("Field"))
             ]
         ),
         Rule(
             name: "Field",
-            node: Node("Field"),
             children: [
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("type"), rule: Rule("Type")),
@@ -191,21 +175,18 @@ LanguageDefinition (
         ),
         Rule(
             name: "OptionList",
-            node: Node("OptionList"),
             children: [
                 Multiple(query: Kind("name"), rule: Direct(Node("Option"))),
             ]
         ),
         Rule(
             name: "SpecifiedOptionList",
-            node: Node("SpecifiedOptionList"),
             children: [
                 Multiple(query: Kind("name"), rule: Direct(Node("Option"))),
             ]
         ),
         Rule(
             name: "SpecifiedOption",
-            node: Node("SpecifiedOption"),
             children: [
                 One(query: Kind("name"), rule: Direct(Node("Option"))),
                 One(query: Kind("initializer"), rule: Direct(Node("Value"))),
@@ -213,7 +194,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "ActionDeclaration",
-            node: Node("ControlAction"),
             symbol: Init("Function"),
             is_scope: true,
             children: [
@@ -225,7 +205,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "FunctionDeclaration",
-            node: Node("Function"),
             //symbol: Init("Function"),
             is_scope: true,
             children: [
@@ -235,14 +214,12 @@ LanguageDefinition (
         ),
         Rule(
             name: "ErrorDeclaration",
-            node: Node("ErrorCst"),
             children: [
                 One(query: Field("option_list"), rule: Rule("Options")),
             ]
         ),
         Rule(
             name: "ExternDeclaration",
-            node: Node("Extern"),
             symbol: Init("Function"),
             children: [
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
@@ -254,7 +231,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "FunctionPrototype",
-            node: Node("FunctionPrototype"),
             children: [
                 One(query: Kind("type_or_void"), rule: Rule("Type")),
                 One(query: Kind("name"), rule: Direct(Node("Name"))),
@@ -263,14 +239,12 @@ LanguageDefinition (
         ),
         Rule(
             name: "MethodList",
-            node: Node("Methods"),
             children: [
                 Multiple(query: Kind("method_prototype"), rule: Rule("MethodPrototype")),
             ]
         ),
         Rule(
             name: "MethodPrototype",
-            node: Node("MethodPrototype"),
             children: [
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 Maybe(query: Field("function"), rule: Rule("FunctionPrototype")),
@@ -280,25 +254,21 @@ LanguageDefinition (
         ),
         Rule(
             name: "Options",
-            node: Node("Options"),
             children: [
                 Multiple(query: Kind("name"), rule: Direct(Node("Option"))),
             ]
         ),
         Rule(
             name: "Args",
-            node: Node("Args"),
             children: [
                 Multiple(query: Kind("argument"), rule: Rule("Arg")),
             ]
         ),
         Rule(
             name: "Arg",
-            node: Node("Arg"),
         ),
         Rule(
             name: "Parameters",
-            node: Node("Params"),
             is_scope: true,
             children: [
                 Multiple(query: Kind("parameter"), rule: Rule("Parameter")),
@@ -306,7 +276,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "Parameter",
-            node: Node("Param"),
             symbol: Init("Parameter"),
             children: [
                 Maybe(query: Field("direction"), rule: Rule("Direction")),
@@ -316,7 +285,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "Body",
-            node: Node("Body"),
             is_scope: true,
             children: [
                 Multiple(query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
@@ -332,7 +300,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "Block",
-            node: Node("Block"),
             is_scope: true,
             children: [
                 Multiple(query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
@@ -350,7 +317,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "VariableDeclaration",
-            node: Node("VariableDec"),
             symbol: Init("Variable"),
             children: [
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
@@ -361,7 +327,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "Conditional",
-            node: Node("Conditional"),
             children: [
                 One(query: Field("expression"), rule: Direct(Node("Value"))),
                 One(query: Field("bodyIf"), rule: Rule("Block")),
@@ -370,7 +335,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "Switch",
-            node: Node("Switch"),
             children: [
                 One(query: Field("expression"), rule: Direct(Node("Value"))),
                 Multiple(query: Path([Field("body"), Field("switch_case")]), rule: Rule("SwitchCase")),
@@ -378,7 +342,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "SwitchCase",
-            node: Node("SwitchCase"),
             children: [
                 One(query: Field("name"), rule: Direct(Node("Value"))),
                 One(query: Field("value"), rule: Rule("Block")),
@@ -386,7 +349,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "AssignmentOrMethodCall",
-            node: Node("Assignment"),
             children: [
                 One(query: Field("name"), rule: Direct(Node("Name"))),
                 Maybe(query: Field("expression"), rule: Direct(Node("Value"))),
@@ -395,7 +357,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "ControlTable",
-            node: Node("ControlTable"),
             children: [
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("name"), rule: Direct(Node("Name"))),
@@ -404,14 +365,12 @@ LanguageDefinition (
         ),
         Rule(
             name: "Table",
-            node: Node("Table"),
             children: [
                 // TODO
             ]
         ),
         Rule(
             name: "ParserState",
-            node: Node("ParserState"),
             children: [
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("name"), rule: Direct(Node("Name"))),
@@ -420,7 +379,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "ValueSetDeclaration",
-            node: Node("ValueSet"),
             children: [
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("type"), rule: Rule("Type")),
@@ -430,7 +388,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "DirectApplication", // Deviates from 'translator.rs', name instead of type 
-            node: Node("DirectApplication"),
             children: [
                 // Change tree-sitter-p4 field names to combine both ?
                 Maybe(query: Field("name"), rule: Direct(Node("Name"))), 
@@ -441,29 +398,24 @@ LanguageDefinition (
         ),
         Rule(
             name: "Return",
-            node: Node("Return"),
             children: [
                 One(query: Field("value"), rule: Direct(Node("Value"))),
             ]
         ),
         Rule(
             name: "TypeArgumentList",
-            node: Node("TypeArgList"),
             children: [
                 Multiple(query: Kind("type_arg"), rule: Rule("Type")),
             ]
         ),
         Rule(
             name: "Type",
-            node: Node("Type"), 
         ), 
         Rule(
             name: "Direction",
-            node: Node("Direction"),  
         ),
         Rule(
             name: "Annotation",
-            node: Node("Annotations")
         )
     ]
 )

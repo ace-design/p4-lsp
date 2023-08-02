@@ -41,7 +41,8 @@ impl RulesTranslator {
         let mut cursor = current_ts_node.walk();
         let children: Vec<tree_sitter::Node> = current_ts_node.children(&mut cursor).collect();
 
-        let current_node_id = self.new_node(current_rule.node.clone(), current_ts_node);
+        let current_node_id =
+            self.new_node(NodeKind::Node(current_rule.name.clone()), current_ts_node);
         // TODO: has_error vs is_error
         for error_ts_node in children.iter().filter(|node| node.has_error()) {
             current_node_id.append(
