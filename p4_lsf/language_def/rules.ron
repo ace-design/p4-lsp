@@ -17,7 +17,7 @@ LanguageDefinition (
                 Multiple(query: Kind("parser_declaration"), rule: Rule("Parser")),
                 Multiple(query: Kind("control_declaration"), rule: Rule("Control")),
                 Multiple(query: Kind("instantiation"), rule: Rule("Instantiation")),
-                //Multiple(query: Kind("type_declaration"), rule: Rule("TypeDeclaration")),
+                Multiple(query: Kind("type_declaration"), rule: Rule("TypeDeclaration")),
                 Multiple(query: Kind("action_declaration"), rule: Rule("ActionDeclaration")),
                 Multiple(query: Kind("function_declaration"), rule: Rule("FunctionDeclaration")),
                 Multiple(query: Kind("error_declaration"), rule: Rule("ErrorDeclaration")),
@@ -74,7 +74,141 @@ LanguageDefinition (
             name: "TypeDeclaration",
             node: Node("TypeDec"),
             children: [
-                
+                Maybe(query: Kind("typedef_declaration"), rule: Rule("TypeDefDeclaration")),
+                Maybe(query: Kind("header_type_declaration"), rule: Rule("HeaderTypeDeclaration")),
+                Maybe(query: Kind("header_union_declaration"), rule: Rule("HeaderUnionDec")),
+                Maybe(query: Kind("struct_type_declaration"), rule: Rule("StructDeclaration")),
+                Maybe(query: Kind("enum_declaration"), rule: Rule("EnumDeclaration")),
+                Maybe(query: Kind("parser_type_declaration"), rule: Rule("ParserTypeDeclaration")),
+                Maybe(query: Kind("control_type_declaration"), rule: Rule("ControlTypeDeclaration")),
+                Maybe(query: Kind("package_type_declaration"), rule: Rule("PackageTypeDeclaration")),
+            ]
+        ),
+        Rule(
+            name: "TypeDefDeclaration",
+            node: Node("TypeDefDec"),
+            symbol: Init("Type"),
+            children: [ 
+                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
+                One(query: Field("type"), rule: Rule("Type")),
+                One(query: Field("name"), rule: Direct(Node("Name"))),
+            ]
+        ),
+        Rule(
+            name: "HeaderTypeDeclaration",
+            node: Node("HeaderTypeDec"),
+            symbol: Init("Type"),
+            children: [ 
+                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
+                One(query: Field("name"), rule: Direct(Node("Name"))),
+                Maybe(query: Field("field_list"), rule: Rule("FieldList"))
+                // maybe type parameters
+            ]
+        ), 
+        Rule(
+            name: "HeaderUnionDeclaration",
+            node: Node("HeaderUnionDec"),
+            symbol: Init("Type"),
+            children: [ 
+                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
+                One(query: Field("name"), rule: Direct(Node("Name"))),
+                Maybe(query: Field("field_list"), rule: Rule("FieldList"))
+                // maybe type parameters
+            ]
+        ),
+        Rule(
+            name: "StructDeclaration",
+            node: Node("StructDec"),
+            symbol: Init("Type"),
+            children: [ 
+                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
+                One(query: Field("name"), rule: Direct(Node("Name"))),
+                Maybe(query: Field("field_list"), rule: Rule("FieldList"))
+                // maybe type parameters
+            ]
+        ),
+        Rule(
+            name: "EnumDeclaration", // Maybe split this to EnumDeclaration and SpecifiedEnumDeclaration ?
+            node: Node("EnumDec"),
+            symbol: Init("Type"),
+            children: [ 
+                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
+                Maybe(query: Field("type"), rule: Rule("Type")),
+                One(query: Field("name"), rule: Direct(Node("Name"))),
+                Maybe(query: Kind("identifier_list"), rule: Rule("OptionList")),
+                Maybe(query: Kind("specified_identifier_list"), rule: Rule("SpecifiedOptionList"))
+                // maybe type parameters
+            ]
+        ),
+        Rule(
+            name: "ParserTypeDeclaration",
+            node: Node("ParserTypeDec"),
+            symbol: Init("Function"),
+            children: [ 
+                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
+                One(query: Field("name"), rule: Direct(Node("Name"))),
+                Maybe(query: Field("parameters"), rule: Rule("Parameters"))
+                // maybe type parameters
+            ]
+        ),
+        Rule(
+            name: "ControlTypeDeclaration",
+            node: Node("ControlTypeDec"),
+            symbol: Init("Function"),
+            children: [ 
+                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
+                One(query: Field("name"), rule: Direct(Node("Name"))),
+                Maybe(query: Field("parameters"), rule: Rule("Parameters"))
+                // maybe type parameters
+            ]
+        ),
+        Rule(
+            name: "PackageTypeDeclaration",
+            node: Node("PackageTypeDec"),
+            //symbol: Init("Function"),
+            children: [ 
+                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
+                One(query: Field("name"), rule: Direct(Node("Name"))),
+                Maybe(query: Field("parameters"), rule: Rule("Parameters"))
+                // maybe type parameters
+            ]
+        ),
+        Rule(
+            name: "FieldList",
+            node: Node("FieldList"),
+            children: [
+                Multiple(query: Kind("struct_field"), rule: Rule("Field"))
+            ]
+        ),
+        Rule(
+            name: "Field",
+            node: Node("Field"),
+            children: [
+                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
+                One(query: Field("type"), rule: Rule("Type")),
+                One(query: Field("name"), rule: Direct(Node("Name"))),
+            ]
+        ),
+        Rule(
+            name: "OptionList",
+            node: Node("OptionList"),
+            children: [
+                Multiple(query: Kind("name"), rule: Direct(Node("Option"))),
+            ]
+        ),
+        Rule(
+            name: "SpecifiedOptionList",
+            node: Node("SpecifiedOptionList"),
+            children: [
+                Multiple(query: Kind("name"), rule: Direct(Node("Option"))),
+            ]
+        ),
+        Rule(
+            name: "SpecifiedOption",
+            node: Node("SpecifiedOption"),
+            children: [
+                One(query: Kind("name"), rule: Direct(Node("Option"))),
+                One(query: Kind("initializer"), rule: Direct(Node("Value"))),
             ]
         ),
         Rule(
