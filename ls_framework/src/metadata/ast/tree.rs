@@ -216,7 +216,19 @@ impl Ast {
             indent.to_string() + "|  "
         };
 
-        for (i, child) in node_id.children(&self.arena).enumerate() {
+        // Sorting since nodes aren't parsed in order currently
+        let mut children: Vec<NodeId> = node_id.children(&self.arena).collect();
+        children.sort_by(|a, b| {
+            self.arena
+                .get(*a)
+                .unwrap()
+                .get()
+                .range
+                .start
+                .cmp(&self.arena.get(*b).unwrap().get().range.start)
+        });
+
+        for (i, child) in children.into_iter().enumerate() {
             self._get_debug_tree(
                 child,
                 &indent,
