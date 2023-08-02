@@ -12,15 +12,15 @@ LanguageDefinition (
             name: "Root", // Name of Rule (required)
             is_scope: true, // defaults to false
             children: [
-                Multiple(query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
-                Multiple(query: Kind("parser_declaration"), rule: Rule("Parser")),
-                Multiple(query: Kind("control_declaration"), rule: Rule("Control")),
-                Multiple(query: Kind("instantiation"), rule: Rule("Instantiation")),
-                Multiple(query: Kind("type_declaration"), rule: Rule("TypeDeclaration")),
-                Multiple(query: Kind("action_declaration"), rule: Rule("ActionDeclaration")),
-                Multiple(query: Kind("function_declaration"), rule: Rule("FunctionDeclaration")),
-                Multiple(query: Kind("error_declaration"), rule: Rule("ErrorDeclaration")),
-                Multiple(query: Kind("extern_declaration"), rule: Rule("ExternDeclaration")),
+                Many(query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
+                Many(query: Kind("parser_declaration"), rule: Rule("Parser")),
+                Many(query: Kind("control_declaration"), rule: Rule("Control")),
+                Many(query: Kind("instantiation"), rule: Rule("Instantiation")),
+                Many(query: Kind("type_declaration"), rule: Rule("TypeDeclaration")),
+                Many(query: Kind("action_declaration"), rule: Rule("ActionDeclaration")),
+                Many(query: Kind("function_declaration"), rule: Rule("FunctionDeclaration")),
+                Many(query: Kind("error_declaration"), rule: Rule("ErrorDeclaration")),
+                Many(query: Kind("extern_declaration"), rule: Rule("ExternDeclaration")),
             ]
         ),
         Rule(
@@ -162,7 +162,7 @@ LanguageDefinition (
         Rule(
             name: "FieldList",
             children: [
-                Multiple(query: Kind("struct_field"), rule: Rule("Field"))
+                Many(query: Kind("struct_field"), rule: Rule("Field"))
             ]
         ),
         Rule(
@@ -176,13 +176,13 @@ LanguageDefinition (
         Rule(
             name: "OptionList",
             children: [
-                Multiple(query: Kind("name"), rule: Direct(Node("Option"))),
+                Many(query: Kind("name"), rule: Direct(Node("Option"))),
             ]
         ),
         Rule(
             name: "SpecifiedOptionList",
             children: [
-                Multiple(query: Kind("name"), rule: Direct(Node("Option"))),
+                Many(query: Kind("name"), rule: Direct(Node("Option"))),
             ]
         ),
         Rule(
@@ -240,7 +240,7 @@ LanguageDefinition (
         Rule(
             name: "MethodList",
             children: [
-                Multiple(query: Kind("method_prototype"), rule: Rule("MethodPrototype")),
+                Many(query: Kind("method_prototype"), rule: Rule("MethodPrototype")),
             ]
         ),
         Rule(
@@ -255,13 +255,13 @@ LanguageDefinition (
         Rule(
             name: "Options",
             children: [
-                Multiple(query: Kind("name"), rule: Direct(Node("Option"))),
+                Many(query: Kind("name"), rule: Direct(Node("Option"))),
             ]
         ),
         Rule(
             name: "Args",
             children: [
-                Multiple(query: Kind("argument"), rule: Rule("Arg")),
+                Many(query: Kind("argument"), rule: Rule("Arg")),
             ]
         ),
         Rule(
@@ -271,7 +271,7 @@ LanguageDefinition (
             name: "Parameters",
             is_scope: true,
             children: [
-                Multiple(query: Kind("parameter"), rule: Rule("Parameter")),
+                Many(query: Kind("parameter"), rule: Rule("Parameter")),
             ]
         ),
         Rule(
@@ -287,32 +287,32 @@ LanguageDefinition (
             name: "Body",
             is_scope: true,
             children: [
-                Multiple(query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
-                Multiple(query: Kind("variable_declaration"), rule: Rule("VariableDeclaration")),
-                Multiple(query: Kind("instantiation"), rule: Rule("Instantiation")),
-                Multiple(query: Kind("value_set_declaration"), rule: Rule("ValueSetDeclaration")),
+                Many(query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
+                Many(query: Kind("variable_declaration"), rule: Rule("VariableDeclaration")),
+                Many(query: Kind("instantiation"), rule: Rule("Instantiation")),
+                Many(query: Kind("value_set_declaration"), rule: Rule("ValueSetDeclaration")),
 
-                Multiple(query: Kind("parser_state"), rule: Rule("ParserState")),
-                Multiple(query: Kind("action_declaration"), rule: Rule("ActionDeclaration")),
-                Multiple(query: Kind("table_declaration"), rule: Rule("ControlTable")),
-                Multiple(query: Kind("block_statement"), rule: Rule("Block")),
+                Many(query: Kind("parser_state"), rule: Rule("ParserState")),
+                Many(query: Kind("action_declaration"), rule: Rule("ActionDeclaration")),
+                Many(query: Kind("table_declaration"), rule: Rule("ControlTable")),
+                Many(query: Kind("block_statement"), rule: Rule("Block")),
             ]
         ),
         Rule(
             name: "Block",
             is_scope: true,
             children: [
-                Multiple(query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
-                Multiple(query: Kind("variable_declaration"), rule: Rule("VariableDeclaration")),
-                Multiple(query: Kind("assignment_or_method_call_statement"), rule: Rule("AssignmentOrMethodCall")),
-                Multiple(query: Kind("direct_application"), rule: Rule("DirectApplication")),
-                Multiple(query: Kind("conditional_statement"), rule: Rule("Conditional")),
-                Multiple(query: Kind("empty_statement"), rule: Direct(Node("EmptyStatement"))),
-                Multiple(query: Kind("block_statement"), rule: Rule("Block")),
-                Multiple(query: Kind("parser_block_statement"), rule: Rule("Block")),
-                Multiple(query: Kind("exit_statement"), rule: Direct(Node("ExitStatement"))),
-                Multiple(query: Kind("return_statement"), rule: Rule("Return")),
-                Multiple(query: Kind("switch_statement"), rule: Rule("Switch")),
+                Many(query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
+                Many(query: Kind("variable_declaration"), rule: Rule("VariableDeclaration")),
+                Many(query: Kind("assignment_or_method_call_statement"), rule: Rule("AssignmentOrMethodCall")),
+                Many(query: Kind("direct_application"), rule: Rule("DirectApplication")),
+                Many(query: Kind("conditional_statement"), rule: Rule("Conditional")),
+                Many(query: Kind("empty_statement"), rule: Direct(Node("EmptyStatement"))),
+                Many(query: Kind("block_statement"), rule: Rule("Block")),
+                Many(query: Kind("parser_block_statement"), rule: Rule("Block")),
+                Many(query: Kind("exit_statement"), rule: Direct(Node("ExitStatement"))),
+                Many(query: Kind("return_statement"), rule: Rule("Return")),
+                Many(query: Kind("switch_statement"), rule: Rule("Switch")),
             ]
         ),
         Rule(
@@ -337,7 +337,7 @@ LanguageDefinition (
             name: "Switch",
             children: [
                 One(query: Field("expression"), rule: Direct(Node("Value"))),
-                Multiple(query: Path([Field("body"), Field("switch_case")]), rule: Rule("SwitchCase")),
+                Many(query: Path([Field("body"), Field("switch_case")]), rule: Rule("SwitchCase")),
             ]
         ),
         Rule(
@@ -405,7 +405,7 @@ LanguageDefinition (
         Rule(
             name: "TypeArgumentList",
             children: [
-                Multiple(query: Kind("type_arg"), rule: Rule("Type")),
+                Many(query: Kind("type_arg"), rule: Rule("Type")),
             ]
         ),
         Rule(

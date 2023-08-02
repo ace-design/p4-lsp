@@ -19,7 +19,7 @@ pub struct Rule {
 pub enum Multiplicity {
     One(Child),
     Maybe(Child),
-    Multiple(Child),
+    Many(Child),
 }
 
 #[derive(Debug, Deserialize, Clone)]

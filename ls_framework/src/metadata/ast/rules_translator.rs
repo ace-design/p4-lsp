@@ -76,7 +76,7 @@ impl RulesTranslator {
                 rule: direct_or_rule,
                 symbol_usage: _,
             }) => (query, direct_or_rule),
-            Multiplicity::Multiple(Child {
+            Multiplicity::Many(Child {
                 query,
                 rule: direct_or_rule,
                 symbol_usage: _,
