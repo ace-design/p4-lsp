@@ -8,6 +8,8 @@ use indextree::{Arena, NodeId};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tower_lsp::lsp_types::{Position, Range};
 
+use super::Node;
+
 fn get_id() -> usize {
     static SYMBOL_ID_COUNTER: AtomicUsize = AtomicUsize::new(1);
     SYMBOL_ID_COUNTER.fetch_add(1, Ordering::Relaxed)
@@ -17,7 +19,6 @@ fn get_id() -> usize {
 pub struct SymbolTable {
     arena: Arena<ScopeSymbolTable>,
     root_id: Option<NodeId>,
-    undefined_list: Vec<Range>,
 }
 
 pub trait SymbolTableActions {
@@ -197,7 +198,7 @@ impl SymbolTable {
     pub fn new(ast: &Ast) -> SymbolTable {
         let mut table = SymbolTable::default();
 
-        table.root_id = Some(table.parse_scope(ast.visit_root()));
+        table.root_id = Some(table.parse_scope(ast.visit_root().get_id(), &ast.get_arena()));
         table.parse_usages(ast.visit_root());
 
         table
@@ -226,21 +227,25 @@ impl SymbolTable {
         self.root_id
     }
 
-    fn parse_scope(&mut self, visit_node: VisitNode) -> NodeId {
-        let table = ScopeSymbolTable::parse(visit_node);
+    fn parse_scope(&mut self, node_id: NodeId, arena: &Arena<Node>) -> NodeId {
+        debug!("/n/n");
+        let table = ScopeSymbolTable::parse(VisitNode::new(arena, node_id));
+        let current_table_node_id = self.arena.new_node(table);
 
-        let node_id = self.arena.new_node(table);
+        let mut queue: Vec<NodeId> = current_table_node_id.children(arena).collect();
 
-        for child_visit in visit_node
-            .get_children()
-            .into_iter()
-            .filter(|n| n.get().kind.is_scope_node())
-        {
-            let subtable = self.parse_scope(child_visit);
-            node_id.append(subtable, &mut self.arena);
+        while let Some(node_id) = queue.pop() {
+            debug!("Kind: {:?}", arena.get(node_id).unwrap().get().kind);
+            let is_scope_node = arena.get(node_id).unwrap().get().kind.is_scope_node();
+            if is_scope_node {
+                let subtable = self.parse_scope(node_id, arena);
+                current_table_node_id.append(subtable, &mut self.arena);
+            } else {
+                queue.append(&mut node_id.children(arena).collect());
+            }
         }
 
-        node_id
+        current_table_node_id
     }
 
     fn parse_usages(&mut self, _visit_node: VisitNode) {

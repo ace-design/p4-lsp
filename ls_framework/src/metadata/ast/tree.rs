@@ -84,6 +84,7 @@ impl Node {
 
 pub trait Visitable {
     fn get(&self) -> &Node;
+    fn get_id(&self) -> NodeId;
     fn get_children(&self) -> Vec<VisitNode>;
     fn get_descendants(&self) -> Vec<VisitNode>;
     fn get_child_of_kind(&self, kind: NodeKind) -> Option<VisitNode>;
@@ -152,6 +153,10 @@ impl Visitable for VisitNode<'_> {
                 return Some(VisitNode::new(self.arena, child_id));
             }
         }
+    }
+
+    fn get_id(&self) -> NodeId {
+        self.id
     }
 }
 
