@@ -1,11 +1,10 @@
 LanguageDefinition (
     symbol_types: [
-        //("Constant", CONSTANT),
-        ("Constant", 21),
-        ("Variable", 6),
-        ("Type", 25),
-        ("Function", 3),
-        ("Parameter", 6),
+        ("Constant", Constant),
+        ("Variable", Variable),
+        ("Type", Class),
+        ("Function", Function),
+        ("Parameter", Variable),
     ],
     ast_rules: [
         Rule(

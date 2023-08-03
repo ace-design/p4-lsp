@@ -26,7 +26,7 @@ pub fn get_list(
                         .iter()
                         .map(|item| CompletionItem {
                             label: item.get_name(),
-                            kind: Some(*completion_type),
+                            kind: Some(completion_type.get_completion_kind()),
                             ..Default::default()
                         })
                         .collect(),
