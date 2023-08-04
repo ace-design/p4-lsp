@@ -257,7 +257,6 @@ LanguageDefinition (
         ),
         Rule(
             name: "Parameters",
-            is_scope: true,
             children: [
                 Many(query: Kind("parameter"), rule: Rule("Parameter")),
             ]
@@ -396,6 +395,9 @@ LanguageDefinition (
         ),
         Rule(
             name: "Type",
+            children: [
+                Maybe(query: Kind("type_name"), rule: Direct(Node("Name")), symbol: Usage),
+            ]
         ), 
         Rule(
             name: "Direction",

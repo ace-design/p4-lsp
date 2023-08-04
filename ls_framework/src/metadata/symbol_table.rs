@@ -2,8 +2,7 @@ use crate::utils;
 use std::collections::HashMap;
 use std::fmt;
 
-use crate::metadata::ast::{Ast, NodeKind, VisitNode, Visitable};
-use crate::metadata::types::Type;
+use crate::metadata::ast::{Ast, Visitable};
 use indextree::{Arena, NodeId};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tower_lsp::lsp_types::{Position, Range};
@@ -19,6 +18,7 @@ fn get_id() -> usize {
 pub struct SymbolTable {
     arena: Arena<ScopeSymbolTable>,
     root_id: Option<NodeId>,
+    undefined_list: Vec<Range>,
 }
 
 pub trait SymbolTableActions {
@@ -90,7 +90,7 @@ impl SymbolTableActions for SymbolTable {
 
             let symbols: &Option<&Symbol> =
                 &self.get_symbol_at_pos(names[0].to_string(), position_start);
-            if let Some(mut symbol) = symbols {
+            if let Some(symbol) = symbols {
                 // if let Some(x) = symbol.type_.get_name() {
                 //     if x == Type::Name {
                 //         let node = symbol.type_.get_node()?;
@@ -109,22 +109,22 @@ impl SymbolTableActions for SymbolTable {
                 //
                 for name in names.iter().take(names.len() - 1).skip(1) {
                     let fields = symbol.contains_fields(name.to_string());
-                    if let Some(field) = fields {
-                        if let Some(x) = field.type_.get_name() {
-                            if x == Type::Name {
-                                let node = field.type_.get_node()?;
-                                let name = node.content.clone();
-                                let pos = node.range.start;
-                                match self.get_symbol_at_pos(name, pos) {
-                                    Some(x) => {
-                                        symbol = x;
-                                    }
-                                    None => {
-                                        return Some(vec![]);
-                                    }
-                                }
-                            }
-                        }
+                    if let Some(_field) = fields {
+                        // if let Some(x) = field.type_.get_name() {
+                        //     if x == Type::Name {
+                        //         let node = field.type_.get_node()?;
+                        //         let name = node.content.clone();
+                        //         let pos = node.range.start;
+                        //         match self.get_symbol_at_pos(name, pos) {
+                        //             Some(x) => {
+                        //                 symbol = x;
+                        //             }
+                        //             None => {
+                        //                 return Some(vec![]);
+                        //             }
+                        //         }
+                        //     }
+                        // }
                     } else {
                         return Some(vec![]);
                     }
@@ -199,7 +199,7 @@ impl SymbolTable {
         let mut table = SymbolTable::default();
 
         table.root_id = Some(table.parse_scope(ast.visit_root().get_id(), &ast.get_arena()));
-        table.parse_usages(ast.visit_root());
+        table.parse_usages(&mut ast.get_arena());
 
         table
     }
@@ -262,50 +262,38 @@ impl SymbolTable {
         current_table_node_id
     }
 
-    fn parse_usages(&mut self, _visit_node: VisitNode) {
-        // for child_visit in visit_node.get_descendants() {
-        //     for type_node_visit in child_visit.get_children().into_iter() {
-        //         let type_node = type_node_visit.get();
-        //         if matches!(type_node.kind, NodeKind::Type) {
-        //             let used_type = type_node_visit.get_type().unwrap();
-        //             match used_type {
-        //                 Type::Base(_) => {}
-        //                 Type::Name => {
-        //                     let name_symbol = type_node.content.clone();
-        //                     let pos_symbol = type_node.range.start;
-        //
-        //                     if let Some(symbol) =
-        //                         self.get_symbol_at_pos_mut(name_symbol.clone(), pos_symbol)
-        //                     {
-        //                         symbol.usages.push(type_node.range);
-        //                     } else {
-        //                         self.undefined_list.push(type_node.range)
-        //                     }
-        //
-        //                     if let Some(value_node_visit) = child_visit.get_value_node() {
-        //                         for child_value in value_node_visit.get_children() {
-        //                             let value_node = child_value.get();
-        //                             let name = value_node.content.clone();
-        //                             let pos = value_node.range.start;
-        //                             let symbol_tt = &self.get_symbol_at_pos(name, pos);
-        //
-        //                             if let Some(symbol_t) = *symbol_tt {
-        //                                 let mut symbol = symbol_t.to_owned();
-        //                                 symbol.usages.push(value_node.range);
-        //                                 self.get_value_symbol(child_value, symbol);
-        //                             } else {
-        //                                 self.undefined_list.push(value_node.range)
-        //                             }
-        //                         }
-        //                     }
-        //                 }
-        //                 Type::Tuple => {}
-        //                 Type::Header => {}
-        //                 Type::Specialized => {}
-        //             }
-        //         }
-        //     }
-        // }
+    fn parse_usages(&mut self, arena: &mut Arena<Node>) {
+        for node in arena
+            .iter()
+            .filter(|node| matches!(node.get().symbol, crate::language_def::Symbol::Usage))
+        {
+            debug!("Test");
+            let node = node.get();
+            let symbol_name = &node.content;
+
+            let scope_id = self.get_scope_id(node.range.start).unwrap();
+            let scope_ids: Vec<NodeId> = scope_id.predecessors(&self.arena).collect();
+
+            let mut found = false;
+            for id in scope_ids {
+                if let Some(symbol) = self
+                    .arena
+                    .get_mut(id)
+                    .unwrap()
+                    .get_mut()
+                    .symbols
+                    .find_mut(symbol_name)
+                {
+                    found = true;
+                    symbol.add_usage(node.range);
+                    break;
+                }
+            }
+
+            if !found {
+                self.undefined_list.push(node.range);
+            }
+        }
     }
 }
 impl fmt::Display for SymbolTable {
@@ -443,7 +431,6 @@ impl ScopeSymbolTable {
 pub struct Field {
     name: String,
     def_position: Range,
-    type_: TypeSymbol,
     usages: Vec<Range>,
 }
 
@@ -454,11 +441,6 @@ pub struct Symbol {
     def_position: Range,
     usages: Vec<Range>,
     fields: Option<Vec<Field>>,
-}
-#[derive(Debug, Clone)]
-pub struct TypeSymbol {
-    name: Option<Type>,
-    node: Option<super::Node>,
 }
 
 impl fmt::Display for Symbol {
@@ -505,6 +487,10 @@ impl Symbol {
         self.def_position
     }
 
+    pub fn add_usage(&mut self, range: Range) {
+        self.usages.push(range);
+    }
+
     pub fn get_usages(&self) -> &Vec<Range> {
         &self.usages
     }
@@ -529,11 +515,10 @@ impl Symbol {
 }
 
 impl Field {
-    pub fn new(name: String, def_position: Range, type_: TypeSymbol) -> Field {
+    pub fn new(name: String, def_position: Range) -> Field {
         Field {
             name,
             def_position,
-            type_,
             usages: vec![],
         }
     }
@@ -548,19 +533,5 @@ impl Field {
 
     pub fn get_usages(&self) -> &Vec<Range> {
         &self.usages
-    }
-}
-
-impl TypeSymbol {
-    pub fn new(name: Option<Type>, node: Option<super::Node>) -> TypeSymbol {
-        TypeSymbol { name, node }
-    }
-
-    pub fn get_name(&self) -> Option<Type> {
-        self.name
-    }
-
-    pub fn get_node(&self) -> Option<super::Node> {
-        self.node.clone()
     }
 }
