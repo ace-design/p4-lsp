@@ -235,11 +235,6 @@ impl SymbolTable {
         let mut queue: Vec<NodeId> = node_id.children(arena).collect();
 
         while let Some(node_id) = queue.pop() {
-            debug!(
-                "Kind: {:?}, Symbol: {:?}",
-                arena.get(node_id).unwrap().get().kind,
-                arena.get(node_id).unwrap().get().symbol
-            );
             let node = arena.get(node_id).unwrap().get();
             if node.kind.is_scope_node() {
                 let subtable = self.parse_scope(node_id, arena);
@@ -267,7 +262,6 @@ impl SymbolTable {
             .iter()
             .filter(|node| matches!(node.get().symbol, crate::language_def::Symbol::Usage))
         {
-            debug!("Test");
             let node = node.get();
             let symbol_name = &node.content;
 
