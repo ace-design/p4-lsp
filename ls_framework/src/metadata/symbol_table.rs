@@ -228,20 +228,34 @@ impl SymbolTable {
     }
 
     fn parse_scope(&mut self, node_id: NodeId, arena: &Arena<Node>) -> NodeId {
-        debug!("/n/n");
-        let table = ScopeSymbolTable::parse(VisitNode::new(arena, node_id));
+        debug!("\n\n");
+        let table = ScopeSymbolTable::new(arena.get(node_id).unwrap().get().range);
         let current_table_node_id = self.arena.new_node(table);
 
-        let mut queue: Vec<NodeId> = current_table_node_id.children(arena).collect();
+        let mut queue: Vec<NodeId> = node_id.children(arena).collect();
 
         while let Some(node_id) = queue.pop() {
-            debug!("Kind: {:?}", arena.get(node_id).unwrap().get().kind);
-            let is_scope_node = arena.get(node_id).unwrap().get().kind.is_scope_node();
-            if is_scope_node {
+            debug!(
+                "Kind: {:?}, Symbol: {:?}",
+                arena.get(node_id).unwrap().get().kind,
+                arena.get(node_id).unwrap().get().symbol
+            );
+            let node = arena.get(node_id).unwrap().get();
+            if node.kind.is_scope_node() {
                 let subtable = self.parse_scope(node_id, arena);
                 current_table_node_id.append(subtable, &mut self.arena);
             } else {
                 queue.append(&mut node_id.children(arena).collect());
+            }
+
+            if let crate::language_def::Symbol::Init(symbol_type_name) = node.symbol.clone() {
+                let symbol = Symbol::new(node.content.clone(), node.range);
+                self.arena
+                    .get_mut(current_table_node_id)
+                    .unwrap()
+                    .get_mut()
+                    .symbols
+                    .add(symbol_type_name, symbol);
             }
         }
 
@@ -298,7 +312,10 @@ impl fmt::Display for SymbolTable {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
 
-        for node in self.arena.iter() {
+        let mut sorted = self.arena.iter().collect::<Vec<_>>();
+        sorted.sort_by(|a, b| a.get().range.start.cmp(&b.get().range.start));
+
+        for node in sorted {
             output.push_str(format!("{}\n", node.get()).as_str());
         }
 
@@ -410,32 +427,15 @@ impl fmt::Display for ScopeSymbolTable {
 }
 
 impl ScopeSymbolTable {
-    fn get_symbols(&self) -> &Symbols {
-        &self.symbols
+    fn new(range: Range) -> ScopeSymbolTable {
+        ScopeSymbolTable {
+            range,
+            ..Default::default()
+        }
     }
 
-    fn parse(root_visit_node: VisitNode) -> ScopeSymbolTable {
-        let mut table = ScopeSymbolTable {
-            range: root_visit_node.get().range,
-            ..Default::default()
-        };
-
-        for child_visit_node in root_visit_node.get_children() {
-            let child_node = child_visit_node.get();
-
-            if let Some(symbol_type_name) = child_node.kind.get_symbol_init_name() {
-                let name_node = child_visit_node
-                    .get_child_of_kind(NodeKind::Node(String::from("Name")))
-                    .unwrap();
-                let name = name_node.get().content.clone();
-
-                let symbol = Symbol::new(name, name_node.get().range);
-
-                table.symbols.add(symbol_type_name, symbol);
-            }
-        }
-
-        table
+    fn get_symbols(&self) -> &Symbols {
+        &self.symbols
     }
 }
 

@@ -6,7 +6,10 @@ use indextree::{Arena, NodeId};
 use serde::Deserialize;
 use tower_lsp::lsp_types::{Position, Range};
 
-use crate::{language_def, utils};
+use crate::{
+    language_def::{self, Symbol},
+    utils,
+};
 
 use super::rules_translator::RulesTranslator;
 
@@ -51,18 +54,6 @@ impl NodeKind {
             .get_scope_nodes()
             .contains(self)
     }
-
-    pub fn get_symbol_init_name(&self) -> Option<String> {
-        let maybe_found = language_def::LanguageDefinition::get()
-            .get_symbol_init_nodes()
-            .into_iter()
-            .find(|(kind, _)| self == kind);
-
-        if let Some((_, name)) = maybe_found {
-            return Some(name);
-        }
-        None
-    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -70,14 +61,21 @@ pub struct Node {
     pub kind: NodeKind,
     pub range: Range,
     pub content: String,
+    pub symbol: Symbol,
 }
 
 impl Node {
-    pub fn new(kind: NodeKind, syntax_node: &tree_sitter::Node, source_code: &str) -> Node {
+    pub fn new(
+        kind: NodeKind,
+        syntax_node: &tree_sitter::Node,
+        source_code: &str,
+        symbol: Symbol,
+    ) -> Node {
         Node {
             kind,
             range: utils::ts_range_to_lsp_range(syntax_node.range()),
             content: utils::get_node_text(syntax_node, source_code),
+            symbol,
         }
     }
 }

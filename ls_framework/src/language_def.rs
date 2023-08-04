@@ -69,8 +69,6 @@ impl SymbolCompletionType {
 pub struct Rule {
     pub name: String,
     #[serde(default)]
-    pub symbol: Symbol,
-    #[serde(default)]
     pub is_scope: bool,
     #[serde(default)]
     pub children: Vec<Multiplicity>,
@@ -88,7 +86,7 @@ pub struct Child {
     pub query: TreesitterNodeQuery,
     pub rule: DirectOrRule,
     #[serde(default)]
-    pub symbol_usage: bool,
+    pub symbol: Symbol,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -104,7 +102,7 @@ pub enum DirectOrRule {
     Rule(String),
 }
 
-#[derive(Debug, Deserialize, Clone, Default)]
+#[derive(Debug, PartialEq, Deserialize, Clone, Default)]
 pub enum Symbol {
     Init(String),
     Usage,
@@ -150,22 +148,6 @@ impl LanguageDefinition {
             .iter()
             .filter(|rule| rule.is_scope)
             .map(|rule| NodeKind::Node(rule.name.clone()))
-            .collect()
-    }
-
-    pub fn get_symbol_init_nodes(&self) -> Vec<(NodeKind, String)> {
-        self.ast_rules
-            .iter()
-            .filter(|rule| matches!(rule.symbol, Symbol::Init(_)))
-            .map(|rule| {
-                (
-                    NodeKind::Node(rule.name.clone()),
-                    match rule.symbol.clone() {
-                        Symbol::Init(type_name) => type_name,
-                        _ => unreachable!(),
-                    },
-                )
-            })
             .collect()
     }
 }
