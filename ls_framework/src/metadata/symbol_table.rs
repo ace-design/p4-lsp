@@ -228,7 +228,6 @@ impl SymbolTable {
     }
 
     fn parse_scope(&mut self, node_id: NodeId, arena: &Arena<Node>) -> NodeId {
-        debug!("\n\n");
         let table = ScopeSymbolTable::new(arena.get(node_id).unwrap().get().range);
         let current_table_node_id = self.arena.new_node(table);
 
