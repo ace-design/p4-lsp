@@ -34,26 +34,17 @@ impl RulesTranslator {
     fn build(&mut self) -> NodeId {
         let root_rule = self.language_def.rule_with_name("Root").unwrap();
 
-        self.parse(
-            &root_rule.clone(),
-            &self.tree.clone().root_node(),
-            Symbol::None,
-        )
+        self.parse(&root_rule.clone(), &self.tree.clone().root_node())
     }
 
-    fn parse(
-        &mut self,
-        current_rule: &Rule,
-        current_ts_node: &tree_sitter::Node,
-        symbol: Symbol,
-    ) -> NodeId {
+    fn parse(&mut self, current_rule: &Rule, current_ts_node: &tree_sitter::Node) -> NodeId {
         let mut cursor = current_ts_node.walk();
         let children: Vec<tree_sitter::Node> = current_ts_node.children(&mut cursor).collect();
 
         let current_node_id = self.new_node(
             NodeKind::Node(current_rule.name.clone()),
             current_ts_node,
-            symbol,
+            current_rule.symbol.clone(),
         );
         // TODO: has_error vs is_error
         for error_ts_node in children.iter().filter(|node| node.has_error()) {
@@ -77,22 +68,19 @@ impl RulesTranslator {
         current_node_id: NodeId,
         current_ts_node: &tree_sitter::Node,
     ) {
-        let (query, node_or_rule, symbol) = match child {
+        let (query, node_or_rule) = match child {
             Multiplicity::One(Child {
                 query,
                 rule: direct_or_rule,
-                symbol,
-            }) => (query, direct_or_rule, symbol),
+            }) => (query, direct_or_rule),
             Multiplicity::Maybe(Child {
                 query,
                 rule: direct_or_rule,
-                symbol,
-            }) => (query, direct_or_rule, symbol),
+            }) => (query, direct_or_rule),
             Multiplicity::Many(Child {
                 query,
                 rule: direct_or_rule,
-                symbol,
-            }) => (query, direct_or_rule, symbol),
+            }) => (query, direct_or_rule),
         };
 
         let mut counter = 0;
@@ -160,16 +148,13 @@ impl RulesTranslator {
                         }
 
                         current_node_id.append(
-                            self.new_node(node_kind.clone(), &target_node, symbol.clone()),
+                            self.new_node(node_kind.clone(), &target_node, Symbol::None),
                             &mut self.arena,
                         );
                     }
                     DirectOrRule::Rule(name) => {
                         let rule = self.language_def.rule_with_name(name).unwrap().clone();
-                        current_node_id.append(
-                            self.parse(&rule, &target_node, symbol.clone()),
-                            &mut self.arena,
-                        );
+                        current_node_id.append(self.parse(&rule, &target_node), &mut self.arena);
                     }
                 }
 

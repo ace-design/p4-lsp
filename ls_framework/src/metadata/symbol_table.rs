@@ -1,4 +1,4 @@
-use crate::utils;
+use crate::{metadata::NodeKind, utils};
 use std::collections::HashMap;
 use std::fmt;
 
@@ -243,14 +243,23 @@ impl SymbolTable {
                 queue.append(&mut node_id.children(arena).collect());
             }
 
-            if let crate::language_def::Symbol::Init(symbol_type_name) = node.symbol.clone() {
-                let symbol = Symbol::new(node.content.clone(), node.range);
+            if let crate::language_def::Symbol::Init { kind, name_node } = node.symbol.clone() {
+                let name_node_id = node_id
+                    .children(arena)
+                    .find(|id| {
+                        arena.get(*id).unwrap().get().kind == NodeKind::Node(name_node.clone())
+                    })
+                    .unwrap();
+
+                let name_node = arena.get(name_node_id).unwrap().get();
+
+                let symbol = Symbol::new(name_node.content.clone(), name_node.range);
                 self.arena
                     .get_mut(current_table_node_id)
                     .unwrap()
                     .get_mut()
                     .symbols
-                    .add(symbol_type_name, symbol);
+                    .add(kind, symbol);
             }
         }
 

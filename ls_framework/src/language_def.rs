@@ -69,6 +69,8 @@ impl SymbolCompletionType {
 pub struct Rule {
     pub name: String,
     #[serde(default)]
+    pub symbol: Symbol,
+    #[serde(default)]
     pub is_scope: bool,
     #[serde(default)]
     pub children: Vec<Multiplicity>,
@@ -85,11 +87,9 @@ pub enum Multiplicity {
 pub struct Child {
     pub query: TreesitterNodeQuery,
     pub rule: DirectOrRule,
-    #[serde(default)]
-    pub symbol: Symbol,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, PartialEq, Deserialize, Clone)]
 pub enum TreesitterNodeQuery {
     Path(Vec<TreesitterNodeQuery>),
     Kind(String),
@@ -104,7 +104,11 @@ pub enum DirectOrRule {
 
 #[derive(Debug, PartialEq, Deserialize, Clone, Default)]
 pub enum Symbol {
-    Init(String),
+    Init {
+        #[serde(rename(deserialize = "type"))]
+        kind: String,
+        name_node: String,
+    },
     Usage,
     #[default]
     None,
