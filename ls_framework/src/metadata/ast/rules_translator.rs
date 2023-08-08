@@ -42,7 +42,7 @@ impl RulesTranslator {
         let children: Vec<tree_sitter::Node> = current_ts_node.children(&mut cursor).collect();
 
         let current_node_id = self.new_node(
-            NodeKind::Node(current_rule.name.clone()),
+            NodeKind::Node(current_rule.node_name.clone()),
             current_ts_node,
             current_rule.symbol.clone(),
         );

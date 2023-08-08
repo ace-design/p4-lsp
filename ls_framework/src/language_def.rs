@@ -67,7 +67,7 @@ impl SymbolCompletionType {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Rule {
-    pub name: String,
+    pub node_name: String,
     #[serde(default)]
     pub symbol: Symbol,
     #[serde(default)]
@@ -144,14 +144,14 @@ impl LanguageDefinition {
     }
 
     pub fn rule_with_name(&self, name: &str) -> Option<&Rule> {
-        self.ast_rules.iter().find(|rule| rule.name == name)
+        self.ast_rules.iter().find(|rule| rule.node_name == name)
     }
 
     pub fn get_scope_nodes(&self) -> Vec<NodeKind> {
         self.ast_rules
             .iter()
             .filter(|rule| rule.is_scope)
-            .map(|rule| NodeKind::Node(rule.name.clone()))
+            .map(|rule| NodeKind::Node(rule.node_name.clone()))
             .collect()
     }
 }
