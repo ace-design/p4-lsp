@@ -83,6 +83,14 @@ pub enum Multiplicity {
     Many(Child),
 }
 
+impl Multiplicity {
+    pub fn get_child(&self) -> &Child {
+        match self {
+            Multiplicity::One(c) | Multiplicity::Maybe(c) | Multiplicity::Many(c) => c,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 pub struct Child {
     pub query: TreesitterNodeQuery,
