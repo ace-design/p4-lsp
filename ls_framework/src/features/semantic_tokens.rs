@@ -28,7 +28,10 @@ pub struct ColorData {
     node_type: u32,
 }
 
-pub fn get_tokens(ast_query: &Arc<Mutex<impl AstQuery>>) -> SemanticTokensResult {
+pub fn get_tokens(
+    ast_query: &Arc<Mutex<impl AstQuery>>,
+    ts_tree: &tree_sitter::Tree,
+) -> SemanticTokensResult {
     //Getting ast data
     let ast_query = ast_query.lock().unwrap();
     let root_visit = ast_query.visit_root();
