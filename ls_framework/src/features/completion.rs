@@ -19,14 +19,14 @@ pub fn get_list(
 
         let mut items: Vec<CompletionItem> = Vec::new();
 
-        for (symbol_type_name, completion_type) in &LanguageDefinition::get().symbol_types {
-            if let Some(list) = symbols.get_type(symbol_type_name.to_string()) {
+        for symbol_def in &LanguageDefinition::get().symbol_types {
+            if let Some(list) = symbols.get_type(symbol_def.name.clone()) {
                 items.append(
                     &mut list
                         .iter()
                         .map(|item| CompletionItem {
                             label: item.get_name(),
-                            kind: Some(completion_type.get_completion_kind()),
+                            kind: Some(symbol_def.completion_type.get_completion_kind()),
                             ..Default::default()
                         })
                         .collect(),
