@@ -1,5 +1,7 @@
+use itertools::Itertools;
 use serde::Deserialize;
 use tokio::sync::OnceCell;
+use tower_lsp::lsp_types;
 
 use crate::lsp_mappings::{SemanticTokenType, SymbolCompletionType};
 use crate::metadata::NodeKind;
@@ -77,6 +79,8 @@ pub struct LanguageDefinition {
 }
 
 static INSTANCE: OnceCell<LanguageDefinition> = OnceCell::const_new();
+static SCOPE_NODES: OnceCell<Vec<NodeKind>> = OnceCell::const_new();
+static SEMANTIC_TOKEN_TYPES: OnceCell<Vec<lsp_types::SemanticTokenType>> = OnceCell::const_new();
 
 impl LanguageDefinition {
     pub fn load(language_definition: &str) {
@@ -92,6 +96,30 @@ impl LanguageDefinition {
                 }),
             )
             .unwrap();
+
+        let instance = INSTANCE.get().unwrap();
+
+        SCOPE_NODES
+            .set(
+                instance
+                    .ast_rules
+                    .iter()
+                    .filter(|rule| rule.is_scope)
+                    .map(|rule| NodeKind::Node(rule.node_name.clone()))
+                    .collect(),
+            )
+            .unwrap();
+
+        SEMANTIC_TOKEN_TYPES
+            .set(
+                instance
+                    .symbol_types
+                    .iter()
+                    .map(|s| s.semantic_token_type.get())
+                    .unique()
+                    .collect::<Vec<lsp_types::SemanticTokenType>>(),
+            )
+            .unwrap();
     }
 
     pub fn get() -> &'static LanguageDefinition {
@@ -104,11 +132,15 @@ impl LanguageDefinition {
         self.ast_rules.iter().find(|rule| rule.node_name == name)
     }
 
-    pub fn get_scope_nodes(&self) -> Vec<NodeKind> {
-        self.ast_rules
-            .iter()
-            .filter(|rule| rule.is_scope)
-            .map(|rule| NodeKind::Node(rule.node_name.clone()))
-            .collect()
+    pub fn get_semantic_token_types(&self) -> &Vec<lsp_types::SemanticTokenType> {
+        SEMANTIC_TOKEN_TYPES
+            .get()
+            .expect("LanguageDefinition has not been loaded.")
+    }
+
+    pub fn get_scope_nodes(&self) -> &Vec<NodeKind> {
+        SCOPE_NODES
+            .get()
+            .expect("LanguageDefinition has not been loaded.")
     }
 }
