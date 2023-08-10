@@ -124,6 +124,7 @@ pub enum Symbol {
 
 #[derive(Debug, Deserialize)]
 pub struct LanguageDefinition {
+    pub keywords: Vec<String>,
     pub symbol_types: Vec<(String, SymbolCompletionType)>,
     pub ast_rules: Vec<Rule>,
 }
