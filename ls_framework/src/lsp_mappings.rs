@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use tower_lsp::lsp_types::{CompletionItemKind, SemanticTokenType};
+use tower_lsp::lsp_types::{self, CompletionItemKind};
 
 #[derive(Debug, Deserialize, Clone)]
 pub enum SymbolCompletionType {
@@ -63,7 +63,7 @@ impl SymbolCompletionType {
 }
 
 #[derive(Debug, Deserialize, Clone)]
-enum SemanticTokenTypes {
+pub enum SemanticTokenType {
     Namespace,
     Type,
     Class,
@@ -89,32 +89,32 @@ enum SemanticTokenTypes {
     Decorator,
 }
 
-impl SemanticTokenTypes {
-    pub fn get(&self) -> SemanticTokenType {
+impl SemanticTokenType {
+    pub fn get(&self) -> lsp_types::SemanticTokenType {
         match self {
-            SemanticTokenTypes::Namespace => SemanticTokenType::NAMESPACE,
-            SemanticTokenTypes::Type => SemanticTokenType::TYPE,
-            SemanticTokenTypes::Class => SemanticTokenType::CLASS,
-            SemanticTokenTypes::Enum => SemanticTokenType::ENUM,
-            SemanticTokenTypes::Interface => SemanticTokenType::INTERFACE,
-            SemanticTokenTypes::Struct => SemanticTokenType::STRUCT,
-            SemanticTokenTypes::TypeParameter => SemanticTokenType::TYPE_PARAMETER,
-            SemanticTokenTypes::Parameter => SemanticTokenType::PARAMETER,
-            SemanticTokenTypes::Variable => SemanticTokenType::VARIABLE,
-            SemanticTokenTypes::Property => SemanticTokenType::PROPERTY,
-            SemanticTokenTypes::EnumMember => SemanticTokenType::ENUM_MEMBER,
-            SemanticTokenTypes::Event => SemanticTokenType::EVENT,
-            SemanticTokenTypes::Function => SemanticTokenType::FUNCTION,
-            SemanticTokenTypes::Method => SemanticTokenType::METHOD,
-            SemanticTokenTypes::Macro => SemanticTokenType::MACRO,
-            SemanticTokenTypes::Keyword => SemanticTokenType::KEYWORD,
-            SemanticTokenTypes::Modifier => SemanticTokenType::MODIFIER,
-            SemanticTokenTypes::Comment => SemanticTokenType::COMMENT,
-            SemanticTokenTypes::String => SemanticTokenType::STRING,
-            SemanticTokenTypes::Number => SemanticTokenType::NUMBER,
-            SemanticTokenTypes::Regexp => SemanticTokenType::REGEXP,
-            SemanticTokenTypes::Operator => SemanticTokenType::OPERATOR,
-            SemanticTokenTypes::Decorator => SemanticTokenType::DECORATOR,
+            SemanticTokenType::Namespace => lsp_types::SemanticTokenType::NAMESPACE,
+            SemanticTokenType::Type => lsp_types::SemanticTokenType::TYPE,
+            SemanticTokenType::Class => lsp_types::SemanticTokenType::CLASS,
+            SemanticTokenType::Enum => lsp_types::SemanticTokenType::ENUM,
+            SemanticTokenType::Interface => lsp_types::SemanticTokenType::INTERFACE,
+            SemanticTokenType::Struct => lsp_types::SemanticTokenType::STRUCT,
+            SemanticTokenType::TypeParameter => lsp_types::SemanticTokenType::TYPE_PARAMETER,
+            SemanticTokenType::Parameter => lsp_types::SemanticTokenType::PARAMETER,
+            SemanticTokenType::Variable => lsp_types::SemanticTokenType::VARIABLE,
+            SemanticTokenType::Property => lsp_types::SemanticTokenType::PROPERTY,
+            SemanticTokenType::EnumMember => lsp_types::SemanticTokenType::ENUM_MEMBER,
+            SemanticTokenType::Event => lsp_types::SemanticTokenType::EVENT,
+            SemanticTokenType::Function => lsp_types::SemanticTokenType::FUNCTION,
+            SemanticTokenType::Method => lsp_types::SemanticTokenType::METHOD,
+            SemanticTokenType::Macro => lsp_types::SemanticTokenType::MACRO,
+            SemanticTokenType::Keyword => lsp_types::SemanticTokenType::KEYWORD,
+            SemanticTokenType::Modifier => lsp_types::SemanticTokenType::MODIFIER,
+            SemanticTokenType::Comment => lsp_types::SemanticTokenType::COMMENT,
+            SemanticTokenType::String => lsp_types::SemanticTokenType::STRING,
+            SemanticTokenType::Number => lsp_types::SemanticTokenType::NUMBER,
+            SemanticTokenType::Regexp => lsp_types::SemanticTokenType::REGEXP,
+            SemanticTokenType::Operator => lsp_types::SemanticTokenType::OPERATOR,
+            SemanticTokenType::Decorator => lsp_types::SemanticTokenType::DECORATOR,
         }
     }
 }

@@ -36,11 +36,11 @@ LanguageDefinition (
         "valueset",
     ],
     symbol_types: [
-        (name: "Constant", completion_type: Constant),
-        (name: "Variable", completion_type: Variable),
-        (name: "Type", completion_type: Class),
-        (name: "Function", completion_type: Function),
-        (name: "Parameter", completion_type: Variable),
+        (name: "Constant", completion_type: Constant, semantic_token_type: Variable),
+        (name: "Variable", completion_type: Variable, semantic_token_type: Variable),
+        (name: "Type", completion_type: Class, semantic_token_type: Type),
+        (name: "Function", completion_type: Function, semantic_token_type: Function),
+        (name: "Parameter", completion_type: Variable, semantic_token_type: Parameter),
     ],
     ast_rules: [
         Rule(

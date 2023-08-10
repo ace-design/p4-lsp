@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use tokio::sync::OnceCell;
 
-use crate::lsp_mappings::SymbolCompletionType;
+use crate::lsp_mappings::{SemanticTokenType, SymbolCompletionType};
 use crate::metadata::NodeKind;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -34,6 +34,7 @@ impl Multiplicity {
 pub struct Child {
     pub query: TreesitterNodeQuery,
     pub rule: DirectOrRule,
+    pub semantic_token_type: Option<SemanticTokenType>,
 }
 
 #[derive(Debug, PartialEq, Deserialize, Clone)]
@@ -65,6 +66,7 @@ pub enum Symbol {
 pub struct SymbolDef {
     pub name: String,
     pub completion_type: SymbolCompletionType,
+    pub semantic_token_type: SemanticTokenType,
 }
 
 #[derive(Debug, Deserialize)]
@@ -78,8 +80,9 @@ static INSTANCE: OnceCell<LanguageDefinition> = OnceCell::const_new();
 
 impl LanguageDefinition {
     pub fn load(language_definition: &str) {
-        let language_def_modified =
-            format!("#![enable(unwrap_variant_newtypes)]\n{language_definition}");
+        let language_def_modified = format!(
+            "#![enable(unwrap_variant_newtypes)]\n#![enable(implicit_some)]\n{language_definition}"
+        );
 
         INSTANCE
             .set(
