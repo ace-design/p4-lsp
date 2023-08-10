@@ -5,6 +5,7 @@ extern crate lazy_static;
 mod features;
 mod file;
 mod language_def;
+mod lsp_mappings;
 mod metadata;
 mod plugin_manager;
 mod settings;

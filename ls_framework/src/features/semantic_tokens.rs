@@ -105,8 +105,8 @@ pub fn get_visit_nodes(visit_node: VisitNode) -> Vec<ColorData> {
     }
 
     //Setting the node kidn with associated index from token type vector
-    let node_visit = visit_node.get();
-    let kind = &node_visit.kind;
+    let node = visit_node.get();
+    let kind = &node.kind;
     let temp_cmp = (TOKENS_TYPES.len() + 1) as u32;
     let mut node_type: u32 = temp_cmp;
     if let NodeKind::Node(kind) = kind {
@@ -155,13 +155,12 @@ pub fn get_visit_nodes(visit_node: VisitNode) -> Vec<ColorData> {
     };
     //only pushing node types that we support currently
     if node_type != temp_cmp {
-        let temp_length = ((node_visit.range.end.character - node_visit.range.start.character)
-            as i32)
-            .unsigned_abs();
+        let temp_length =
+            ((node.range.end.character - node.range.start.character) as i32).unsigned_abs();
         array.push(ColorData {
             length: temp_length,
-            start: node_visit.range.start.character,
-            line: node_visit.range.start.line,
+            start: node.range.start.character,
+            line: node.range.start.line,
             node_type,
         });
     }
