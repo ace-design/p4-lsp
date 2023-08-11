@@ -3,6 +3,7 @@ use std::sync::RwLock;
 
 use crate::features::semantic_tokens;
 
+use crate::language_def;
 use crate::plugin_manager::PluginManager;
 use crate::workspace::Workspace;
 use tower_lsp::jsonrpc::Result;
@@ -64,7 +65,7 @@ impl LanguageServer for Backend {
                     SemanticTokensServerCapabilities::SemanticTokensOptions(
                         SemanticTokensOptions {
                             range: Some(false),
-                            legend: semantic_tokens::get_legend(),
+                            legend: language_def::LanguageDefinition::get_semantic_token_legend(),
                             full: Some(SemanticTokensFullOptions::Delta { delta: Some(true) }),
                             ..Default::default()
                         },

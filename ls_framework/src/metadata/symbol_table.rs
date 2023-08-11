@@ -22,6 +22,7 @@ pub struct SymbolTable {
 }
 
 pub trait SymbolTableActions {
+    fn get_all_symbols(&self) -> HashMap<String, Vec<Symbol>>;
     fn get_symbols_in_scope(&self, position: Position) -> Symbols;
     fn get_variable_at_pos(&self, position: Position, source_code: &str) -> Option<Vec<Field>>;
     fn get_top_level_symbols(&self) -> Option<Symbols>;
@@ -191,6 +192,24 @@ impl SymbolTableActions for SymbolTable {
         }
 
         None
+    }
+
+    fn get_all_symbols(&self) -> HashMap<String, Vec<Symbol>> {
+        let mut symbols = HashMap::new();
+
+        for child_id in self.root_id.unwrap().descendants(&self.arena) {
+            symbols.extend(
+                self.arena
+                    .get(child_id)
+                    .unwrap()
+                    .get()
+                    .symbols
+                    .symbols
+                    .clone(),
+            );
+        }
+
+        symbols
     }
 }
 

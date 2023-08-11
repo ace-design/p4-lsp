@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use itertools::Itertools;
 use serde::Deserialize;
 use tokio::sync::OnceCell;
-use tower_lsp::lsp_types;
+use tower_lsp::lsp_types::{self, SemanticTokensLegend};
 
 use crate::lsp_mappings::{SemanticTokenType, SymbolCompletionType};
 use crate::metadata::NodeKind;
@@ -113,15 +113,15 @@ impl LanguageDefinition {
             )
             .unwrap();
 
+        let mut symbol_types = instance
+            .symbol_types
+            .iter()
+            .map(|s| s.semantic_token_type.get())
+            .collect::<Vec<lsp_types::SemanticTokenType>>();
+        symbol_types.insert(0, SemanticTokenType::Keyword.get());
+
         SEMANTIC_TOKEN_TYPES
-            .set(
-                instance
-                    .symbol_types
-                    .iter()
-                    .map(|s| s.semantic_token_type.get())
-                    .unique()
-                    .collect::<Vec<lsp_types::SemanticTokenType>>(),
-            )
+            .set(symbol_types.into_iter().unique().collect_vec())
             .unwrap();
 
         KEYWORDS
@@ -139,10 +139,17 @@ impl LanguageDefinition {
         self.ast_rules.iter().find(|rule| rule.node_name == name)
     }
 
-    pub fn get_semantic_token_types(&self) -> &Vec<lsp_types::SemanticTokenType> {
+    pub fn get_semantic_token_types() -> &'static Vec<lsp_types::SemanticTokenType> {
         SEMANTIC_TOKEN_TYPES
             .get()
             .expect("LanguageDefinition has not been loaded.")
+    }
+
+    pub fn get_semantic_token_legend() -> SemanticTokensLegend {
+        SemanticTokensLegend {
+            token_types: LanguageDefinition::get_semantic_token_types().clone(),
+            token_modifiers: vec![],
+        }
     }
 
     pub fn get_scope_nodes() -> &'static Vec<NodeKind> {

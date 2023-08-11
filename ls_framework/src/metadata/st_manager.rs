@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use super::Ast;
 use super::{symbol_table::SymbolTable, Field};
 
@@ -20,6 +22,7 @@ pub trait SymbolTableQuery {
     fn get_symbols_at_pos(&self, position: Position) -> Symbols;
     fn get_name_field(&self, position: Position, source_code: &str) -> Option<Vec<Field>>;
     fn get_symbol_at_pos(&self, name: String, position: Position) -> Option<&Symbol>;
+    fn get_all_symbols(&self) -> HashMap<String, Vec<Symbol>>;
 }
 
 #[derive(Debug, Clone)]
@@ -46,6 +49,10 @@ impl SymbolTableQuery for SymbolTableManager {
 
     fn get_name_field(&self, position: Position, source_code: &str) -> Option<Vec<Field>> {
         self.symbol_table.get_variable_at_pos(position, source_code)
+    }
+
+    fn get_all_symbols(&self) -> HashMap<String, Vec<Symbol>> {
+        self.symbol_table.get_all_symbols()
     }
 }
 

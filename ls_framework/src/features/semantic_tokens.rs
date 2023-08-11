@@ -1,30 +1,11 @@
-use crate::{
-    metadata::{AstQuery, NodeKind, VisitNode, Visitable},
-    utils,
+use crate::{language_def, metadata::SymbolTableQuery, utils};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
 };
-use std::sync::{Arc, Mutex};
-use tower_lsp::lsp_types::{
-    SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensLegend, SemanticTokensResult,
-};
+use tower_lsp::lsp_types::{SemanticToken, SemanticTokens, SemanticTokensResult};
 use tree_sitter::Node;
-lazy_static::lazy_static! {
-    static ref TOKENS_TYPES: Vec<SemanticTokenType> = vec![
-        SemanticTokenType::VARIABLE,
-        SemanticTokenType::STRING,
-        SemanticTokenType::KEYWORD,
-        SemanticTokenType::TYPE,
-        SemanticTokenType::NUMBER,
-        SemanticTokenType::FUNCTION,
-        SemanticTokenType::MODIFIER,
-        SemanticTokenType::DECORATOR,
-    ];
-}
-pub fn get_legend() -> SemanticTokensLegend {
-    SemanticTokensLegend {
-        token_types: TOKENS_TYPES.clone(),
-        token_modifiers: vec![],
-    }
-}
+
 pub struct ColorData {
     line: u32,
     start: u32,
@@ -33,18 +14,13 @@ pub struct ColorData {
 }
 
 pub fn get_tokens(
-    ast_query: &Arc<Mutex<impl AstQuery>>,
+    st_query: &Arc<Mutex<impl SymbolTableQuery>>,
     ts_tree: &tree_sitter::Tree,
     source_code: &str,
 ) -> SemanticTokensResult {
     //Getting ast data
-    let ast_query = ast_query.lock().unwrap();
-    let root_visit = ast_query.visit_root();
-    let mut array = get_visit_nodes(root_visit);
-    array.append(&mut get_keyword_color_data(
-        &ts_tree.root_node(),
-        source_code,
-    ));
+    let mut array = get_keyword_color_data(&ts_tree.root_node(), source_code);
+    array.append(&mut get_symbols_color_data(st_query));
     //sort line
 
     array.sort_by_key(|token| token.line);
@@ -122,7 +98,7 @@ pub fn get_keyword_color_data(root_node: &tree_sitter::Node, source_code: &str) 
                 length: (node.range().end_byte - node.range().start_byte) as u32,
                 start: node.range().start_point.column as u32,
                 line: node.range().start_point.row as u32,
-                node_type: 2,
+                node_type: 0,
             });
         } else {
             to_visit.append(&mut node.children(&mut cursor).collect::<Vec<Node>>());
@@ -132,74 +108,33 @@ pub fn get_keyword_color_data(root_node: &tree_sitter::Node, source_code: &str) 
     color_data
 }
 
-pub fn get_visit_nodes(visit_node: VisitNode) -> Vec<ColorData> {
-    //Going throuhg all childrens
-    let childrens = visit_node.get_children();
-    let mut array: Vec<ColorData> = Vec::new();
-    for child in &childrens {
-        array.append(&mut get_visit_nodes(*child));
+pub fn get_symbols_color_data(st_query: &Arc<Mutex<impl SymbolTableQuery>>) -> Vec<ColorData> {
+    let mut semantic_token_types_map = HashMap::new();
+    for (i, token_type) in language_def::LanguageDefinition::get_semantic_token_types()
+        .iter()
+        .enumerate()
+    {
+        semantic_token_types_map.insert(token_type.as_str(), i);
     }
 
-    //Setting the node kidn with associated index from token type vector
-    let node = visit_node.get();
-    let kind = &node.kind;
-    let temp_cmp = (TOKENS_TYPES.len() + 1) as u32;
-    let mut node_type: u32 = temp_cmp;
-    if let NodeKind::Node(kind) = kind {
-        match kind.as_str() {
-            // NodeKind::Type(type_node_visit) => match type_node_visit {
-            //     Type::Base(base_types) => {
-            //         match base_types {
-            //             BaseType::String => {
-            //                 node_type = 1;
-            //             }
-            //             _ => {
-            //                 node_type = 4;
-            //             }
-            //         };
-            //     }
-            //     Type::Name => {
-            //         node_type = 3;
-            //     }
-            //     Type::Specialized => {
-            //         node_type = 6;
-            //     }
-            //     _ => {
-            //         node_type = 7;
-            //     }
-            // },
-            "Type" => {
-                node_type = 3;
+    let symbols_map = st_query.lock().unwrap().get_all_symbols();
+
+    let mut color_data = vec![];
+    for symbol_def in &language_def::LanguageDefinition::get().symbol_types {
+        if let Some(symbols) = symbols_map.get(&symbol_def.name) {
+            for symbol in symbols {
+                let def_range = symbol.get_definition_range();
+                color_data.push(ColorData {
+                    line: def_range.start.line,
+                    start: def_range.start.character,
+                    length: def_range.end.character - def_range.start.character,
+                    node_type: *semantic_token_types_map
+                        .get(symbol_def.semantic_token_type.get().as_str())
+                        .unwrap() as u32,
+                });
             }
-            "Name" => {
-                node_type = 0;
-            }
-            "Direction" => {
-                node_type = 1;
-            }
-            "KeyWord" => {
-                node_type = 2;
-            }
-            "Expression" => {
-                node_type = 7;
-            }
-            "ValueSymbol" => {
-                node_type = 4;
-            }
-            _ => {}
         }
-    };
-    //only pushing node types that we support currently
-    if node_type != temp_cmp {
-        let temp_length =
-            ((node.range.end.character - node.range.start.character) as i32).unsigned_abs();
-        array.push(ColorData {
-            length: temp_length,
-            start: node.range.start.character,
-            line: node.range.start.line,
-            node_type,
-        });
     }
 
-    array
+    color_data
 }
