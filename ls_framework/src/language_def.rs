@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use itertools::Itertools;
 use serde::Deserialize;
 use tokio::sync::OnceCell;
@@ -80,6 +82,7 @@ pub struct LanguageDefinition {
 
 static INSTANCE: OnceCell<LanguageDefinition> = OnceCell::const_new();
 static SCOPE_NODES: OnceCell<Vec<NodeKind>> = OnceCell::const_new();
+static KEYWORDS: OnceCell<HashSet<String>> = OnceCell::const_new();
 static SEMANTIC_TOKEN_TYPES: OnceCell<Vec<lsp_types::SemanticTokenType>> = OnceCell::const_new();
 
 impl LanguageDefinition {
@@ -120,6 +123,10 @@ impl LanguageDefinition {
                     .collect::<Vec<lsp_types::SemanticTokenType>>(),
             )
             .unwrap();
+
+        KEYWORDS
+            .set(HashSet::from_iter(instance.keywords.clone()))
+            .unwrap();
     }
 
     pub fn get() -> &'static LanguageDefinition {
@@ -138,8 +145,14 @@ impl LanguageDefinition {
             .expect("LanguageDefinition has not been loaded.")
     }
 
-    pub fn get_scope_nodes(&self) -> &Vec<NodeKind> {
+    pub fn get_scope_nodes() -> &'static Vec<NodeKind> {
         SCOPE_NODES
+            .get()
+            .expect("LanguageDefinition has not been loaded.")
+    }
+
+    pub fn get_keywords() -> &'static HashSet<String> {
+        KEYWORDS
             .get()
             .expect("LanguageDefinition has not been loaded.")
     }

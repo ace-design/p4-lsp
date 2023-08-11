@@ -50,9 +50,7 @@ pub enum NodeKind {
 
 impl NodeKind {
     pub fn is_scope_node(&self) -> bool {
-        language_def::LanguageDefinition::get()
-            .get_scope_nodes()
-            .contains(self)
+        language_def::LanguageDefinition::get_scope_nodes().contains(self)
     }
 }
 

@@ -1,8 +1,12 @@
-use crate::metadata::{AstQuery, NodeKind, VisitNode, Visitable};
+use crate::{
+    metadata::{AstQuery, NodeKind, VisitNode, Visitable},
+    utils,
+};
 use std::sync::{Arc, Mutex};
 use tower_lsp::lsp_types::{
     SemanticToken, SemanticTokenType, SemanticTokens, SemanticTokensLegend, SemanticTokensResult,
 };
+use tree_sitter::Node;
 lazy_static::lazy_static! {
     static ref TOKENS_TYPES: Vec<SemanticTokenType> = vec![
         SemanticTokenType::VARIABLE,
@@ -31,11 +35,16 @@ pub struct ColorData {
 pub fn get_tokens(
     ast_query: &Arc<Mutex<impl AstQuery>>,
     ts_tree: &tree_sitter::Tree,
+    source_code: &str,
 ) -> SemanticTokensResult {
     //Getting ast data
     let ast_query = ast_query.lock().unwrap();
     let root_visit = ast_query.visit_root();
     let mut array = get_visit_nodes(root_visit);
+    array.append(&mut get_keyword_color_data(
+        &ts_tree.root_node(),
+        source_code,
+    ));
     //sort line
 
     array.sort_by_key(|token| token.line);
@@ -97,6 +106,30 @@ pub fn get_tokens(
         result_id: None,
         data: tokens,
     })
+}
+
+pub fn get_keyword_color_data(root_node: &tree_sitter::Node, source_code: &str) -> Vec<ColorData> {
+    let keywords = crate::language_def::LanguageDefinition::get_keywords();
+
+    let mut cursor = root_node.walk();
+    let mut to_visit = root_node.children(&mut cursor).collect::<Vec<Node>>();
+
+    let mut color_data = vec![];
+
+    while let Some(node) = to_visit.pop() {
+        if !node.is_named() && keywords.contains(&utils::get_node_text(&node, source_code)) {
+            color_data.push(ColorData {
+                length: (node.range().end_byte - node.range().start_byte) as u32,
+                start: node.range().start_point.column as u32,
+                line: node.range().start_point.row as u32,
+                node_type: 2,
+            });
+        } else {
+            to_visit.append(&mut node.children(&mut cursor).collect::<Vec<Node>>());
+        }
+    }
+
+    color_data
 }
 
 pub fn get_visit_nodes(visit_node: VisitNode) -> Vec<ColorData> {
