@@ -209,7 +209,7 @@ LanguageDefinition (
             children: [
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("type"), rule: Rule("Type")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
+                One(query: Field("name"), rule: Direct(Node("Name")), semantic_token_type: Property),
             ]
         ),
         Rule(
@@ -316,7 +316,7 @@ LanguageDefinition (
             node_name: "Parameter",
             symbol: Init(type: "Parameter", name_node: "Name"),
             children: [
-                Maybe(query: Field("direction"), rule: Rule("Direction")),
+                Maybe(query: Field("direction"), rule: Direct(Node("Direction")), semantic_token_type: EnumMember),
                 One(query: Field("type"), rule: Rule("Type")),
                 One(query: Field("name"), rule: Direct(Node("Name"))),
             ]
@@ -453,9 +453,6 @@ LanguageDefinition (
                 Maybe(query: Kind("type_name"), rule: Direct(Node("Name"))),
             ]
         ), 
-        Rule(
-            node_name: "Direction",
-        ),
         Rule(
             node_name: "Annotation",
         )

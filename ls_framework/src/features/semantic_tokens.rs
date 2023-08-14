@@ -1,4 +1,8 @@
-use crate::{language_def, metadata::SymbolTableQuery, utils};
+use crate::{
+    language_def,
+    metadata::{AstQuery, SymbolTableQuery, Visitable},
+    utils,
+};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -14,6 +18,7 @@ pub struct ColorData {
 }
 
 pub fn get_tokens(
+    ast_query: &Arc<Mutex<impl AstQuery>>,
     st_query: &Arc<Mutex<impl SymbolTableQuery>>,
     ts_tree: &tree_sitter::Tree,
     source_code: &str,
@@ -21,6 +26,7 @@ pub fn get_tokens(
     //Getting ast data
     let mut array = get_keyword_color_data(&ts_tree.root_node(), source_code);
     array.append(&mut get_symbols_color_data(st_query));
+    array.append(&mut get_ast_color_data(ast_query));
     //sort line
 
     array.sort_by_key(|token| token.line);
@@ -84,6 +90,19 @@ pub fn get_tokens(
     })
 }
 
+fn get_semantic_token_map() -> HashMap<String, usize> {
+    let mut semantic_token_types_map = HashMap::new();
+
+    for (i, token_type) in language_def::LanguageDefinition::get_semantic_token_types()
+        .iter()
+        .enumerate()
+    {
+        semantic_token_types_map.insert(token_type.as_str().to_string(), i);
+    }
+
+    semantic_token_types_map
+}
+
 pub fn get_keyword_color_data(root_node: &tree_sitter::Node, source_code: &str) -> Vec<ColorData> {
     let keywords = crate::language_def::LanguageDefinition::get_keywords();
 
@@ -109,13 +128,7 @@ pub fn get_keyword_color_data(root_node: &tree_sitter::Node, source_code: &str) 
 }
 
 pub fn get_symbols_color_data(st_query: &Arc<Mutex<impl SymbolTableQuery>>) -> Vec<ColorData> {
-    let mut semantic_token_types_map = HashMap::new();
-    for (i, token_type) in language_def::LanguageDefinition::get_semantic_token_types()
-        .iter()
-        .enumerate()
-    {
-        semantic_token_types_map.insert(token_type.as_str(), i);
-    }
+    let semantic_token_types_map = get_semantic_token_map();
 
     let symbols_map = st_query.lock().unwrap().get_all_symbols();
     debug!("{:?}", symbols_map);
@@ -147,6 +160,30 @@ pub fn get_symbols_color_data(st_query: &Arc<Mutex<impl SymbolTableQuery>>) -> V
                     });
                 }
             }
+        }
+    }
+
+    color_data
+}
+
+pub fn get_ast_color_data(ast_query: &Arc<Mutex<impl AstQuery>>) -> Vec<ColorData> {
+    let semantic_token_types_map = get_semantic_token_map();
+
+    let ast_query = ast_query.lock().unwrap();
+
+    let mut color_data = vec![];
+    for visit_node in ast_query.visit_root().get_descendants() {
+        let node = visit_node.get();
+
+        if let Some(semantic_token_type) = &node.semantic_token_type {
+            color_data.push(ColorData {
+                line: node.range.start.line,
+                start: node.range.start.character,
+                length: node.range.end.character - node.range.start.character,
+                node_type: *semantic_token_types_map
+                    .get(semantic_token_type.get().as_str())
+                    .unwrap() as u32,
+            });
         }
     }
 

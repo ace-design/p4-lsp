@@ -1,8 +1,11 @@
 use indextree::{Arena, NodeId};
 
 use super::{tree::Translator, Ast, Node, NodeKind};
-use crate::language_def::{
-    DirectOrRule, LanguageDefinition, Multiplicity, Rule, Symbol, TreesitterNodeQuery,
+use crate::{
+    language_def::{
+        DirectOrRule, LanguageDefinition, Multiplicity, Rule, Symbol, TreesitterNodeQuery,
+    },
+    lsp_mappings::SemanticTokenType,
 };
 
 pub struct RulesTranslator {
@@ -45,13 +48,11 @@ impl RulesTranslator {
             NodeKind::Node(current_rule.node_name.clone()),
             current_ts_node,
             current_rule.symbol.clone(),
+            None,
         );
         // TODO: has_error vs is_error
         for error_ts_node in children.iter().filter(|node| node.has_error()) {
-            current_node_id.append(
-                self.new_node(NodeKind::Error(None), error_ts_node, Symbol::None),
-                &mut self.arena,
-            );
+            current_node_id.append(self.new_error_node(error_ts_node, None), &mut self.arena);
         }
 
         for child in current_rule.children.iter() {
@@ -129,14 +130,17 @@ impl RulesTranslator {
                 match node_or_rule {
                     DirectOrRule::Direct(node_kind) => {
                         if ts_node.has_error() {
-                            current_node_id.append(
-                                self.new_node(NodeKind::Error(None), ts_node, Symbol::None),
-                                &mut self.arena,
-                            );
+                            current_node_id
+                                .append(self.new_error_node(ts_node, None), &mut self.arena);
                         }
 
                         current_node_id.append(
-                            self.new_node(node_kind.clone(), &target_node, Symbol::None),
+                            self.new_node(
+                                node_kind.clone(),
+                                &target_node,
+                                Symbol::None,
+                                child.semantic_token_type.clone(),
+                            ),
                             &mut self.arena,
                         );
                     }
@@ -152,11 +156,7 @@ impl RulesTranslator {
             if matches!(multiplicity, Multiplicity::One(_) | Multiplicity::Maybe(_)) && counter > 1
             {
                 current_node_id.append(
-                    self.new_node(
-                        NodeKind::Error(Some(format!("Too many '{:?}'.", query))),
-                        ts_node,
-                        Symbol::None,
-                    ),
+                    self.new_error_node(ts_node, Some(format!("Too many '{:?}'.", query))),
                     &mut self.arena,
                 );
             }
@@ -164,11 +164,7 @@ impl RulesTranslator {
 
         if matches!(multiplicity, Multiplicity::One(_)) && counter == 0 {
             current_node_id.append(
-                self.new_node(
-                    NodeKind::Error(Some(format!("Missing '{:?}'.", query))),
-                    current_ts_node,
-                    Symbol::None,
-                ),
+                self.new_error_node(current_ts_node, Some(format!("Missing '{:?}'.", query))),
                 &mut self.arena,
             );
         }
@@ -179,8 +175,28 @@ impl RulesTranslator {
         kind: NodeKind,
         syntax_node: &tree_sitter::Node,
         symbol: Symbol,
+        semantic_token_type: Option<SemanticTokenType>,
     ) -> NodeId {
-        self.arena
-            .new_node(Node::new(kind, syntax_node, &self.source_code, symbol))
+        self.arena.new_node(Node::new(
+            kind,
+            syntax_node,
+            &self.source_code,
+            symbol,
+            semantic_token_type,
+        ))
+    }
+
+    fn new_error_node(
+        &mut self,
+        syntax_node: &tree_sitter::Node,
+        message: Option<String>,
+    ) -> NodeId {
+        self.arena.new_node(Node::new(
+            NodeKind::Error(message),
+            syntax_node,
+            &self.source_code,
+            Symbol::None,
+            None,
+        ))
     }
 }

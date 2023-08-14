@@ -120,20 +120,36 @@ impl LanguageDefinition {
             )
             .unwrap();
 
-        let mut symbol_types = instance
+        SEMANTIC_TOKEN_TYPES
+            .set(instance.init_semanc_token_types())
+            .unwrap();
+
+        KEYWORDS
+            .set(HashSet::from_iter(instance.keywords.clone()))
+            .unwrap();
+    }
+
+    fn init_semanc_token_types(&self) -> Vec<lsp_types::SemanticTokenType> {
+        let mut symbol_types = self
             .symbol_types
             .iter()
             .map(|s| s.semantic_token_type.get())
             .collect::<Vec<lsp_types::SemanticTokenType>>();
         symbol_types.insert(0, SemanticTokenType::Keyword.get());
 
-        SEMANTIC_TOKEN_TYPES
-            .set(symbol_types.into_iter().unique().collect_vec())
-            .unwrap();
+        for rule in &self.ast_rules {
+            for mult in &rule.children {
+                let child = match mult {
+                    Multiplicity::One(c) | Multiplicity::Maybe(c) | Multiplicity::Many(c) => c,
+                };
 
-        KEYWORDS
-            .set(HashSet::from_iter(instance.keywords.clone()))
-            .unwrap();
+                if let Some(semantic_token_type) = &child.semantic_token_type {
+                    symbol_types.push(semantic_token_type.get());
+                }
+            }
+        }
+
+        symbol_types.into_iter().unique().collect_vec()
     }
 
     pub fn get() -> &'static LanguageDefinition {

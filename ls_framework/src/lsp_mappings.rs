@@ -62,7 +62,7 @@ impl SymbolCompletionType {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, PartialEq)]
 pub enum SemanticTokenType {
     Namespace,
     Type,

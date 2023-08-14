@@ -8,6 +8,7 @@ use tower_lsp::lsp_types::{Position, Range};
 
 use crate::{
     language_def::{self, Symbol},
+    lsp_mappings::SemanticTokenType,
     utils,
 };
 
@@ -60,6 +61,7 @@ pub struct Node {
     pub range: Range,
     pub content: String,
     pub symbol: Symbol,
+    pub semantic_token_type: Option<SemanticTokenType>,
 }
 
 impl Node {
@@ -68,12 +70,14 @@ impl Node {
         syntax_node: &tree_sitter::Node,
         source_code: &str,
         symbol: Symbol,
+        semantic_token_type: Option<SemanticTokenType>,
     ) -> Node {
         Node {
             kind,
             range: utils::ts_range_to_lsp_range(syntax_node.range()),
             content: utils::get_node_text(syntax_node, source_code),
             symbol,
+            semantic_token_type,
         }
     }
 }
