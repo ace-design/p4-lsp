@@ -195,18 +195,21 @@ impl SymbolTableActions for SymbolTable {
     }
 
     fn get_all_symbols(&self) -> HashMap<String, Vec<Symbol>> {
-        let mut symbols = HashMap::new();
+        let mut symbols: HashMap<String, Vec<Symbol>> = HashMap::new();
 
         for child_id in self.root_id.unwrap().descendants(&self.arena) {
-            symbols.extend(
-                self.arena
-                    .get(child_id)
-                    .unwrap()
-                    .get()
-                    .symbols
-                    .symbols
-                    .clone(),
-            );
+            let current = &self.arena.get(child_id).unwrap().get().symbols.symbols;
+
+            for (symbol_type, symbols_vec) in current.iter() {
+                if symbols.contains_key(symbol_type) {
+                    symbols
+                        .get_mut(symbol_type)
+                        .unwrap()
+                        .extend(symbols_vec.clone());
+                } else {
+                    symbols.insert(symbol_type.clone(), symbols_vec.clone());
+                }
+            }
         }
 
         symbols

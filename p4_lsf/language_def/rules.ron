@@ -119,7 +119,7 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "TypeDefDeclaration",
-            symbol: Init(type: "Function", name_node: "Name"),
+            symbol: Init(type: "Type", name_node: "Name"),
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("type"), rule: Rule("Type")),
