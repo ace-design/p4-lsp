@@ -1,9 +1,7 @@
 use std::env;
 use std::sync::RwLock;
 
-use crate::features::semantic_tokens;
-
-use crate::language_def;
+use crate::language_def::{self, LanguageDefinition};
 use crate::plugin_manager::PluginManager;
 use crate::workspace::Workspace;
 use tower_lsp::jsonrpc::Result;
@@ -35,7 +33,10 @@ impl Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
-        let log_file_path = env::temp_dir().join("p4-lsp.log");
+        let log_file_path = env::temp_dir().join(format!(
+            "{}-lsf.log",
+            LanguageDefinition::get().language.name
+        ));
 
         if let Ok(log_file) = File::create(log_file_path) {
             let result = WriteLogger::init(

@@ -73,8 +73,15 @@ pub struct SymbolDef {
     pub semantic_token_type: SemanticTokenType,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct Language {
+    pub name: String,
+    pub file_extensions: Vec<String>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct LanguageDefinition {
+    pub language: Language,
     pub keywords: Vec<String>,
     pub symbol_types: Vec<SymbolDef>,
     pub ast_rules: Vec<Rule>,

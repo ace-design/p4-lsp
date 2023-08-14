@@ -1,4 +1,8 @@
 LanguageDefinition (
+    language: (
+        name: "P4",
+        file_extensions: ["p4", "P4"]
+    ),
     keywords: [
         "abstract",
         "action",

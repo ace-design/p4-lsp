@@ -1,3 +1,5 @@
+use crate::language_def::LanguageDefinition;
+
 use super::host_functions::FUNCTIONS;
 use extism::Plugin;
 use std::{env, fs};
@@ -19,7 +21,10 @@ impl PluginManager {
         self.plugins = Vec::new();
 
         if let Some(mut home_path) = env::var_os("HOME") {
-            home_path.push("/.config/p4_lsp/plugins/");
+            home_path.push(format!(
+                "/.config/{}-lsf/plugins",
+                LanguageDefinition::get().language.name
+            ));
 
             let paths = match fs::read_dir(&home_path) {
                 Ok(paths) => paths,
