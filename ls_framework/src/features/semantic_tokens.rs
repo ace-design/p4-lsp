@@ -136,9 +136,7 @@ pub fn get_symbols_color_data(st_query: &Arc<Mutex<impl SymbolTableQuery>>) -> V
     let mut color_data = vec![];
     for symbol_def in &language_def::LanguageDefinition::get().symbol_types {
         if let Some(symbols) = symbols_map.get(&symbol_def.name) {
-            debug!("{}", &symbol_def.name);
             for symbol in symbols {
-                debug!("{}", &symbol.get_name());
                 let def_range = symbol.get_definition_range();
                 color_data.push(ColorData {
                     line: def_range.start.line,
