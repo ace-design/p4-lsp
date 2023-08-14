@@ -132,6 +132,17 @@ pub fn get_symbols_color_data(st_query: &Arc<Mutex<impl SymbolTableQuery>>) -> V
                         .get(symbol_def.semantic_token_type.get().as_str())
                         .unwrap() as u32,
                 });
+
+                for range in symbol.get_usages() {
+                    color_data.push(ColorData {
+                        line: range.start.line,
+                        start: range.start.character,
+                        length: range.end.character - range.start.character,
+                        node_type: *semantic_token_types_map
+                            .get(symbol_def.semantic_token_type.get().as_str())
+                            .unwrap() as u32,
+                    });
+                }
             }
         }
     }
