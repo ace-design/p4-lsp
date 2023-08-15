@@ -35,7 +35,7 @@ impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
         let log_file_path = env::temp_dir().join(format!(
             "{}-lsf.log",
-            LanguageDefinition::get().language.name
+            LanguageDefinition::get().language.name.to_lowercase()
         ));
 
         if let Ok(log_file) = File::create(log_file_path) {

@@ -131,7 +131,6 @@ pub fn get_symbols_color_data(st_query: &Arc<Mutex<impl SymbolTableQuery>>) -> V
     let semantic_token_types_map = get_semantic_token_map();
 
     let symbols_map = st_query.lock().unwrap().get_all_symbols();
-    debug!("{:?}", symbols_map);
 
     let mut color_data = vec![];
     for symbol_def in &language_def::LanguageDefinition::get().symbol_types {
