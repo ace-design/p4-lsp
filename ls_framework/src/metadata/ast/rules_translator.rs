@@ -59,6 +59,15 @@ impl RulesTranslator {
             self.query_parse_child(&children, child, current_node_id, current_ts_node);
         }
 
+        for child in &LanguageDefinition::get().global_ast_rules {
+            self.query_parse_child(
+                &children,
+                &Multiplicity::Many(child.clone()),
+                current_node_id,
+                current_ts_node,
+            );
+        }
+
         current_node_id
     }
 

@@ -46,10 +46,10 @@ LanguageDefinition (
         (name: "Function", completion_type: Function, highlight_type: Function),
         (name: "Parameter", completion_type: Variable, highlight_type: Parameter),
     ],
-    /*global_ast_rules: [
-        (query: Kind("line_comment"), rule: Direct(Node("Comment")), highlight_type: Variable),
-        (query: Kind("block_comment"), rule: Direct(Node("Comment")), highlight_type: Variable),
-    ],*/
+    global_ast_rules: [
+        (query: Kind("line_comment"), rule: Direct(Node("Comment")), highlight_type: Comment),
+        (query: Kind("block_comment"), rule: Direct(Node("Comment")), highlight_type: Comment),
+    ],
     ast_rules: [
         Rule(
             node_name: "Root", // Name of Rule (required)

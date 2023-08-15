@@ -84,6 +84,7 @@ pub struct LanguageDefinition {
     pub language: Language,
     pub keywords: Vec<String>,
     pub symbol_types: Vec<SymbolDef>,
+    pub global_ast_rules: Vec<Child>,
     pub ast_rules: Vec<Rule>,
 }
 
@@ -146,6 +147,12 @@ impl LanguageDefinition {
                 if let Some(semantic_token_type) = &child.highlight_type {
                     symbol_types.push(semantic_token_type.get());
                 }
+            }
+        }
+
+        for child in &self.global_ast_rules {
+            if let Some(semantic_token_type) = &child.highlight_type {
+                symbol_types.push(semantic_token_type.get());
             }
         }
 
