@@ -305,6 +305,9 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "Arg",
+            children: [
+                One(query: Kind("expression"), rule: Rule("Value")),
+            ]
         ),
         Rule(
             node_name: "Parameters",
@@ -454,11 +457,18 @@ LanguageDefinition (
             ]
         ),
         Rule(
+            node_name: "NameUsage",
+            symbol: Usage
+        ),
+        Rule(
             node_name: "Value",
             children: [
                 Maybe(query: Kind("integer"), rule: Direct(Node("Integer")), semantic_token_type: Number),
                 Maybe(query: Kind("string"), rule: Direct(Node("String")), semantic_token_type: String),
                 Maybe(query: Kind("bool"), rule: Direct(Node("Bool")), semantic_token_type: EnumMember),
+                Maybe(query: Kind("non_type_name"), rule: Rule("NameUsage")),
+                Maybe(query: Kind("named_type"), rule: Rule("NameUsage")),
+                Maybe(query: Kind("type_name"), rule: Rule("NameUsage")),
                 Many(query: Kind("expression"), rule: Rule("Value")),
             ]
         ),
