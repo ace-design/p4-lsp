@@ -40,12 +40,16 @@ LanguageDefinition (
         "valueset",
     ],
     symbol_types: [
-        (name: "Constant", completion_type: Constant, semantic_token_type: Variable),
-        (name: "Variable", completion_type: Variable, semantic_token_type: Variable),
-        (name: "Type", completion_type: Class, semantic_token_type: Type),
-        (name: "Function", completion_type: Function, semantic_token_type: Function),
-        (name: "Parameter", completion_type: Variable, semantic_token_type: Parameter),
+        (name: "Constant", completion_type: Constant, highlight_type: Variable),
+        (name: "Variable", completion_type: Variable, highlight_type: Variable),
+        (name: "Type", completion_type: Class, highlight_type: Type),
+        (name: "Function", completion_type: Function, highlight_type: Function),
+        (name: "Parameter", completion_type: Variable, highlight_type: Parameter),
     ],
+    /*global_ast_rules: [
+        (query: Kind("line_comment"), rule: Direct(Node("Comment")), highlight_type: Variable),
+        (query: Kind("block_comment"), rule: Direct(Node("Comment")), highlight_type: Variable),
+    ],*/
     ast_rules: [
         Rule(
             node_name: "Root", // Name of Rule (required)
@@ -209,7 +213,7 @@ LanguageDefinition (
             children: [
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("type"), rule: Rule("Type")),
-                One(query: Field("name"), rule: Direct(Node("Name")), semantic_token_type: Property),
+                One(query: Field("name"), rule: Direct(Node("Name")), highlight_type: Property),
             ]
         ),
         Rule(
@@ -319,7 +323,7 @@ LanguageDefinition (
             node_name: "Parameter",
             symbol: Init(type: "Parameter", name_node: "Name"),
             children: [
-                Maybe(query: Field("direction"), rule: Direct(Node("Direction")), semantic_token_type: EnumMember),
+                Maybe(query: Field("direction"), rule: Direct(Node("Direction")), highlight_type: EnumMember),
                 One(query: Field("type"), rule: Rule("Type")),
                 One(query: Field("name"), rule: Direct(Node("Name"))),
             ]
@@ -463,9 +467,9 @@ LanguageDefinition (
         Rule(
             node_name: "Value",
             children: [
-                Maybe(query: Kind("integer"), rule: Direct(Node("Integer")), semantic_token_type: Number),
-                Maybe(query: Kind("string"), rule: Direct(Node("String")), semantic_token_type: String),
-                Maybe(query: Kind("bool"), rule: Direct(Node("Bool")), semantic_token_type: EnumMember),
+                Maybe(query: Kind("integer"), rule: Direct(Node("Integer")), highlight_type: Number),
+                Maybe(query: Kind("string"), rule: Direct(Node("String")), highlight_type: String),
+                Maybe(query: Kind("bool"), rule: Direct(Node("Bool")), highlight_type: EnumMember),
                 Maybe(query: Kind("non_type_name"), rule: Rule("NameUsage")),
                 Maybe(query: Kind("named_type"), rule: Rule("NameUsage")),
                 Maybe(query: Kind("type_name"), rule: Rule("NameUsage")),

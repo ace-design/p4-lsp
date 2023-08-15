@@ -5,7 +5,7 @@ use crate::{
     language_def::{
         DirectOrRule, LanguageDefinition, Multiplicity, Rule, Symbol, TreesitterNodeQuery,
     },
-    lsp_mappings::SemanticTokenType,
+    lsp_mappings::HighlightType,
 };
 
 pub struct RulesTranslator {
@@ -139,7 +139,7 @@ impl RulesTranslator {
                                 node_kind.clone(),
                                 &target_node,
                                 Symbol::None,
-                                child.semantic_token_type.clone(),
+                                child.highlight_type.clone(),
                             ),
                             &mut self.arena,
                         );
@@ -175,7 +175,7 @@ impl RulesTranslator {
         kind: NodeKind,
         syntax_node: &tree_sitter::Node,
         symbol: Symbol,
-        semantic_token_type: Option<SemanticTokenType>,
+        semantic_token_type: Option<HighlightType>,
     ) -> NodeId {
         self.arena.new_node(Node::new(
             kind,

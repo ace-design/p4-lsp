@@ -5,7 +5,7 @@ use serde::Deserialize;
 use tokio::sync::OnceCell;
 use tower_lsp::lsp_types::{self, SemanticTokensLegend};
 
-use crate::lsp_mappings::{SemanticTokenType, SymbolCompletionType};
+use crate::lsp_mappings::{HighlightType, SymbolCompletionType};
 use crate::metadata::NodeKind;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -38,7 +38,7 @@ impl Multiplicity {
 pub struct Child {
     pub query: TreesitterNodeQuery,
     pub rule: DirectOrRule,
-    pub semantic_token_type: Option<SemanticTokenType>,
+    pub highlight_type: Option<HighlightType>,
 }
 
 #[derive(Debug, PartialEq, Deserialize, Clone)]
@@ -70,7 +70,7 @@ pub enum Symbol {
 pub struct SymbolDef {
     pub name: String,
     pub completion_type: SymbolCompletionType,
-    pub semantic_token_type: SemanticTokenType,
+    pub highlight_type: HighlightType,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -133,9 +133,9 @@ impl LanguageDefinition {
         let mut symbol_types = self
             .symbol_types
             .iter()
-            .map(|s| s.semantic_token_type.get())
+            .map(|s| s.highlight_type.get())
             .collect::<Vec<lsp_types::SemanticTokenType>>();
-        symbol_types.insert(0, SemanticTokenType::Keyword.get());
+        symbol_types.insert(0, HighlightType::Keyword.get());
 
         for rule in &self.ast_rules {
             for mult in &rule.children {
@@ -143,7 +143,7 @@ impl LanguageDefinition {
                     Multiplicity::One(c) | Multiplicity::Maybe(c) | Multiplicity::Many(c) => c,
                 };
 
-                if let Some(semantic_token_type) = &child.semantic_token_type {
+                if let Some(semantic_token_type) = &child.highlight_type {
                     symbol_types.push(semantic_token_type.get());
                 }
             }
