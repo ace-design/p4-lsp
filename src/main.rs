@@ -2,6 +2,7 @@ use std::env;
 use std::sync::RwLock;
 
 use features::semantic_tokens;
+use features::petr4;
 use plugin_manager::PluginManager;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
@@ -145,10 +146,11 @@ impl LanguageServer for Backend {
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
+        let uri = params.text_document.uri;
         let mut diagnostics = {
             let workspace = self.workspace.read().unwrap();
 
-            (*workspace).get_full_diagnostics(params.text_document.uri.clone())
+            (*workspace).get_full_diagnostics(uri.clone())
         };
 
         diagnostics.append(
@@ -156,12 +158,16 @@ impl LanguageServer for Backend {
                 .plugin_manager
                 .write()
                 .unwrap()
-                .run_diagnostic(params.text_document.uri.path().into()),
+                .run_diagnostic(uri.path().into()),
         );
 
         self.client
-            .publish_diagnostics(params.text_document.uri, diagnostics, None)
+            .publish_diagnostics(uri.clone(), diagnostics, None)
             .await;
+
+        info!("0");
+        petr4::petr4_testing(uri.path(), "");
+        info!("1");
     }
 
     async fn goto_definition(

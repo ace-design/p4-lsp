@@ -4,3 +4,4 @@ pub mod goto;
 pub mod hover;
 pub mod rename;
 pub mod semantic_tokens;
+pub mod petr4;
