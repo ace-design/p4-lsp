@@ -166,7 +166,7 @@ impl LanguageServer for Backend {
             .await;
 
         info!("0");
-        petr4::petr4_testing(uri.path(), "");
+        petr4::petr4_testing(uri.path(), "/home/t/petr4/").await;
         info!("1");
     }
 
