@@ -532,17 +532,14 @@ impl Symbol {
     }
 
     pub fn contains_fields(&self, name: String) -> Option<Field> {
-        match &self.fields {
-            Some(x) => {
-                for y in x {
-                    if y.get_name() == name {
-                        return Some(y.clone());
-                    }
+        if let Some(fields) = &self.fields {
+            for field in fields {
+                if field.get_name() == name {
+                    return Some(field.clone());
                 }
-                None
             }
-            None => None,
         }
+        None
     }
 }
 
