@@ -1,3 +1,4 @@
+use std::borrow::BorrowMut;
 use std::env;
 use std::sync::RwLock;
 
@@ -33,11 +34,17 @@ struct Backend {
     client: Client,
     workspace: RwLock<Workspace>,
     plugin_manager: RwLock<PluginManager>,
+    petr4: RwLock<petr4::Petr4>,
 }
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
+        if let Some(uri) = params.root_uri{
+            let mut petr4 = self.petr4.write().unwrap();
+            (*petr4).config("/home/t/petr4/".to_string(), uri.to_string());
+        }
+
         let log_file_path = env::temp_dir().join("p4-lsp.log");
 
         if let Ok(log_file) = File::create(log_file_path) {
@@ -166,7 +173,11 @@ impl LanguageServer for Backend {
             .await;
 
         info!("0");
-        petr4::petr4_testing(uri.path(), "/home/t/petr4/").await;
+        let petr4_value = {
+            let petr4 = self.petr4.read().unwrap();
+            petr4.get()
+        };
+        petr4::testing(uri.path(), petr4_value).await;
         info!("1");
     }
 
@@ -266,6 +277,7 @@ async fn main() {
         client,
         workspace: Workspace::new().into(),
         plugin_manager: PluginManager::new().into(),
+        petr4: petr4::Petr4::new().into(),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
