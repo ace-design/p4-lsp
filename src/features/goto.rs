@@ -8,6 +8,7 @@ pub fn get_definition_range(
     symbol_table_query: &Arc<Mutex<impl SymbolTableQuery>>,
     position: Position,
 ) -> Option<Range> {
+    // Todo - change for define
     let ast_query = ast_query.lock().unwrap();
     let root_visit = ast_query.visit_root();
     let node = root_visit.get_node_at_position(position)?;
