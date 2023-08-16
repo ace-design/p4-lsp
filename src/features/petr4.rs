@@ -44,7 +44,7 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
             return;
         }
         info!("b");
-        
+
         // verify the binary of the petr4 exists
         let temp_path = format!("{}/_build/default/bin/test.exe", petr4_path);
         let path_test_binary = Path::new(temp_path.as_str());
@@ -82,9 +82,25 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
                     }
                 }
 
+
+            // get the include file and copy it the include folder :
+            let mut files_workplace: Vec<String> = vec!();
+            match Command::new("ls")
+            .arg(workspace_root.clone())
+            .output()
+            .await {
+                Ok(x) => {
+                    let parts = str::from_utf8(&x.stdout).unwrap().split("\n");
+                    info!("{:?}",parts);
+                }
+                Err(e) => {
+                    return;
+                }
+            }
+
             // copy p4 and stf file
             // find in what name the p4 file will be create for the testing
-            let mut name_p4_testing = format!("{}","zzztesting_p4_lsp_file");
+            let mut name_p4_testing = format!("{}","testing_p4_lsp_file");
             let mut p4_testing_path = format!("{}/_build/default/p4stf/custom-stf-tests/{}", petr4_path, name_p4_testing);
             let mut t = format!("{}.p4",p4_testing_path.clone());
             let mut p4_testing = Path::new(&t);
