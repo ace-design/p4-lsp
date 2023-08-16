@@ -77,7 +77,7 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
                 .await {
                     Ok(x) => {}
                     Err(e) => {
-                        delete(petr4_path,&new_p4_testing_path).await;
+                        delete(petr4_path,new_p4_testing_path).await;
                         return;
                     }
                 }
@@ -104,7 +104,7 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
                 .await {
                     Ok(x) => {}
                     Err(e) => {
-                        delete(petr4_path,&new_p4_testing_path).await;
+                        delete(petr4_path,new_p4_testing_path).await;
                         return;
                     }
                 }
@@ -119,7 +119,7 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
                 .await {
                     Ok(x) => {}
                     Err(e) => {
-                        delete(petr4_path,&new_p4_testing_path).await;
+                        delete(petr4_path,new_p4_testing_path).await;
                         return;
                     }
                 }
@@ -178,12 +178,12 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
             };
     
             // remove the p4 and stf file
-        delete(petr4_path,&new_p4_testing_path).await;
+        delete(petr4_path,new_p4_testing_path).await;
         }
     }
 }
 
-async fn delete(petr4_path: &str, new_petr4_path: &str){
+async fn delete(petr4_path: String, new_petr4_path: String){
     info!("a");
     let p4_testing_path = format!("{}/_build/default/p4stf/custom-stf-tests",petr4_path);
 
