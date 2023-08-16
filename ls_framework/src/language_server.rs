@@ -56,6 +56,10 @@ impl LanguageServer for Backend {
             }
         }
 
+        std::panic::set_hook(Box::new(|info| {
+            error!("{info}");
+        }));
+
         info!("Initializing lsp");
 
         self.plugin_manager.write().unwrap().load_plugins();
