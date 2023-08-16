@@ -51,7 +51,7 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
         if (path_test_binary.exists()){
             info!("c");
             // find in the new name for the p4 folder of testing file
-            let mut new_p4_testing_path = format!("{}/_build/default/p4stf/custom-stf-tests", path_petr4);
+            let mut new_p4_testing_path = format!("{}/_build/default/p4stf/custom-stf-tests", petr4_path);
             let mut new_p4_testing = Path::new(&new_p4_testing_path);
             while(new_p4_testing.exists()){
                 new_p4_testing_path = format!("{}_exists",new_p4_testing_path.clone());
@@ -60,7 +60,7 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
             info!("d");
             let new_p4_testing_path_str = new_p4_testing_path.as_str();
     
-            let p4_testing_path = format!("{}/_build/default/p4stf/custom-stf-tests",path_petr4);
+            let p4_testing_path = format!("{}/_build/default/p4stf/custom-stf-tests",petr4_path);
             match Command::new("mv")
                 .arg(p4_testing_path.clone())
                 .arg(new_p4_testing_path.clone())
@@ -77,7 +77,7 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
                 .await {
                     Ok(x) => {}
                     Err(e) => {
-                        delete(path_petr4,&new_p4_testing_path).await;
+                        delete(petr4_path,&new_p4_testing_path).await;
                         return;
                     }
                 }
@@ -104,7 +104,7 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
                 .await {
                     Ok(x) => {}
                     Err(e) => {
-                        delete(path_petr4,&new_p4_testing_path).await;
+                        delete(petr4_path,&new_p4_testing_path).await;
                         return;
                     }
                 }
@@ -119,7 +119,7 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
                 .await {
                     Ok(x) => {}
                     Err(e) => {
-                        delete(path_petr4,&new_p4_testing_path).await;
+                        delete(petr4_path,&new_p4_testing_path).await;
                         return;
                     }
                 }
@@ -178,16 +178,16 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
             };
     
             // remove the p4 and stf file
-        delete(path_petr4,&new_p4_testing_path).await;
+        delete(petr4_path,&new_p4_testing_path).await;
         }
     }
 }
 
-async fn delete(path_petr4: &str, new_path_petr4: &str){
+async fn delete(petr4_path: &str, new_petr4_path: &str){
     info!("a");
-    let p4_testing_path = format!("{}/_build/default/p4stf/custom-stf-tests",path_petr4);
+    let p4_testing_path = format!("{}/_build/default/p4stf/custom-stf-tests",petr4_path);
 
-    info!("{},{},{}",path_petr4, p4_testing_path, new_path_petr4);
+    info!("{},{},{}",petr4_path, p4_testing_path, new_petr4_path);
 
     Command::new("rm")
         .arg("-r")
@@ -196,7 +196,7 @@ async fn delete(path_petr4: &str, new_path_petr4: &str){
         .await;
 
     Command::new("mv")
-        .arg(new_path_petr4.clone())
+        .arg(new_petr4_path.clone())
         .arg(p4_testing_path.clone())
         .output()
         .await;
