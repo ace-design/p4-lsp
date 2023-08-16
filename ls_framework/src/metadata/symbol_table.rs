@@ -1,4 +1,4 @@
-use crate::{metadata::NodeKind, utils};
+use crate::{language_def, metadata::NodeKind, utils};
 use std::collections::HashMap;
 use std::fmt;
 
@@ -274,7 +274,31 @@ impl SymbolTable {
 
                 let name_node = arena.get(name_node_id).unwrap().get();
 
-                let symbol = Symbol::new(name_node.content.clone(), name_node.range);
+                let mut symbol = Symbol::new(name_node.content.clone(), name_node.range);
+
+                for id in node_id.descendants(arena) {
+                    if let language_def::Symbol::Field { name_node } =
+                        &arena.get(id).unwrap().get().symbol
+                    {
+                        let field_name_node = arena
+                            .get(
+                                id.children(arena)
+                                    .find(|child_id| {
+                                        arena.get(*child_id).unwrap().get().kind
+                                            == NodeKind::Node(name_node.clone())
+                                    })
+                                    .unwrap(),
+                            )
+                            .unwrap()
+                            .get();
+
+                        symbol.add_field(Field::new(
+                            field_name_node.content.clone(),
+                            field_name_node.range,
+                        ));
+                    }
+                }
+
                 self.arena
                     .get_mut(current_table_node_id)
                     .unwrap()
@@ -432,8 +456,8 @@ impl fmt::Display for ScopeSymbolTable {
 
         output.push_str(
             format!(
-                "{0: <8} | {1: <15} | {2: <10} | {3: <10}\n",
-                "symbol", "name", "position", "usages"
+                "{0: <8} | {1: <15} | {2: <10} | {3: <10} | {4: <10}\n",
+                "symbol", "name", "position", "usages", "fields"
             )
             .as_str(),
         );
@@ -495,6 +519,14 @@ impl Symbol {
         &self.usages
     }
 
+    pub fn add_field(&mut self, field: Field) {
+        if let Some(fields) = &mut self.fields {
+            fields.push(field);
+        } else {
+            self.fields = Some(vec![field]);
+        }
+    }
+
     pub fn get_fields(&self) -> &Option<Vec<Field>> {
         &self.fields
     }
@@ -516,15 +548,22 @@ impl Symbol {
 
 impl fmt::Display for Symbol {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let fields = if let Some(fields) = &self.fields {
+            fields.len()
+        } else {
+            0
+        };
+
         fmt.write_str(
             format!(
-                "{0: <15} | {1: <10} | {2: <10}",
+                "{0: <15} | {1: <10} | {2: <10} | {3: <10}",
                 self.name,
                 format!(
                     "l:{} c:{}",
                     self.def_position.start.line, self.def_position.start.character
                 ),
-                self.usages.len()
+                self.usages.len(),
+                fields
             )
             .as_str(),
         )

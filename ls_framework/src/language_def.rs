@@ -62,6 +62,9 @@ pub enum Symbol {
         name_node: String,
     },
     Usage,
+    Field {
+        name_node: String,
+    },
     #[default]
     None,
 }

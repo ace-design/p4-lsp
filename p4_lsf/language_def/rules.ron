@@ -210,6 +210,7 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "Field",
+            symbol: Field(name_node: "Name"),
             children: [
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("type"), rule: Rule("Type")),
