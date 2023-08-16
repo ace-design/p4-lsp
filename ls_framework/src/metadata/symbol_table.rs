@@ -413,6 +413,19 @@ struct ScopeSymbolTable {
     symbols: Symbols,
 }
 
+impl ScopeSymbolTable {
+    fn new(range: Range) -> ScopeSymbolTable {
+        ScopeSymbolTable {
+            range,
+            ..Default::default()
+        }
+    }
+
+    fn get_symbols(&self) -> &Symbols {
+        &self.symbols
+    }
+}
+
 impl fmt::Display for ScopeSymbolTable {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::from("\n");
@@ -438,26 +451,6 @@ impl fmt::Display for ScopeSymbolTable {
     }
 }
 
-impl ScopeSymbolTable {
-    fn new(range: Range) -> ScopeSymbolTable {
-        ScopeSymbolTable {
-            range,
-            ..Default::default()
-        }
-    }
-
-    fn get_symbols(&self) -> &Symbols {
-        &self.symbols
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Field {
-    name: String,
-    def_position: Range,
-    usages: Vec<Range>,
-}
-
 #[derive(Debug, Clone)]
 pub struct Symbol {
     id: usize,
@@ -465,23 +458,6 @@ pub struct Symbol {
     def_position: Range,
     usages: Vec<Range>,
     fields: Option<Vec<Field>>,
-}
-
-impl fmt::Display for Symbol {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt.write_str(
-            format!(
-                "{0: <15} | {1: <10} | {2: <10}",
-                self.name,
-                format!(
-                    "l:{} c:{}",
-                    self.def_position.start.line, self.def_position.start.character
-                ),
-                self.usages.len()
-            )
-            .as_str(),
-        )
-    }
 }
 
 impl Symbol {
@@ -536,6 +512,30 @@ impl Symbol {
             None => None,
         }
     }
+}
+
+impl fmt::Display for Symbol {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(
+            format!(
+                "{0: <15} | {1: <10} | {2: <10}",
+                self.name,
+                format!(
+                    "l:{} c:{}",
+                    self.def_position.start.line, self.def_position.start.character
+                ),
+                self.usages.len()
+            )
+            .as_str(),
+        )
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Field {
+    name: String,
+    def_position: Range,
+    usages: Vec<Range>,
 }
 
 impl Field {
