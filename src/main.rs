@@ -29,7 +29,6 @@ mod utils;
 mod workspace;
 
 use workspace::Workspace;
-use std::path::Path;
 
 struct Backend {
     client: Client,
@@ -179,7 +178,6 @@ impl LanguageServer for Backend {
             let petr4 = self.petr4.read().unwrap();
             petr4.get()
         };
-        petr4::testing(uri.path(), petr4_value).await;
         info!("1");
     }
 

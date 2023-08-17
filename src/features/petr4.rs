@@ -6,234 +6,268 @@ use std::env;
 pub struct Petr4 {
     petr4_path: String,
     workspace_root: String,
+    os: String,
+    bool_windows: bool,
+    liste_command_str: Vec<Vec<String>>
 }
 
 
 impl Petr4 {
     pub fn new() -> Petr4 {
+        let os: &str = env::consts::OS;
+        let mut bool_windows: bool = false;
+        let mut liste_command_str : Vec<Vec<String>> = vec![vec!["ln".to_string(), "-s".to_string()], vec!["mv".to_string()], vec!["rm".to_string()], vec!["rm".to_string(), "-r".to_string()], vec!["mkdir".to_string(), "-p".to_string()]];
+    
+        if os == "windows" {
+            bool_windows = true;
+            liste_command_str = vec![vec!["mklink".to_string()], vec!["move".to_string()], vec!["del".to_string()], vec!["rmdir".to_string(), "/s".to_string(), "/q".to_string()], vec!["mkdir".to_string()]];
+        }
+
         Petr4 {
             petr4_path: "".to_string(),
             workspace_root: "".to_string(),
+            os: os.to_string(),
+            bool_windows,
+            liste_command_str
         }
     }
     pub fn config(&mut self, petr4: String, workspace: String) {
         self.petr4_path = petr4;
         self.workspace_root = workspace;
     }
-    pub fn get(&self) -> Option<(String,String)> {
-        return Some((self.petr4_path.clone(), self.workspace_root.clone()))
+    pub fn get_petr4_path(&self) -> &Path {
+        return Path::new(&self.petr4_path)
+    }
+    pub fn get_workspace_root(&self) -> &Path {
+        return Path::new(&self.workspace_root)
+    }
+    pub fn get_os(&self) -> String {
+        return self.os.clone()
+    }
+    pub fn get_bool_windows(&self) -> bool {
+        return self.bool_windows.clone()
+    }
+    pub fn get_liste_command_str(&self) -> Vec<Vec<String>> {
+        return self.liste_command_str.clone()
+    }
+    pub fn get(&self) -> Option<(&Path, &Path, bool, Vec<Vec<String>>)> {
+        return Some((self.get_petr4_path(), self.get_workspace_root(), self.get_bool_windows(), self.get_liste_command_str()))
     }
     
 }
 
+fn create_command(command: &mut Vec<String>) -> Command{
+    let mut t: Command = Command::new(command.remove(0));
+    for el in command{
+        t.arg(el);
+    }
+    return t;
+}
 
-pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
+pub async fn testing(p4: &str, petr4_args: Option<(&Path, &Path, bool, Vec<Vec<String>>)>) {
+    let path_p4 = Path::new(p4);
 
-    if let Some((petr4_path, workspace_root)) = args{
+
+    if let Some((petr4_path, workspace_root, bool_windows, mut liste_command_str)) = petr4_args{
         info!("a");
-        let mut path_output = path_p4.clone().to_string();
-        path_output.replace_range((path_p4.len()-2)..(path_p4.len()),"output");
-        Command::new("rm")
-            .arg(path_output.clone())
+        let path_output = path_p4.clone().with_extension("output");
+        create_command(&mut liste_command_str[2])
+            .arg(format!("\"{}\"",path_output.as_os_str().to_str().unwrap()))
             .output()
             .await;
     
         // verify the stf file exists
-        let mut path_stf_str = path_p4.clone().to_string();
-        path_stf_str.replace_range((path_p4.len()-2)..(path_p4.len()),"stf");
-        let path_stf = Path::new(path_stf_str.as_str());
-        if (!path_stf.exists()){
-            info!("a4");
+        let path_stf = path_p4.clone().with_extension("stf");
+        if !path_stf.exists(){
             return;
         }
         info!("b");
 
         // verify the binary of the petr4 exists
-        let temp_path = format!("{}/_build/default/bin/test.exe", petr4_path);
-        let path_test_binary = Path::new(temp_path.as_str());
-        if (path_test_binary.exists()){
+        let path_test_binary = petr4_path.clone().join("_build/default/bin/test.exe");
+        if path_test_binary.exists(){
             info!("c");
             // find in the new name for the p4 folder of testing file
-            let mut new_p4_testing_path = format!("{}/_build/default/p4stf/custom-stf-tests", petr4_path);
-            let mut new_p4_testing = Path::new(&new_p4_testing_path);
-            while(new_p4_testing.exists()){
-                new_p4_testing_path = format!("{}_exists",new_p4_testing_path.clone());
-                new_p4_testing = Path::new(&new_p4_testing_path);
+            let new_p4_testing = petr4_path.clone().join("_build/default/p4stf/custom-stf-tests");
+            while new_p4_testing.exists(){
+                new_p4_testing.join("_exists");
             }
             info!("d");
-            let new_p4_testing_path_str = new_p4_testing_path.as_str();
+            let new_p4_testing_path = new_p4_testing.as_os_str().to_str().unwrap();
     
-            let p4_testing_path = format!("{}/_build/default/p4stf/custom-stf-tests",petr4_path);
-            match Command::new("mv")
-                .arg(p4_testing_path.clone())
-                .arg(new_p4_testing_path.clone())
+            let p4_testing_path = petr4_path.clone().join("_build/default/p4stf/custom-stf-tests");
+            match create_command(&mut liste_command_str[1])
+                .arg(format!("\"{}\"",p4_testing_path.as_os_str().to_str().unwrap()))
+                .arg(format!("\"{}\"",new_p4_testing_path))
                 .output()
                 .await {
-                    Ok(x) => {}
-                    Err(e) => {
+                    Ok(_) => {}
+                    Err(_) => {
                         return;
                     }
                 }
-            match Command::new("mkdir")
-                .arg(p4_testing_path.clone())
+            match create_command(&mut liste_command_str[4])
+                .arg(format!("\"{}\"",p4_testing_path.as_os_str().to_str().unwrap()))
                 .output()
                 .await {
-                    Ok(x) => {}
-                    Err(e) => {
-                        delete(petr4_path,new_p4_testing_path, "".to_string()).await;
+                    Ok(_) => {}
+                    Err(_) => {
+                        delete(petr4_path,new_p4_testing_path, "", &mut liste_command_str).await;
                         return;
                     }
                 }
             
             // find in the new name for the p4 include folder of testing file
-            let mut new_p4_include_testing_path = format!("{}/_build/default/examples", petr4_path);
-            let mut new_p4_include_testing = Path::new(&new_p4_include_testing_path);
-            while(new_p4_include_testing.exists()){
-                new_p4_include_testing_path = format!("{}_exists",new_p4_include_testing_path.clone());
-                new_p4_include_testing = Path::new(&new_p4_include_testing_path);
+            let new_p4_include_testing = petr4_path.clone().join("_build/default/examples");
+            while new_p4_include_testing.exists(){
+                new_p4_include_testing.join("_exists");
             }
             info!("d");
-            let new_p4_include_testing_path_str = new_p4_include_testing_path.as_str();
+            let new_p4_include_testing_path_str = new_p4_include_testing.as_os_str().to_str().unwrap();
     
-            let p4_include_testing_path = format!("{}/_build/default/examples",petr4_path);
-            match Command::new("mv")
-                .arg(p4_include_testing_path.clone())
-                .arg(new_p4_include_testing_path.clone())
+            let p4_include_testing_path = petr4_path.clone().join("_build/default/examples");
+            match create_command(&mut liste_command_str[1])
+                .arg(format!("\"{}\"",p4_include_testing_path.as_os_str().to_str().unwrap()))
+                .arg(format!("\"{}\"",new_p4_include_testing_path_str))
                 .output()
                 .await {
-                    Ok(x) => {}
-                    Err(e) => {
-                        delete(petr4_path,new_p4_testing_path, "".to_string()).await;
+                    Ok(_) => {}
+                    Err(_) => {
+                        delete(petr4_path,new_p4_testing_path, "", &mut liste_command_str).await;
                         return;
                     }
                 }
-                match Command::new("mkdir")
+                match create_command(&mut liste_command_str[4])
                     .arg("-p")
-                    .arg(format!("{}/checker_tests/good",p4_include_testing_path))
+                    .arg(format!("\"{}\"",p4_include_testing_path.clone().join("checker_tests/good").as_os_str().to_str().unwrap()))
                     .output()
                     .await {
-                        Ok(x) => {
+                        Ok(_) => {
                         }
-                        Err(e) => {
-                            delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
+                        Err(_) => {
+                            delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
                             return;
                         }
                     }
-                match Command::new("mkdir")
+                match create_command(&mut liste_command_str[4])
                     .arg("-p")
-                    .arg(format!("{}/checker_tests/excluded/good",p4_include_testing_path))
+                    .arg(format!("\"{}\"",p4_include_testing_path.clone().join("checker_tests/excluded/good").as_os_str().to_str().unwrap()))
                     .output()
                     .await {
-                        Ok(x) => {
+                        Ok(_) => {
                         }
-                        Err(e) => {
-                            delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
+                        Err(_) => {
+                            delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
                             return;
                         }
                     }
 
 
             // get the include file and copy it the include folder :
-            match Command::new("sh")
-            .arg("-c")
-            .arg(&format!(r#"find {} -type f -iname '*.p4' -exec cp --parents {{}} {} \;"#, ".", p4_include_testing_path))
-            .current_dir(workspace_root)
-            .output()
-            .await {
-                Ok(x) => {
-                    info!("a{:?}",x);
-                }
-                Err(e) => {
-                    info!("b{:?}",e);
-                    delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
-                    return;
-                }
-            }
-            match Command::new("which")
-            .arg("p4c")
-            .output()
-            .await {
-                Ok(x) => {
-                    let stdout = str::from_utf8(&x.stdout).unwrap();
-                    info!("{}",stdout);
-                    let parts = ((stdout.split("\n").collect::<Vec<&str>>())[0]).split("/");
-                    let mut path_include = "".to_string();
-                    let mut index = 1;
-                    let length = parts.clone().count() -1;
-                    for part in parts{
-                        info!("{}",part);
-                        if (index == length){
-                            path_include = format!("{}/{}", path_include, "share");
-                        } else{
-                            path_include = format!("{}/{}", path_include, part);
-                        }
-                        index += 1;
+            if bool_windows{
+                /* TODO : chat gpt for the find :
+                Command::new("cmd")
+            .arg("/C")
+            .arg(format!(
+                r#"for /r {} %%F in (*.p4) do xcopy /s /i "%%F" "{}""#,
+                source_dir, dest_dir
+            )) */
+            }else{
+                match Command::new("sh")
+                .arg("-c")
+                .arg(&format!(r#"find "{}" -type f -iname '*.p4' -exec cp --parents "{{}}" "{}" \;"#, ".", p4_include_testing_path.as_os_str().to_str().unwrap()))
+                .current_dir(workspace_root.as_os_str().to_str().unwrap())
+                .output()
+                .await {
+                    Ok(x) => {
+                        info!("a{:?}",x);
                     }
-                    path_include = format!("{}/{}", path_include, "p4include");
-                    info!("{}",path_include);
-                    match Command::new("sh")
-                    .arg("-c")
-                    .arg(&format!(r#"find {} -type f -iname '*.p4' -exec cp --parents {{}} {} \;"#, ".", p4_include_testing_path))
-                    .current_dir(path_include.clone())
-                    .output()
-                    .await {
-                        Ok(x) => {
-                            info!("c{:?}",x);
+                    Err(e) => {
+                        info!("b{:?}",e);
+                        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
+                        return;
+                    }
+                }
+
+                match Command::new("which")
+                .arg("p4c")
+                .output()
+                .await {
+                    Ok(x) => {
+                        let stdout = str::from_utf8(&x.stdout).unwrap();
+                        info!("{}",stdout);
+                        let parts = ((stdout.split("\n").collect::<Vec<&str>>())[0]).split("/");
+                        let mut path_include = "".to_string();
+                        let mut index = 1;
+                        let length = parts.clone().count() -1;
+                        for part in parts{
+                            info!("{}",part);
+                            if index == length{
+                                path_include = format!("{}/{}", path_include, "share");
+                            } else{
+                                path_include = format!("{}/{}", path_include, part);
+                            }
+                            index += 1;
                         }
-                        Err(e) => {
-                            info!("d{:?}",e);
-                            delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
-                            return;
-                        }
-                    }}
-                Err(e) => {
-                    info!("e{:?}",e);
-                    delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
-                    return;
+                        path_include = format!("{}/{}", path_include, "p4include");
+                        info!("{}",path_include);
+                        match Command::new("sh")
+                        .arg("-c")
+                        .arg(&format!(r#"find "{}" -type f -iname '*.p4' -exec cp --parents "{{}}" "{}" \;"#, ".", p4_include_testing_path.as_os_str().to_str().unwrap()))
+                        .current_dir(path_include.clone())
+                        .output()
+                        .await {
+                            Ok(x) => {
+                                info!("c{:?}",x);
+                            }
+                            Err(e) => {
+                                info!("d{:?}",e);
+                                delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
+                                return;
+                            }
+                        }}
+                    Err(e) => {
+                        info!("e{:?}",e);
+                        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
+                        return;
+                    }
                 }
             }
 
 
             // copy p4 and stf file
             // find in what name the p4 file will be create for the testing
-            let mut name_p4_testing = format!("{}","testing_p4_lsp_file");
-            let mut p4_testing_path = format!("{}/_build/default/p4stf/custom-stf-tests/{}", petr4_path, name_p4_testing);
-            let mut t = format!("{}.p4",p4_testing_path.clone());
-            let mut p4_testing = Path::new(&t);
-            while(p4_testing.exists()){
+            let mut name_p4_testing = "testing_p4_lsp_file".to_string();
+            let mut p4_testing = petr4_path.clone().join(format!("_build/default/p4stf/custom-stf-tests/{}.p4",name_p4_testing));
+            while p4_testing.exists(){
                 name_p4_testing = format!("{}_exists",name_p4_testing);
-                p4_testing_path = format!("{}_exists",p4_testing_path.clone());
-                t = format!("{}.p4",p4_testing_path.clone());
-                p4_testing = Path::new(&t);
+                p4_testing = p4_testing.with_file_name(format!("{}.p4",name_p4_testing))
             }
             info!("d");
     
             // create the p4 file
-            match Command::new("cp")
-                .arg("-r")
-                .arg(path_p4)
-                .arg(p4_testing.as_os_str())
+            match create_command(&mut liste_command_str[0])
+                .arg(format!("\"{}\"",path_p4.as_os_str().to_str().unwrap()))
+                .arg(format!("\"{}\"",p4_testing.as_os_str().to_str().unwrap()))
                 .output()
                 .await {
-                    Ok(x) => {}
-                    Err(e) => {
-                        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
+                    Ok(_) => {}
+                    Err(_) => {
+                        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
                         return;
                     }
                 }
             info!("f");
     
             // create the stf file
-            let stf_testing = format!("{}.stf",p4_testing_path.clone());
-            match Command::new("cp")
-                .arg("-r")
-                .arg(path_stf.as_os_str())
-                .arg(stf_testing.clone())
+            match create_command(&mut liste_command_str[1])
+                .arg(format!("\"{}\"",path_stf.as_os_str().to_str().unwrap()))
+                .arg(format!("\"{}\"",p4_testing_path.clone().with_extension("stf").as_os_str().to_str().unwrap()))
                 .output()
                 .await {
-                    Ok(x) => {}
-                    Err(e) => {
-                        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
+                    Ok(_) => {}
+                    Err(_) => {
+                        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
                         return;
                     }
                 }
@@ -242,7 +276,7 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
         
             // execute the commande
             let output = Command::new("./bin/test.exe")
-                .current_dir(format!("{}/_build/default", petr4_path))
+                .current_dir(format!("\"{}\"",petr4_path.clone().join("/_build/default").as_os_str().to_str().unwrap()))
                 .output()
                 .await;
             info!("k");
@@ -253,10 +287,10 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
                     info!("work,{:?}",x);
                     let parts = str::from_utf8(&x.stdout).unwrap().split("\n");
                     for part in parts{
-                        if (part.contains(format!(" {}.p4",name_p4_testing).as_str()) && part.contains("petr4 stf tests")){
+                        if part.contains(format!(" {}.p4",name_p4_testing).as_str()) && part.contains("petr4 stf tests"){
                             info!("{}",part);
     
-                            if (part.contains("[FAIL]")){
+                            if part.contains("[FAIL]"){
                                 let mut index = "-1".to_string();
                                 for el in part.split(" "){
                                     if let Ok(x) = el.parse::<i32>(){
@@ -265,20 +299,20 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
                                     }
                                 }
                                 
-                                let mut p4_testing_path = format!("{}/_build/default/_build/_tests/Stf-tests/petr4 stf tests.", petr4_path);
+                                let mut p4_testing_name = "petr4 stf tests.".to_string();
                                 let ext = format!("{}.output", index.clone());
-                                let mut t = format!("{}{}",p4_testing_path.clone(), ext.clone());
-                                let mut p4_testing = Path::new(&t);
-                                while(!p4_testing.exists()){
-                                    p4_testing_path = format!("{}0",p4_testing_path.clone());
-                                    t = format!("{}{}",p4_testing_path.clone(), ext.clone());
-                                    p4_testing = Path::new(&t);
+                                let mut t = format!("{}{}",p4_testing_name.clone(), ext.clone());
+                                let mut p4_testing = petr4_path.clone().join(format!("_build/default/_build/_tests/Stf-tests/{}",t));
+                                while !p4_testing.exists(){
+                                    p4_testing_name = format!("{}0",p4_testing_name.clone());
+                                    t = format!("{}{}",p4_testing_name.clone(), ext.clone());
+                                    p4_testing = p4_testing.with_file_name(t);
                                 }
                                 info!("{:?}",p4_testing);
     
-                                Command::new("mv")
-                                    .arg(p4_testing)
-                                    .arg(path_output.clone())
+                                create_command(&mut liste_command_str[1])
+                                    .arg(format!("\"{}\"",p4_testing.as_os_str().to_str().unwrap()))
+                                    .arg(format!("\"{}\"",path_output.as_os_str().to_str().unwrap()))
                                     .output()
                                     .await;
                             }
@@ -292,37 +326,35 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
             };
     
             // remove the p4 and stf file
-        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
+        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
         }
     }
 }
 
-async fn delete(petr4_path: String, new_petr4_path: String, new_petr4_include_path: String){
+async fn delete(petr4_path: &Path, new_petr4_path: &str, new_petr4_include_path: &str, liste_command_str: &mut Vec<Vec<String>>){
     info!("a");
-    let p4_testing_path = format!("{}/_build/default/p4stf/custom-stf-tests",petr4_path);
-    let p4_include_testing_path = format!("{}/_build/default/examples",petr4_path);
+    let p4_testing_path = petr4_path.clone().join("_build/default/p4stf/custom-stf-tests");
+    let p4_include_testing_path = petr4_path.clone().join("_build/default/examples");
 
-    Command::new("rm")
-        .arg("-r")
-        .arg(p4_testing_path.clone())
+    create_command(&mut liste_command_str[3])
+        .arg(format!("\"{}\"",p4_testing_path.as_os_str().to_str().unwrap()))
         .output()
         .await;
 
-    Command::new("mv")
-        .arg(new_petr4_path.clone())
-        .arg(p4_testing_path.clone())
+    create_command(&mut liste_command_str[1])
+        .arg(format!("\"{}\"",new_petr4_path))
+        .arg(format!("\"{}\"",p4_testing_path.as_os_str().to_str().unwrap()))
         .output()
         .await;
 
-    Command::new("rm")
-        .arg("-r")
-        .arg(p4_include_testing_path.clone())
+    create_command(&mut liste_command_str[3])
+        .arg(format!("\"{}\"",p4_include_testing_path.as_os_str().to_str().unwrap()))
         .output()
         .await;
 
-    Command::new("mv")
-        .arg(new_petr4_include_path.clone())
-        .arg(p4_include_testing_path.clone())
+    create_command(&mut liste_command_str[1])
+        .arg(format!("\"{}\"",new_petr4_include_path))
+        .arg(format!("\"{}\"",p4_include_testing_path.as_os_str().to_str().unwrap()))
         .output()
         .await;
     
