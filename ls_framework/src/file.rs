@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex};
 
 use tower_lsp::lsp_types::{
-    CompletionItem, Diagnostic, HoverContents, Location, Position, SemanticTokensResult,
-    TextDocumentContentChangeEvent, Url, WorkspaceEdit,
+    CompletionContext, CompletionItem, Diagnostic, HoverContents, Location, Position,
+    SemanticTokensResult, TextDocumentContentChangeEvent, Url, WorkspaceEdit,
 };
 use tree_sitter::{InputEdit, Parser, Tree};
 
@@ -89,8 +89,17 @@ impl File {
         diagnostics::get_full_diagnostics(&self.ast_manager, &self.symbol_table_manager)
     }
 
-    pub fn get_completion_list(&self, position: Position) -> Option<Vec<CompletionItem>> {
-        completion::get_list(position, &self.source_code, &self.symbol_table_manager)
+    pub fn get_completion_list(
+        &self,
+        position: Position,
+        context: Option<CompletionContext>,
+    ) -> Option<Vec<CompletionItem>> {
+        completion::get_list(
+            position,
+            &self.source_code,
+            &self.symbol_table_manager,
+            context,
+        )
     }
 
     pub fn get_hover_info(&self, position: Position) -> Option<HoverContents> {

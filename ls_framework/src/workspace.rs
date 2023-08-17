@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use serde_json::Value;
 use tower_lsp::lsp_types::{
-    CompletionItem, Diagnostic, HoverContents, Location, Position, SemanticTokensResult,
-    TextDocumentContentChangeEvent, Url, WorkspaceEdit,
+    CompletionContext, CompletionItem, Diagnostic, HoverContents, Location, Position,
+    SemanticTokensResult, TextDocumentContentChangeEvent, Url, WorkspaceEdit,
 };
 
 use crate::{file::File, settings::Settings};
@@ -62,10 +62,15 @@ impl Workspace {
         file.get_semantic_tokens()
     }
 
-    pub fn get_completion(&self, url: Url, position: Position) -> Option<Vec<CompletionItem>> {
+    pub fn get_completion(
+        &self,
+        url: Url,
+        position: Position,
+        context: Option<CompletionContext>,
+    ) -> Option<Vec<CompletionItem>> {
         let file = self.files.get(&url)?;
 
-        file.get_completion_list(position)
+        file.get_completion_list(position, context)
     }
 
     pub fn get_hover_info(&self, url: Url, position: Position) -> Option<HoverContents> {

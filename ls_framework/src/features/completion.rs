@@ -4,7 +4,9 @@ use crate::{
     language_def::LanguageDefinition,
     metadata::{SymbolTableQuery, Symbols},
 };
-use tower_lsp::lsp_types::{CompletionItem, CompletionItemKind, Position};
+use tower_lsp::lsp_types::{
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionTriggerKind, Position,
+};
 
 fn default_list(
     position: Position,
@@ -36,7 +38,12 @@ pub fn get_list(
     position: Position,
     source_code: &str,
     query: &Arc<Mutex<impl SymbolTableQuery>>,
+    context: Option<CompletionContext>,
 ) -> Option<Vec<CompletionItem>> {
+    if let Some(context) = context {
+        if context.trigger_kind == CompletionTriggerKind::TRIGGER_CHARACTER {}
+    }
+
     let name_field = query.lock().unwrap().get_name_field(position, source_code);
 
     match name_field {

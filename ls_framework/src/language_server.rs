@@ -227,6 +227,7 @@ impl LanguageServer for Backend {
                 .get_completion(
                     params.text_document_position.text_document.uri,
                     params.text_document_position.position,
+                    params.context,
                 )
                 .unwrap_or_default()
         };

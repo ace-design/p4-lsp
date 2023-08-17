@@ -68,7 +68,7 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "ConstantDeclaration",
-            symbol: Init(type: "Constant", name_node: "Name"),
+            symbol: Init(type: "Constant", name_node: "Name", type_node: "Type"),
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("type"), rule: Rule("Type")),
