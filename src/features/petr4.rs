@@ -1,11 +1,13 @@
 use async_process::Command;
 use std::path::Path;
 use std::str;
+use std::env;
 
 pub struct Petr4 {
     petr4_path: String,
     workspace_root: String,
 }
+
 
 impl Petr4 {
     pub fn new() -> Petr4 {
@@ -26,6 +28,7 @@ impl Petr4 {
 
 
 pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
+
     if let Some((petr4_path, workspace_root)) = args{
         info!("a");
         let mut path_output = path_p4.clone().to_string();
@@ -77,26 +80,119 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
                 .await {
                     Ok(x) => {}
                     Err(e) => {
-                        delete(petr4_path,new_p4_testing_path).await;
+                        delete(petr4_path,new_p4_testing_path, "".to_string()).await;
                         return;
                     }
                 }
+            
+            // find in the new name for the p4 include folder of testing file
+            let mut new_p4_include_testing_path = format!("{}/_build/default/examples", petr4_path);
+            let mut new_p4_include_testing = Path::new(&new_p4_include_testing_path);
+            while(new_p4_include_testing.exists()){
+                new_p4_include_testing_path = format!("{}_exists",new_p4_include_testing_path.clone());
+                new_p4_include_testing = Path::new(&new_p4_include_testing_path);
+            }
+            info!("d");
+            let new_p4_include_testing_path_str = new_p4_include_testing_path.as_str();
+    
+            let p4_include_testing_path = format!("{}/_build/default/examples",petr4_path);
+            match Command::new("mv")
+                .arg(p4_include_testing_path.clone())
+                .arg(new_p4_include_testing_path.clone())
+                .output()
+                .await {
+                    Ok(x) => {}
+                    Err(e) => {
+                        delete(petr4_path,new_p4_testing_path, "".to_string()).await;
+                        return;
+                    }
+                }
+                match Command::new("mkdir")
+                    .arg("-p")
+                    .arg(format!("{}/checker_tests/good",p4_include_testing_path))
+                    .output()
+                    .await {
+                        Ok(x) => {
+                        }
+                        Err(e) => {
+                            delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
+                            return;
+                        }
+                    }
+                match Command::new("mkdir")
+                    .arg("-p")
+                    .arg(format!("{}/checker_tests/excluded/good",p4_include_testing_path))
+                    .output()
+                    .await {
+                        Ok(x) => {
+                        }
+                        Err(e) => {
+                            delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
+                            return;
+                        }
+                    }
 
 
             // get the include file and copy it the include folder :
-            let mut files_workplace: Vec<String> = vec!();
-            match Command::new("ls")
-            .arg(workspace_root.clone())
+            match Command::new("sh")
+            .arg("-c")
+            .arg(&format!(r#"find {} -type f -iname '*.p4' -exec cp --parents {{}} {} \;"#, ".", p4_include_testing_path))
+            .current_dir(workspace_root)
             .output()
             .await {
                 Ok(x) => {
-                    let parts = str::from_utf8(&x.stdout).unwrap().split("\n");
-                    info!("{:?}",parts);
+                    info!("a{:?}",x);
                 }
                 Err(e) => {
+                    info!("b{:?}",e);
+                    delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
                     return;
                 }
             }
+            match Command::new("which")
+            .arg("p4c")
+            .output()
+            .await {
+                Ok(x) => {
+                    let stdout = str::from_utf8(&x.stdout).unwrap();
+                    info!("{}",stdout);
+                    let parts = ((stdout.split("\n").collect::<Vec<&str>>())[0]).split("/");
+                    let mut path_include = "".to_string();
+                    let mut index = 1;
+                    let length = parts.clone().count() -1;
+                    for part in parts{
+                        info!("{}",part);
+                        if (index == length){
+                            path_include = format!("{}/{}", path_include, "share");
+                        } else{
+                            path_include = format!("{}/{}", path_include, part);
+                        }
+                        index += 1;
+                    }
+                    path_include = format!("{}/{}", path_include, "p4include");
+                    info!("{}",path_include);
+                    match Command::new("sh")
+                    .arg("-c")
+                    .arg(&format!(r#"find {} -type f -iname '*.p4' -exec cp --parents {{}} {} \;"#, ".", p4_include_testing_path))
+                    .current_dir(path_include.clone())
+                    .output()
+                    .await {
+                        Ok(x) => {
+                            info!("c{:?}",x);
+                        }
+                        Err(e) => {
+                            info!("d{:?}",e);
+                            delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
+                            return;
+                        }
+                    }}
+                Err(e) => {
+                    info!("e{:?}",e);
+                    delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
+                    return;
+                }
+            }
+
 
             // copy p4 and stf file
             // find in what name the p4 file will be create for the testing
@@ -114,13 +210,14 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
     
             // create the p4 file
             match Command::new("cp")
+                .arg("-r")
                 .arg(path_p4)
                 .arg(p4_testing.as_os_str())
                 .output()
                 .await {
                     Ok(x) => {}
                     Err(e) => {
-                        delete(petr4_path,new_p4_testing_path).await;
+                        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
                         return;
                     }
                 }
@@ -129,13 +226,14 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
             // create the stf file
             let stf_testing = format!("{}.stf",p4_testing_path.clone());
             match Command::new("cp")
+                .arg("-r")
                 .arg(path_stf.as_os_str())
                 .arg(stf_testing.clone())
                 .output()
                 .await {
                     Ok(x) => {}
                     Err(e) => {
-                        delete(petr4_path,new_p4_testing_path).await;
+                        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
                         return;
                     }
                 }
@@ -194,16 +292,15 @@ pub async fn testing(path_p4: &str, args: Option<(String,String)>) {
             };
     
             // remove the p4 and stf file
-        delete(petr4_path,new_p4_testing_path).await;
+        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path).await;
         }
     }
 }
 
-async fn delete(petr4_path: String, new_petr4_path: String){
+async fn delete(petr4_path: String, new_petr4_path: String, new_petr4_include_path: String){
     info!("a");
     let p4_testing_path = format!("{}/_build/default/p4stf/custom-stf-tests",petr4_path);
-
-    info!("{},{},{}",petr4_path, p4_testing_path, new_petr4_path);
+    let p4_include_testing_path = format!("{}/_build/default/examples",petr4_path);
 
     Command::new("rm")
         .arg("-r")
@@ -214,6 +311,18 @@ async fn delete(petr4_path: String, new_petr4_path: String){
     Command::new("mv")
         .arg(new_petr4_path.clone())
         .arg(p4_testing_path.clone())
+        .output()
+        .await;
+
+    Command::new("rm")
+        .arg("-r")
+        .arg(p4_include_testing_path.clone())
+        .output()
+        .await;
+
+    Command::new("mv")
+        .arg(new_petr4_include_path.clone())
+        .arg(p4_include_testing_path.clone())
         .output()
         .await;
     

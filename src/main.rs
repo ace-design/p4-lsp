@@ -29,6 +29,7 @@ mod utils;
 mod workspace;
 
 use workspace::Workspace;
+use std::path::Path;
 
 struct Backend {
     client: Client,
@@ -40,10 +41,6 @@ struct Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
-        if let Some(uri) = params.root_uri{
-            let mut petr4 = self.petr4.write().unwrap();
-            (*petr4).config("/home/t/petr4/".to_string(), uri.to_string());
-        }
 
         let log_file_path = env::temp_dir().join("p4-lsp.log");
 
@@ -66,6 +63,11 @@ impl LanguageServer for Backend {
         }
 
         info!("Initializing lsp");
+
+        if let Some(uri) = params.clone().root_uri{
+            let mut petr4 = self.petr4.write().unwrap();
+            (*petr4).config("/home/t/petr4/".to_string(), uri.to_file_path().unwrap().into_os_string().into_string().unwrap());
+        }
 
         self.plugin_manager.write().unwrap().load_plugins();
 
