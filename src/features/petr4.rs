@@ -125,15 +125,16 @@ impl Petr4 {
         let mut command_using = 0;
 
         let path_output = path_p4.clone().with_extension("output");
-        if self.get_bool_windows(){
-            self.windows(&path_output);
-            return;
-        }
         get_command_output(
             "".to_string(),
             &mut self.liste_command_str[2].clone(),
             &mut vec![format!("{}", path_output.as_os_str().to_str().unwrap())],
         );
+        
+        if self.get_bool_windows(){
+            self.windows(&path_output);
+            return;
+        }
 
         // verify the stf file exists
         let path_stf: std::path::PathBuf = path_p4.clone().with_extension("stf");
