@@ -114,12 +114,21 @@ impl Petr4 {
         self.write_output(path_output, "success".as_bytes());
     }
 
+    pub fn windows(&self, path_output: &Path) {
+        self.write_output(path_output, "the plugin don't work for windows yet.".as_bytes());
+    }
+
     pub fn testing(&self, p4: &str) {
+
         let path_p4 = Path::new(p4);
         let mut number_commande = 0;
         let mut command_using = 0;
 
         let path_output = path_p4.clone().with_extension("output");
+        if self.get_bool_windows(){
+            self.windows(&path_output);
+            return;
+        }
         get_command_output(
             "".to_string(),
             &mut self.liste_command_str[2].clone(),
