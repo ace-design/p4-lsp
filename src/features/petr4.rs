@@ -201,8 +201,15 @@ impl Petr4 {
 
             let p4_testing_file_folder_path = path_p4.parent().unwrap();
             let p4_include_testing_path = self.get_petr4_path().join("_build/default/examples");
+
             // create temp folder
-            let p4_testing_file_folder_path_link = env::temp_dir().join("p4_lsp_testing_petr4");
+            let mut temp_name = "p4_lsp_testing_petr4".to_string();
+            let mut p4_testing_file_folder_path_link = env::temp_dir().clone().join(temp_name.clone());
+            while new_p4_testing.exists() {
+                temp_name = format!("{}_exists", temp_name.clone());
+                p4_testing_file_folder_path_link = p4_testing_file_folder_path_link.with_file_name(temp_name.clone());
+            }
+
             let p4_testing_file_folder_path_link_root = p4_testing_file_folder_path_link.join(
                 p4_testing_file_folder_path
                     .strip_prefix(self.get_workspace_root())
@@ -528,17 +535,9 @@ impl Petr4 {
 
             // copy p4 and stf file
             // find in what name the p4 file will be create for the testing
-            let mut name_p4_testing = "testing_p4_lsp_file".to_string();
-            let mut p4_testing = self.get_petr4_path().join(format!(
-                "_build/default/p4stf/custom-stf-tests/{}.p4",
-                name_p4_testing
-            ));
-            while p4_testing.exists() {
-                name_p4_testing = format!("{}_exists", name_p4_testing);
-                p4_testing = p4_testing.with_file_name(format!("{}.p4", name_p4_testing))
-            }
+            let name_p4_testing = "testing_p4_lsp_file";
+            let mut p4_testing = self.get_petr4_path().join(format!("_build/default/p4stf/custom-stf-tests/{}.p4", name_p4_testing));
             
-
             // create the p4 file
             command_using = 0;
             let (stdout, stderr) = get_command_output(
