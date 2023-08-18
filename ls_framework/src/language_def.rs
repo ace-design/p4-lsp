@@ -60,6 +60,7 @@ pub enum Symbol {
         #[serde(rename(deserialize = "type"))]
         kind: String,
         name_node: String,
+        type_node: Option<String>,
     },
     Usage,
     Field {

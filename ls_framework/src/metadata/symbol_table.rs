@@ -1,5 +1,4 @@
 use crate::{language_def, metadata::NodeKind, utils};
-use std::collections::HashMap;
 use std::fmt;
 
 use crate::metadata::ast::{Ast, Visitable};
@@ -22,19 +21,18 @@ pub struct SymbolTable {
 }
 
 pub trait SymbolTableActions {
-    fn get_all_symbols(&self) -> HashMap<String, Vec<Symbol>>;
-    fn get_symbols_in_scope(&self, position: Position) -> Symbols;
+    fn get_all_symbols(&self) -> Vec<Symbol>;
+    fn get_symbols_in_scope(&self, position: Position) -> Vec<Symbol>;
     fn get_variable_at_pos(&self, position: Position, source_code: &str) -> Option<Vec<Field>>;
-    fn get_top_level_symbols(&self) -> Option<Symbols>;
+    fn get_top_level_symbols(&self) -> Vec<Symbol>;
     fn get_symbol_at_pos(&self, name: String, position: Position) -> Option<&Symbol>;
-    fn get_symbol_at_pos_mut(&mut self, name: String, position: Position) -> Option<&mut Symbol>;
     fn rename_symbol(&mut self, id: usize, new_name: String);
 }
 
 impl SymbolTableActions for SymbolTable {
-    fn get_symbols_in_scope(&self, position: Position) -> Symbols {
+    fn get_symbols_in_scope(&self, position: Position) -> Vec<Symbol> {
         let mut current_scope_id = self.root_id.unwrap();
-        let mut symbols: Symbols;
+        let mut symbols: Vec<Symbol>;
         symbols = self
             .arena
             .get(current_scope_id)
@@ -52,7 +50,10 @@ impl SymbolTableActions for SymbolTable {
                 if scope.range.start < position && position < scope.range.end {
                     current_scope_id = child_id;
                     subscope_exists = true;
-                    symbols.merge(scope.symbols.clone(), position);
+
+                    let mut scope_symbols = scope.symbols.clone();
+                    scope_symbols.retain(|s| s.def_position.end < position);
+                    symbols.append(&mut scope_symbols);
                     break;
                 }
             }
@@ -145,8 +146,13 @@ impl SymbolTableActions for SymbolTable {
         }
     }
 
-    fn get_top_level_symbols(&self) -> Option<Symbols> {
-        Some(self.arena.get(self.root_id?)?.get().symbols.clone())
+    fn get_top_level_symbols(&self) -> Vec<Symbol> {
+        self.arena
+            .get(self.root_id.unwrap())
+            .unwrap()
+            .get()
+            .symbols
+            .clone()
     }
 
     fn rename_symbol(&mut self, id: usize, new_name: String) {
@@ -158,35 +164,13 @@ impl SymbolTableActions for SymbolTable {
         }
     }
 
-    fn get_symbol_at_pos_mut(&mut self, name: String, position: Position) -> Option<&mut Symbol> {
-        let scope_id = self.get_scope_id(position)?;
-
-        for pre_id in scope_id.predecessors(&self.arena) {
-            let scope = self.arena.get(pre_id)?.get();
-
-            if scope.symbols.contains(&name) {
-                return self
-                    .arena
-                    .get_mut(pre_id)?
-                    .get_mut()
-                    .symbols
-                    .find_mut(&name);
-            }
-        }
-
-        None
-    }
-
     fn get_symbol_at_pos(&self, name: String, position: Position) -> Option<&Symbol> {
         let scope_id = self.get_scope_id(position)?;
 
         for pre_id in scope_id.predecessors(&self.arena) {
             let scope = self.arena.get(pre_id)?.get();
 
-            if scope.symbols.contains(&name) {
-                let scope = self.arena.get(pre_id)?.get();
-                let symbols = scope.get_symbols();
-                let symbol = symbols.find(&name)?;
+            if let Some(symbol) = scope.symbols.iter().find(|s| s.name == name) {
                 return Some(symbol);
             }
         }
@@ -194,22 +178,11 @@ impl SymbolTableActions for SymbolTable {
         None
     }
 
-    fn get_all_symbols(&self) -> HashMap<String, Vec<Symbol>> {
-        let mut symbols: HashMap<String, Vec<Symbol>> = HashMap::new();
+    fn get_all_symbols(&self) -> Vec<Symbol> {
+        let mut symbols: Vec<Symbol> = Vec::new();
 
         for child_id in self.root_id.unwrap().descendants(&self.arena) {
-            let current = &self.arena.get(child_id).unwrap().get().symbols.symbols;
-
-            for (symbol_type, symbols_vec) in current.iter() {
-                if symbols.contains_key(symbol_type) {
-                    symbols
-                        .get_mut(symbol_type)
-                        .unwrap()
-                        .extend(symbols_vec.clone());
-                } else {
-                    symbols.insert(symbol_type.clone(), symbols_vec.clone());
-                }
-            }
+            symbols.append(&mut self.arena.get(child_id).unwrap().get().symbols.clone());
         }
 
         symbols
@@ -220,7 +193,7 @@ impl SymbolTable {
     pub fn new(ast: &Ast) -> SymbolTable {
         let mut table = SymbolTable::default();
 
-        table.root_id = Some(table.parse_scope(ast.visit_root().get_id(), &ast.get_arena()));
+        table.root_id = Some(table.parse_scope(ast.visit_root().get_id(), &mut ast.get_arena()));
         table.parse_usages(&mut ast.get_arena());
 
         table
@@ -249,22 +222,19 @@ impl SymbolTable {
         self.root_id
     }
 
-    fn parse_scope(&mut self, node_id: NodeId, arena: &Arena<Node>) -> NodeId {
+    fn parse_scope(&mut self, node_id: NodeId, arena: &mut Arena<Node>) -> NodeId {
         let table = ScopeSymbolTable::new(arena.get(node_id).unwrap().get().range);
         let current_table_node_id = self.arena.new_node(table);
 
         let mut queue: Vec<NodeId> = node_id.children(arena).collect();
 
         while let Some(node_id) = queue.pop() {
-            let node = arena.get(node_id).unwrap().get();
-            if node.kind.is_scope_node() {
-                let subtable = self.parse_scope(node_id, arena);
-                current_table_node_id.append(subtable, &mut self.arena);
-            } else {
-                queue.append(&mut node_id.children(arena).collect());
-            }
-
-            if let crate::language_def::Symbol::Init { kind, name_node } = node.symbol.clone() {
+            if let crate::language_def::Symbol::Init {
+                kind,
+                name_node,
+                type_node: _,
+            } = arena.get(node_id).unwrap().get().symbol.clone()
+            {
                 let name_node_id = node_id
                     .children(arena)
                     .find(|id| {
@@ -274,7 +244,7 @@ impl SymbolTable {
 
                 let name_node = arena.get(name_node_id).unwrap().get();
 
-                let mut symbol = Symbol::new(name_node.content.clone(), name_node.range);
+                let mut symbol = Symbol::new(name_node.content.clone(), kind, name_node.range);
 
                 for id in node_id.descendants(arena) {
                     if let language_def::Symbol::Field { name_node } =
@@ -304,7 +274,14 @@ impl SymbolTable {
                     .unwrap()
                     .get_mut()
                     .symbols
-                    .add(kind, symbol);
+                    .push(symbol);
+            }
+
+            if arena.get(node_id).unwrap().get().kind.is_scope_node() {
+                let subtable = self.parse_scope(node_id, arena);
+                current_table_node_id.append(subtable, &mut self.arena);
+            } else {
+                queue.append(&mut node_id.children(arena).collect());
             }
         }
 
@@ -330,7 +307,8 @@ impl SymbolTable {
                     .unwrap()
                     .get_mut()
                     .symbols
-                    .find_mut(symbol_name)
+                    .iter_mut()
+                    .find(|s| &s.name == symbol_name)
                 {
                     found = true;
                     symbol.add_usage(node.range);
@@ -360,81 +338,9 @@ impl fmt::Display for SymbolTable {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct Symbols {
-    symbols: HashMap<String, Vec<Symbol>>,
-}
-
-impl Symbols {
-    pub fn add(&mut self, symbol_type_name: String, symbol: Symbol) {
-        if !self.symbols.contains_key(&symbol_type_name) {
-            self.symbols.insert(symbol_type_name.clone(), Vec::new());
-        }
-
-        self.symbols
-            .get_mut(&symbol_type_name)
-            .unwrap()
-            .push(symbol);
-    }
-
-    pub fn get_type(&self, symbol_type_name: String) -> Option<&Vec<Symbol>> {
-        self.symbols.get(&symbol_type_name)
-    }
-
-    fn position_filter(&mut self, position: Position) {
-        for list in self.symbols.values_mut() {
-            list.retain(|s| s.def_position.end < position)
-        }
-    }
-
-    pub fn merge(&mut self, mut other: Symbols, position: Position) {
-        other.position_filter(position);
-        self.symbols.extend(other.symbols);
-    }
-
-    pub fn contains(&self, name: &str) -> bool {
-        self.symbols
-            .values()
-            .any(|list| list.iter().any(|s| s.name == name))
-    }
-
-    pub fn find(&self, name: &str) -> Option<&Symbol> {
-        for list in self.symbols.values() {
-            let maybe_symbol = list.iter().find(|&symbol| symbol.name == name);
-
-            if let Some(symbol) = maybe_symbol {
-                return Some(symbol);
-            }
-        }
-        None
-    }
-
-    pub fn find_mut(&mut self, name: &str) -> Option<&mut Symbol> {
-        for list in self.symbols.values_mut() {
-            let maybe_symbol = list.iter_mut().find(|symbol| symbol.name == name);
-
-            if let Some(symbol) = maybe_symbol {
-                return Some(symbol);
-            }
-        }
-        None
-    }
-
-    pub fn get_mut(&mut self, id: usize) -> Option<&mut Symbol> {
-        for list in self.symbols.values_mut() {
-            let maybe_symbol = list.iter_mut().find(|symbol| symbol.id == id);
-
-            if let Some(symbol) = maybe_symbol {
-                return Some(symbol);
-            }
-        }
-        None
-    }
-}
-
-#[derive(Debug, Default, Clone)]
 struct ScopeSymbolTable {
     range: Range,
-    symbols: Symbols,
+    symbols: Vec<Symbol>,
 }
 
 impl ScopeSymbolTable {
@@ -443,10 +349,6 @@ impl ScopeSymbolTable {
             range,
             ..Default::default()
         }
-    }
-
-    fn get_symbols(&self) -> &Symbols {
-        &self.symbols
     }
 }
 
@@ -465,10 +367,8 @@ impl fmt::Display for ScopeSymbolTable {
         output.push_str("-".repeat(62).as_str());
         output.push('\n');
 
-        for (symbol_type, list) in self.symbols.symbols.iter() {
-            for s in list {
-                output.push_str(format!("{: <8} | {}\n", symbol_type, s).as_str());
-            }
+        for s in self.symbols.iter() {
+            output.push_str(&s.to_string());
         }
 
         fmt.write_str(&output)
@@ -479,16 +379,20 @@ impl fmt::Display for ScopeSymbolTable {
 pub struct Symbol {
     id: usize,
     name: String,
+    kind: String,
+    type_symbol: Box<Option<Symbol>>,
     def_position: Range,
     usages: Vec<Range>,
     fields: Option<Vec<Field>>,
 }
 
 impl Symbol {
-    pub fn new(name: String, def_position: Range) -> Symbol {
+    pub fn new(name: String, kind: String, def_position: Range) -> Symbol {
         Symbol {
             id: get_id(),
             name,
+            kind,
+            type_symbol: None.into(),
             def_position,
             usages: vec![],
             fields: None,
@@ -497,6 +401,10 @@ impl Symbol {
 
     pub fn get_id(&self) -> usize {
         self.id
+    }
+
+    pub fn set_type_symbol(&mut self, type_symbol: Symbol) {
+        self.type_symbol = Some(type_symbol).into()
     }
 
     pub fn rename(&mut self, new_name: String) {
@@ -540,6 +448,10 @@ impl Symbol {
             }
         }
         None
+    }
+
+    pub fn get_kind(&self) -> String {
+        self.kind.clone()
     }
 }
 

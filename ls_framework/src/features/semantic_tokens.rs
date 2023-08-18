@@ -1,5 +1,6 @@
 use crate::{
-    language_def,
+    language_def::{self, LanguageDefinition},
+    lsp_mappings::HighlightType,
     metadata::{AstQuery, SymbolTableQuery, Visitable},
     utils,
 };
@@ -130,37 +131,44 @@ pub fn get_keyword_color_data(root_node: &tree_sitter::Node, source_code: &str) 
 pub fn get_symbols_color_data(st_query: &Arc<Mutex<impl SymbolTableQuery>>) -> Vec<ColorData> {
     let semantic_token_types_map = get_semantic_token_map();
 
-    let symbols_map = st_query.lock().unwrap().get_all_symbols();
+    let symbols = st_query.lock().unwrap().get_all_symbols();
 
     let mut color_data = vec![];
-    for symbol_def in &language_def::LanguageDefinition::get().symbol_types {
-        if let Some(symbols) = symbols_map.get(&symbol_def.name) {
-            for symbol in symbols {
-                let def_range = symbol.get_definition_range();
-                color_data.push(ColorData {
-                    line: def_range.start.line,
-                    start: def_range.start.character,
-                    length: def_range.end.character - def_range.start.character,
-                    node_type: *semantic_token_types_map
-                        .get(symbol_def.highlight_type.get().as_str())
-                        .unwrap() as u32,
-                });
+    for symbol in symbols {
+        let highlight_type = get_symbol_highlight_type(symbol.get_kind());
+        let node_type = *semantic_token_types_map
+            .get(highlight_type.get().as_str())
+            .unwrap() as u32;
 
-                for range in symbol.get_usages() {
-                    color_data.push(ColorData {
-                        line: range.start.line,
-                        start: range.start.character,
-                        length: range.end.character - range.start.character,
-                        node_type: *semantic_token_types_map
-                            .get(symbol_def.highlight_type.get().as_str())
-                            .unwrap() as u32,
-                    });
-                }
-            }
+        let def_range = symbol.get_definition_range();
+        color_data.push(ColorData {
+            line: def_range.start.line,
+            start: def_range.start.character,
+            length: def_range.end.character - def_range.start.character,
+            node_type,
+        });
+
+        for range in symbol.get_usages() {
+            color_data.push(ColorData {
+                line: range.start.line,
+                start: range.start.character,
+                length: range.end.character - range.start.character,
+                node_type,
+            });
         }
     }
 
     color_data
+}
+
+fn get_symbol_highlight_type(symbol_kind: String) -> HighlightType {
+    LanguageDefinition::get()
+        .symbol_types
+        .iter()
+        .find(|symbol_type| symbol_type.name == symbol_kind)
+        .unwrap()
+        .highlight_type
+        .clone()
 }
 
 pub fn get_ast_color_data(ast_query: &Arc<Mutex<impl AstQuery>>) -> Vec<ColorData> {

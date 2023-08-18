@@ -62,6 +62,14 @@ pub struct Node {
     pub content: String,
     pub symbol: Symbol,
     pub semantic_token_type: Option<HighlightType>,
+    pub linked_symbol: Option<SymbolRef>,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct SymbolRef {
+    pub symbol_table_id: NodeId,
+    pub kind: String,
+    pub index: usize,
 }
 
 impl Node {
@@ -78,7 +86,16 @@ impl Node {
             content: utils::get_node_text(syntax_node, source_code),
             symbol,
             semantic_token_type,
+            linked_symbol: None,
         }
+    }
+
+    pub fn link(&mut self, symbol_table_id: NodeId, symbol_kind: String, index: usize) {
+        self.linked_symbol = Some(SymbolRef {
+            symbol_table_id,
+            kind: symbol_kind,
+            index,
+        })
     }
 }
 
