@@ -358,7 +358,7 @@ impl fmt::Display for ScopeSymbolTable {
 
         output.push_str(
             format!(
-                "{0: <8} | {1: <15} | {2: <10} | {3: <10} | {4: <10}\n",
+                "{0: <10} | {1: <15} | {2: <10} | {3: <10} | {4: <10}\n",
                 "symbol", "name", "position", "usages", "fields"
             )
             .as_str(),
@@ -465,7 +465,8 @@ impl fmt::Display for Symbol {
 
         fmt.write_str(
             format!(
-                "{0: <15} | {1: <10} | {2: <10} | {3: <10}",
+                "{0: <10} | {1: <15} | {2: <10} | {3: <10} | {4: <10}\n",
+                self.kind,
                 self.name,
                 format!(
                     "l:{} c:{}",
