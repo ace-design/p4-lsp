@@ -180,8 +180,7 @@ impl LanguageServer for Backend {
             .await;
 
         info!("0");
-        let mut petr4 = self.petr4.write().unwrap();
-        (*petr4).testing(uri.path());
+        self.petr4.read().unwrap().testing(uri.path());
         info!("1");
     }
 

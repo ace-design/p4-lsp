@@ -21,30 +21,25 @@ fn get_command_output(
     args.append(plus_args);
     debug!("Command: {} Args: {:?}", command, args);
     let mut partial_command = Command::new(command);
-    
+
     if !args.is_empty() {
-        
         partial_command.args(args);
     }
-    
 
     if current_dir != "" {
         partial_command.current_dir(current_dir);
     }
-    
 
     let command_result = partial_command
         .stderr(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn();
-    
 
     if let Ok(command) = command_result {
         let result = command.wait_with_output().unwrap();
 
         (result.stdout, result.stderr)
     } else {
-        
         (vec![], "error".as_bytes().to_vec())
     }
 }
@@ -59,6 +54,7 @@ impl Petr4 {
             vec!["rm".to_string()],
             vec!["rm".to_string(), "-r".to_string()],
             vec!["mkdir".to_string(), "-p".to_string()],
+            vec!["which".to_string()]
         ];
 
         if os == "windows" {
@@ -69,6 +65,7 @@ impl Petr4 {
                 vec!["del".to_string()],
                 vec!["rmdir".to_string(), "/s".to_string(), "/q".to_string()],
                 vec!["mkdir".to_string()],
+                vec!["where".to_string()]
             ];
         }
 
@@ -117,19 +114,17 @@ impl Petr4 {
         self.write_output(path_output, "success".as_bytes());
     }
 
-    pub fn testing(&mut self, p4: &str) {
+    pub fn testing(&self, p4: &str) {
         let path_p4 = Path::new(p4);
         let mut number_commande = 0;
         let mut command_using = 0;
 
-        
         let path_output = path_p4.clone().with_extension("output");
         get_command_output(
             "".to_string(),
             &mut self.liste_command_str[2].clone(),
             &mut vec![format!("{}", path_output.as_os_str().to_str().unwrap())],
         );
-        
 
         // verify the stf file exists
         let path_stf: std::path::PathBuf = path_p4.clone().with_extension("stf");
@@ -140,7 +135,6 @@ impl Petr4 {
         // verify the binary of the petr4 exists
         let path_test_binary = self.get_petr4_path().join("_build/default/bin/test.exe");
         if path_test_binary.exists() {
-            
             // find in the new name for the p4 folder of testing file
             let mut temp_name = "custom-stf-tests".to_string();
             let mut new_p4_testing = self
@@ -150,7 +144,7 @@ impl Petr4 {
                 temp_name = format!("{}_exists", temp_name.clone());
                 new_p4_testing = new_p4_testing.with_file_name(temp_name.clone());
             }
-            
+
             let new_p4_testing_path = new_p4_testing.as_os_str().to_str().unwrap();
 
             let p4_testing_path = self
@@ -170,7 +164,6 @@ impl Petr4 {
                 self.fail(&path_output, number_commande, command_using, stdout, stderr);
                 return;
             }
-            
 
             command_using = 4;
             let (stdout, stderr) = get_command_output(
@@ -184,7 +177,6 @@ impl Petr4 {
                 self.delete(new_p4_testing_path, "", "");
                 return;
             }
-            
 
             // find in the new name for the p4 include folder of testing file
             let mut temp_name = "examples".to_string();
@@ -195,7 +187,7 @@ impl Petr4 {
                 temp_name = format!("{}_exists", temp_name.clone());
                 new_p4_include_testing = new_p4_include_testing.with_file_name(temp_name.clone());
             }
-            
+
             let new_p4_include_testing_path_str =
                 new_p4_include_testing.as_os_str().to_str().unwrap();
 
@@ -204,10 +196,12 @@ impl Petr4 {
 
             // create temp folder
             let mut temp_name = "p4_lsp_testing_petr4".to_string();
-            let mut p4_testing_file_folder_path_link = env::temp_dir().clone().join(temp_name.clone());
+            let mut p4_testing_file_folder_path_link =
+                env::temp_dir().clone().join(temp_name.clone());
             while new_p4_testing.exists() {
                 temp_name = format!("{}_exists", temp_name.clone());
-                p4_testing_file_folder_path_link = p4_testing_file_folder_path_link.with_file_name(temp_name.clone());
+                p4_testing_file_folder_path_link =
+                    p4_testing_file_folder_path_link.with_file_name(temp_name.clone());
             }
 
             let p4_testing_file_folder_path_link_root = p4_testing_file_folder_path_link.join(
@@ -215,7 +209,7 @@ impl Petr4 {
                     .strip_prefix(self.get_workspace_root())
                     .unwrap(),
             );
-            
+
             command_using = 1;
             let (stdout, stderr) = get_command_output(
                 "".to_string(),
@@ -238,7 +232,6 @@ impl Petr4 {
                 );
                 return;
             }
-            
 
             // add folder for petr4 testing
             command_using = 4;
@@ -268,7 +261,7 @@ impl Petr4 {
                 );
                 return;
             }
-            
+
             command_using = 4;
             let (stdout, stderr) = get_command_output(
                 "".to_string(),
@@ -296,12 +289,10 @@ impl Petr4 {
                 );
                 return;
             }
-            
 
             // get the include file and copy it the include folder :
             let look_path = self.get_workspace_root().as_os_str().to_str().unwrap();
             if self.bool_windows {
-                
                 /* from chatgpt */
                 command_using = self.liste_command_str.len() + 10;
                 let (stdout, stderr) = get_command_output(
@@ -357,10 +348,10 @@ impl Petr4 {
                 }
 
                 // add p4 include testing
-                command_using = self.liste_command_str.len() + 11;
+                command_using = 5;
                 let (stdout, stderr) = get_command_output(
                     "".to_string(),
-                    &mut vec!["where".to_string()],
+                    &mut self.liste_command_str[command_using].clone(),
                     &mut vec!["p4c".to_string()],
                 );
                 number_commande += 1;
@@ -379,7 +370,6 @@ impl Petr4 {
 
                 // TODO : get the path to the p4 include folder from the where, and create a link
             } else {
-                
                 // do this command : https://unix.stackexchange.com/questions/406561/gnu-find-get-absolute-and-relative-path-in-exec
                 command_using = self.liste_command_str.len() + 10;
                 let (stdout, stderr) = get_command_output(
@@ -422,13 +412,12 @@ impl Petr4 {
                     );
                     return;
                 }
-                
 
                 // add p4 include testing
-                command_using = self.liste_command_str.len() + 11;
+                command_using = 5;
                 let (stdout, stderr) = get_command_output(
                     "".to_string(),
-                    &mut vec!["which".to_string()],
+                    &mut self.liste_command_str[command_using].clone(),
                     &mut vec!["p4c".to_string()],
                 );
                 number_commande += 1;
@@ -499,7 +488,6 @@ impl Petr4 {
                     );
                     return;
                 }
-                
 
                 // create link
                 command_using = 0;
@@ -530,14 +518,16 @@ impl Petr4 {
                     );
                     return;
                 }
-                
             }
 
             // copy p4 and stf file
             // find in what name the p4 file will be create for the testing
             let name_p4_testing = "testing_p4_lsp_file";
-            let mut p4_testing = self.get_petr4_path().join(format!("_build/default/p4stf/custom-stf-tests/{}.p4", name_p4_testing));
-            
+            let mut p4_testing = self.get_petr4_path().join(format!(
+                "_build/default/p4stf/custom-stf-tests/{}.p4",
+                name_p4_testing
+            ));
+
             // create the p4 file
             command_using = 0;
             let (stdout, stderr) = get_command_output(
@@ -561,7 +551,6 @@ impl Petr4 {
                 );
                 return;
             }
-            
 
             // create the stf file
             command_using = 0;
@@ -594,7 +583,6 @@ impl Petr4 {
                 );
                 return;
             }
-            
 
             // execute the commande
             command_using = self.liste_command_str.len() + 20;
@@ -624,7 +612,6 @@ impl Petr4 {
                 );
                 return;
             }
-            
 
             // get the output
             let parts = str::from_utf8(&stdout).unwrap().split("\n");
@@ -632,7 +619,6 @@ impl Petr4 {
                 if part.contains(format!(" {}.p4", name_p4_testing).as_str())
                     && part.contains("petr4 stf tests")
                 {
-
                     if part.contains("[FAIL]") {
                         let mut index = "-1".to_string();
                         for el in part.split(" ") {
@@ -682,7 +668,6 @@ impl Petr4 {
                     break;
                 }
             }
-            
 
             // remove the p4 and stf file
             self.delete(
@@ -693,12 +678,11 @@ impl Petr4 {
                     .to_str()
                     .unwrap(),
             );
-            
         }
     }
 
     fn delete(
-        &mut self,
+        &self,
         new_petr4_path: &str,
         new_petr4_include_path: &str,
         p4_testing_file_folder_path_link: &str,
