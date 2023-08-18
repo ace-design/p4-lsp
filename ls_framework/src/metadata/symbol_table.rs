@@ -233,7 +233,7 @@ impl SymbolTable {
                 kind,
                 name_node,
                 type_node: _,
-            } = arena.get(node_id).unwrap().get().symbol.clone()
+            } = &arena.get(node_id).unwrap().get().symbol
             {
                 let name_node_id = node_id
                     .children(arena)
@@ -244,7 +244,8 @@ impl SymbolTable {
 
                 let name_node = arena.get(name_node_id).unwrap().get();
 
-                let mut symbol = Symbol::new(name_node.content.clone(), kind, name_node.range);
+                let mut symbol =
+                    Symbol::new(name_node.content.clone(), kind.clone(), name_node.range);
 
                 for id in node_id.descendants(arena) {
                     if let language_def::Symbol::Field { name_node } =
@@ -406,10 +407,6 @@ impl Symbol {
 
     pub fn set_type_symbol(&mut self, type_symbol: Symbol) {
         self.type_symbol = Some(type_symbol).into()
-    }
-
-    pub fn rename(&mut self, new_name: String) {
-        self.name = new_name;
     }
 
     pub fn get_name(&self) -> String {
