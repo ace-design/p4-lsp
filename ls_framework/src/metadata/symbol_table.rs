@@ -23,7 +23,7 @@ pub struct SymbolTable {
 pub trait SymbolTableActions {
     fn get_all_symbols(&self) -> Vec<Symbol>;
     fn get_symbols_in_scope(&self, position: Position) -> Vec<Symbol>;
-    fn get_variable_at_pos(&self, position: Position, source_code: &str) -> Option<Vec<Field>>;
+    fn get_variable_at_pos(&self, position: Position, source_code: &str) -> Option<Vec<Symbol>>;
     fn get_top_level_symbols(&self) -> Vec<Symbol>;
     fn get_symbol_at_pos(&self, name: String, position: Position) -> Option<&Symbol>;
     fn rename_symbol(&mut self, id: usize, new_name: String);
@@ -62,7 +62,7 @@ impl SymbolTableActions for SymbolTable {
         symbols
     }
 
-    fn get_variable_at_pos(&self, position: Position, source_code_t: &str) -> Option<Vec<Field>> {
+    fn get_variable_at_pos(&self, position: Position, source_code_t: &str) -> Option<Vec<Symbol>> {
         let mut source_code = source_code_t.to_string();
         let pos = utils::pos_to_byte(position, &source_code);
         let _ = source_code.split_off(pos);
@@ -262,8 +262,9 @@ impl SymbolTable {
                             .unwrap()
                             .get();
 
-                        symbol.add_field(Field::new(
+                        symbol.add_field(Symbol::new(
                             field_name_node.content.clone(),
+                            "Field".to_string(),
                             field_name_node.range,
                         ));
                     }
@@ -383,7 +384,7 @@ pub struct Symbol {
     type_symbol: Box<Option<Symbol>>,
     def_position: Range,
     usages: Vec<Range>,
-    fields: Option<Vec<Field>>,
+    fields: Option<Vec<Symbol>>,
 }
 
 impl Symbol {
@@ -427,7 +428,7 @@ impl Symbol {
         &self.usages
     }
 
-    pub fn add_field(&mut self, field: Field) {
+    pub fn add_field(&mut self, field: Symbol) {
         if let Some(fields) = &mut self.fields {
             fields.push(field);
         } else {
@@ -435,11 +436,11 @@ impl Symbol {
         }
     }
 
-    pub fn get_fields(&self) -> &Option<Vec<Field>> {
+    pub fn get_fields(&self) -> &Option<Vec<Symbol>> {
         &self.fields
     }
 
-    pub fn contains_fields(&self, name: String) -> Option<Field> {
+    pub fn contains_fields(&self, name: String) -> Option<Symbol> {
         if let Some(fields) = &self.fields {
             for field in fields {
                 if field.get_name() == name {
@@ -477,34 +478,5 @@ impl fmt::Display for Symbol {
             )
             .as_str(),
         )
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Field {
-    name: String,
-    def_position: Range,
-    usages: Vec<Range>,
-}
-
-impl Field {
-    pub fn new(name: String, def_position: Range) -> Field {
-        Field {
-            name,
-            def_position,
-            usages: vec![],
-        }
-    }
-
-    pub fn get_name(&self) -> String {
-        self.name.clone()
-    }
-
-    pub fn get_definition_range(&self) -> Range {
-        self.def_position
-    }
-
-    pub fn get_usages(&self) -> &Vec<Range> {
-        &self.usages
     }
 }

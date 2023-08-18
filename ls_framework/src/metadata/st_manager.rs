@@ -1,4 +1,4 @@
-use super::{symbol_table::SymbolTable, Field};
+use super::symbol_table::SymbolTable;
 use super::{Ast, Symbol};
 
 use tower_lsp::lsp_types::Position;
@@ -17,7 +17,7 @@ pub trait SymbolTableEditor {
 
 pub trait SymbolTableQuery {
     fn get_symbols_at_pos(&self, position: Position) -> Vec<Symbol>;
-    fn get_name_field(&self, position: Position, source_code: &str) -> Option<Vec<Field>>;
+    fn get_name_field(&self, position: Position, source_code: &str) -> Option<Vec<Symbol>>;
     fn get_symbol_at_pos(&self, name: String, position: Position) -> Option<&Symbol>;
     fn get_all_symbols(&self) -> Vec<Symbol>;
 }
@@ -44,7 +44,7 @@ impl SymbolTableQuery for SymbolTableManager {
         self.symbol_table.get_symbol_at_pos(name, position)
     }
 
-    fn get_name_field(&self, position: Position, source_code: &str) -> Option<Vec<Field>> {
+    fn get_name_field(&self, position: Position, source_code: &str) -> Option<Vec<Symbol>> {
         self.symbol_table.get_variable_at_pos(position, source_code)
     }
 
