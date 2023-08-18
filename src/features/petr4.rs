@@ -1,34 +1,82 @@
-use async_process::Command;
-use std::path::Path;
-use std::str;
 use std::env;
+use std::path::Path;
+use std::process::{Command, Stdio};
+use std::str;
 
 pub struct Petr4 {
     petr4_path: String,
     workspace_root: String,
-    os: String,
     bool_windows: bool,
-    liste_command_str: Vec<Vec<String>>
+    liste_command_str: Vec<Vec<String>>,
 }
 
+fn get_command_output(
+    current_dir: String,
+    args: &mut Vec<String>,
+    plus_args: &mut Vec<String>,
+) -> (Vec<u8>, Vec<u8>) {
+    let command = args.remove(0);
+    args.append(plus_args);
+    debug!("Command: {} Args: {:?}", command, args);
+    let mut partial_command = Command::new(command);
+    info!("-1");
+    if !args.is_empty() {
+        info!("-2");
+        partial_command.args(args);
+    }
+    info!("0");
+
+    if current_dir != "" {
+        info!("1,{}", current_dir);
+        partial_command.current_dir(current_dir);
+    }
+    info!("2");
+
+    let command_result = partial_command
+        .stderr(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn();
+    info!("3");
+
+    if let Ok(command) = command_result {
+        let result = command.wait_with_output().unwrap();
+        info!("a,{:?}", result);
+
+        (result.stdout, result.stderr)
+    } else {
+        info!("b");
+        (vec![], "error".as_bytes().to_vec())
+    }
+}
 
 impl Petr4 {
     pub fn new() -> Petr4 {
         let os: &str = env::consts::OS;
         let mut bool_windows: bool = false;
-        let mut liste_command_str : Vec<Vec<String>> = vec![vec!["ln".to_string(), "-s".to_string()], vec!["mv".to_string()], vec!["rm".to_string()], vec!["rm".to_string(), "-r".to_string()], vec!["mkdir".to_string(), "-p".to_string()]];
-    
+        let mut liste_command_str: Vec<Vec<String>> = vec![
+            vec!["ln".to_string(), "-s".to_string()],
+            vec!["mv".to_string()],
+            vec!["rm".to_string()],
+            vec!["rm".to_string(), "-r".to_string()],
+            vec!["mkdir".to_string(), "-p".to_string()],
+        ];
+
         if os == "windows" {
             bool_windows = true;
-            liste_command_str = vec![vec!["mklink".to_string()], vec!["move".to_string()], vec!["del".to_string()], vec!["rmdir".to_string(), "/s".to_string(), "/q".to_string()], vec!["mkdir".to_string()]];
+            liste_command_str = vec![
+                vec!["mklink".to_string()],
+                vec!["move".to_string()],
+                vec!["del".to_string()],
+                vec!["rmdir".to_string(), "/s".to_string(), "/q".to_string()],
+                vec!["mkdir".to_string()],
+            ];
         }
 
         Petr4 {
             petr4_path: "".to_string(),
             workspace_root: "".to_string(),
-            os: os.to_string(),
             bool_windows,
-            liste_command_str
+            liste_command_str,
         }
     }
     pub fn config(&mut self, petr4: String, workspace: String) {
@@ -36,326 +84,609 @@ impl Petr4 {
         self.workspace_root = workspace;
     }
     pub fn get_petr4_path(&self) -> &Path {
-        return Path::new(&self.petr4_path)
+        return Path::new(&self.petr4_path);
     }
     pub fn get_workspace_root(&self) -> &Path {
-        return Path::new(&self.workspace_root)
-    }
-    pub fn get_os(&self) -> String {
-        return self.os.clone()
+        return Path::new(&self.workspace_root);
     }
     pub fn get_bool_windows(&self) -> bool {
-        return self.bool_windows.clone()
+        return self.bool_windows.clone();
     }
     pub fn get_liste_command_str(&self) -> Vec<Vec<String>> {
-        return self.liste_command_str.clone()
+        return self.liste_command_str.clone();
     }
-    pub fn get(&self) -> Option<(&Path, &Path, bool, Vec<Vec<String>>)> {
-        return Some((self.get_petr4_path(), self.get_workspace_root(), self.get_bool_windows(), self.get_liste_command_str()))
-    }
-    
-}
 
-fn create_command(command: &mut Vec<String>) -> Command{
-    let mut t: Command = Command::new(command.remove(0));
-    for el in command{
-        t.arg(el);
-    }
-    return t;
-}
+    pub fn testing(&mut self, p4: &str) {
+        let path_p4 = Path::new(p4);
 
-pub async fn testing(p4: &str, petr4_args: Option<(&Path, &Path, bool, Vec<Vec<String>>)>) {
-    let path_p4 = Path::new(p4);
-
-
-    if let Some((petr4_path, workspace_root, bool_windows, mut liste_command_str)) = petr4_args{
         info!("a");
         let path_output = path_p4.clone().with_extension("output");
-        create_command(&mut liste_command_str[2])
-            .arg(format!("\"{}\"",path_output.as_os_str().to_str().unwrap()))
-            .output()
-            .await;
-    
-        // verify the stf file exists
-        let path_stf = path_p4.clone().with_extension("stf");
-        if !path_stf.exists(){
-            return;
-        }
+        get_command_output(
+            "".to_string(),
+            &mut self.liste_command_str[2].clone(),
+            &mut vec![format!("{}", path_output.as_os_str().to_str().unwrap())],
+        );
         info!("b");
 
-        // verify the binary of the petr4 exists
-        let path_test_binary = petr4_path.clone().join("_build/default/bin/test.exe");
-        if path_test_binary.exists(){
-            info!("c");
-            // find in the new name for the p4 folder of testing file
-            let new_p4_testing = petr4_path.clone().join("_build/default/p4stf/custom-stf-tests");
-            while new_p4_testing.exists(){
-                new_p4_testing.join("_exists");
-            }
-            info!("d");
-            let new_p4_testing_path = new_p4_testing.as_os_str().to_str().unwrap();
-    
-            let p4_testing_path = petr4_path.clone().join("_build/default/p4stf/custom-stf-tests");
-            match create_command(&mut liste_command_str[1])
-                .arg(format!("\"{}\"",p4_testing_path.as_os_str().to_str().unwrap()))
-                .arg(format!("\"{}\"",new_p4_testing_path))
-                .output()
-                .await {
-                    Ok(_) => {}
-                    Err(_) => {
-                        return;
-                    }
-                }
-            match create_command(&mut liste_command_str[4])
-                .arg(format!("\"{}\"",p4_testing_path.as_os_str().to_str().unwrap()))
-                .output()
-                .await {
-                    Ok(_) => {}
-                    Err(_) => {
-                        delete(petr4_path,new_p4_testing_path, "", &mut liste_command_str).await;
-                        return;
-                    }
-                }
-            
-            // find in the new name for the p4 include folder of testing file
-            let new_p4_include_testing = petr4_path.clone().join("_build/default/examples");
-            while new_p4_include_testing.exists(){
-                new_p4_include_testing.join("_exists");
-            }
-            info!("d");
-            let new_p4_include_testing_path_str = new_p4_include_testing.as_os_str().to_str().unwrap();
-    
-            let p4_include_testing_path = petr4_path.clone().join("_build/default/examples");
-            match create_command(&mut liste_command_str[1])
-                .arg(format!("\"{}\"",p4_include_testing_path.as_os_str().to_str().unwrap()))
-                .arg(format!("\"{}\"",new_p4_include_testing_path_str))
-                .output()
-                .await {
-                    Ok(_) => {}
-                    Err(_) => {
-                        delete(petr4_path,new_p4_testing_path, "", &mut liste_command_str).await;
-                        return;
-                    }
-                }
-                match create_command(&mut liste_command_str[4])
-                    .arg("-p")
-                    .arg(format!("\"{}\"",p4_include_testing_path.clone().join("checker_tests/good").as_os_str().to_str().unwrap()))
-                    .output()
-                    .await {
-                        Ok(_) => {
-                        }
-                        Err(_) => {
-                            delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
-                            return;
-                        }
-                    }
-                match create_command(&mut liste_command_str[4])
-                    .arg("-p")
-                    .arg(format!("\"{}\"",p4_include_testing_path.clone().join("checker_tests/excluded/good").as_os_str().to_str().unwrap()))
-                    .output()
-                    .await {
-                        Ok(_) => {
-                        }
-                        Err(_) => {
-                            delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
-                            return;
-                        }
-                    }
+        // verify the stf file exists
+        let path_stf: std::path::PathBuf = path_p4.clone().with_extension("stf");
+        info!("c,{:?},{:?},{:?}", path_p4, path_stf, path_output);
+        if !path_stf.exists() {
+            return;
+        }
 
+        // verify the binary of the petr4 exists
+        let path_test_binary = self.get_petr4_path().join("_build/default/bin/test.exe");
+        if path_test_binary.exists() {
+            info!("d");
+            // find in the new name for the p4 folder of testing file
+            let mut temp_name = "custom-stf-tests".to_string();
+            let mut new_p4_testing = self
+                .get_petr4_path()
+                .join(format!("_build/default/p4stf/{}", temp_name.clone()));
+            while new_p4_testing.exists() {
+                temp_name = format!("{}_exists", temp_name.clone());
+                new_p4_testing = new_p4_testing.with_file_name(temp_name.clone());
+            }
+            info!("e");
+            let new_p4_testing_path = new_p4_testing.as_os_str().to_str().unwrap();
+
+            let p4_testing_path = self
+                .get_petr4_path()
+                .join("_build/default/p4stf/custom-stf-tests");
+            let (_, stderr) = get_command_output(
+                "".to_string(),
+                &mut self.liste_command_str[1].clone(),
+                &mut vec![
+                    format!("{}", p4_testing_path.as_os_str().to_str().unwrap()),
+                    format!("{}", new_p4_testing_path),
+                ],
+            );
+            if !stderr.is_empty() {
+                return;
+            }
+            info!("f");
+
+            let (_, stderr) = get_command_output(
+                "".to_string(),
+                &mut self.liste_command_str[4].clone(),
+                &mut vec![format!("{}", p4_testing_path.as_os_str().to_str().unwrap())],
+            );
+            if !stderr.is_empty() {
+                self.delete(new_p4_testing_path, "", "");
+                return;
+            }
+            info!("g");
+
+            // find in the new name for the p4 include folder of testing file
+            let mut temp_name = "examples".to_string();
+            let mut new_p4_include_testing = self
+                .get_petr4_path()
+                .join(format!("_build/default/{}", temp_name.clone()));
+            while new_p4_include_testing.exists() {
+                temp_name = format!("{}_exists", temp_name.clone());
+                new_p4_include_testing = new_p4_include_testing.with_file_name(temp_name.clone());
+            }
+            info!("h");
+            let new_p4_include_testing_path_str =
+                new_p4_include_testing.as_os_str().to_str().unwrap();
+
+            let p4_testing_file_folder_path = path_p4.parent().unwrap();
+            let p4_include_testing_path = self.get_petr4_path().join("_build/default/examples");
+            // create temp folder
+            let p4_testing_file_folder_path_link = env::temp_dir().join("p4_lsp_testing_petr4");
+            let p4_testing_file_folder_path_link_root = p4_testing_file_folder_path_link.join(
+                p4_testing_file_folder_path
+                    .strip_prefix(self.get_workspace_root())
+                    .unwrap(),
+            );
+            info!("i");
+            let (_, stderr) = get_command_output(
+                "".to_string(),
+                &mut self.liste_command_str[1].clone(),
+                &mut vec![
+                    format!("{}", p4_include_testing_path.as_os_str().to_str().unwrap()),
+                    format!("{}", new_p4_include_testing_path_str),
+                ],
+            );
+            if !stderr.is_empty() {
+                self.delete(
+                    new_p4_testing_path,
+                    new_p4_include_testing_path_str,
+                    p4_testing_file_folder_path_link
+                        .as_os_str()
+                        .to_str()
+                        .unwrap(),
+                );
+                return;
+            }
+            info!("j");
+
+            // add folder for petr4 testing
+            let (_, stderr) = get_command_output(
+                "".to_string(),
+                &mut self.liste_command_str[4].clone(),
+                &mut vec![format!(
+                    "{}",
+                    p4_testing_file_folder_path_link_root
+                        .clone()
+                        .join("checker_tests/good")
+                        .as_os_str()
+                        .to_str()
+                        .unwrap()
+                )],
+            );
+            if !stderr.is_empty() {
+                self.delete(
+                    new_p4_testing_path,
+                    new_p4_include_testing_path_str,
+                    p4_testing_file_folder_path_link
+                        .as_os_str()
+                        .to_str()
+                        .unwrap(),
+                );
+                return;
+            }
+            info!("k");
+            let (_, stderr) = get_command_output(
+                "".to_string(),
+                &mut self.liste_command_str[4].clone(),
+                &mut vec![format!(
+                    "{}",
+                    p4_testing_file_folder_path_link_root
+                        .clone()
+                        .join("checker_tests/excluded/good")
+                        .as_os_str()
+                        .to_str()
+                        .unwrap()
+                )],
+            );
+            if !stderr.is_empty() {
+                self.delete(
+                    new_p4_testing_path,
+                    new_p4_include_testing_path_str,
+                    p4_testing_file_folder_path_link
+                        .as_os_str()
+                        .to_str()
+                        .unwrap(),
+                );
+                return;
+            }
+            info!("l");
 
             // get the include file and copy it the include folder :
-            if bool_windows{
-                /* TODO : chat gpt for the find :
-                Command::new("cmd")
-            .arg("/C")
-            .arg(format!(
-                r#"for /r {} %%F in (*.p4) do xcopy /s /i "%%F" "{}""#,
-                source_dir, dest_dir
-            )) */
-            }else{
-                match Command::new("sh")
-                .arg("-c")
-                .arg(&format!(r#"find "{}" -type f -iname '*.p4' -exec cp --parents "{{}}" "{}" \;"#, ".", p4_include_testing_path.as_os_str().to_str().unwrap()))
-                .current_dir(workspace_root.as_os_str().to_str().unwrap())
-                .output()
-                .await {
-                    Ok(x) => {
-                        info!("a{:?}",x);
-                    }
-                    Err(e) => {
-                        info!("b{:?}",e);
-                        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
-                        return;
-                    }
+                let look_path = self.get_workspace_root().as_os_str().to_str().unwrap();
+            if self.bool_windows {
+                info!("m");
+                /* from chatgpt */
+                let (_, stderr) = get_command_output(
+                    "".to_string(),
+                    &mut vec!["cmd".to_string(), "/C".to_string()],
+                    &mut vec![format!(
+                        r#"setlocal enabledelayedexpansion
+
+                        set "d={look}"
+                        set "c={copy}"
+                        
+                        for /r "%d%" %%F in (*.p4) do (
+                            set "file=%%F"
+                            set "relative=!file:%d%\=!"
+                        
+                            if exist "%%F\" (
+                                mkdir "%c%\!relative!"
+                            ) else if exist "%%F" (
+                                set "dir=%%~dpF"
+                                set "relative_dir=!relative:*\=!"
+                                set "relative_dir=!relative_dir:~0,-1!"
+                                if not "!relative_dir!"=="!relative!" (
+                                    if exist "!dir!" (
+                                        if not exist "%c%\!relative_dir!" (
+                                            mkdir "%c%\!relative_dir!"
+                                        )
+                                    )
+                                )
+                                mklink "%c%\!relative!" "%%F"
+                            )
+                        )
+                        
+                        endlocal"#,
+                        copy = p4_testing_file_folder_path_link
+                            .as_os_str()
+                            .to_str()
+                            .unwrap(),
+                        look = look_path.clone()
+                    )],
+                );
+                if !stderr.is_empty() {
+                    self.delete(
+                        new_p4_testing_path,
+                        new_p4_include_testing_path_str,
+                        p4_testing_file_folder_path_link
+                            .as_os_str()
+                            .to_str()
+                            .unwrap(),
+                    );
+                    return;
                 }
 
-                match Command::new("which")
-                .arg("p4c")
-                .output()
-                .await {
-                    Ok(x) => {
-                        let stdout = str::from_utf8(&x.stdout).unwrap();
-                        info!("{}",stdout);
-                        let parts = ((stdout.split("\n").collect::<Vec<&str>>())[0]).split("/");
-                        let mut path_include = "".to_string();
-                        let mut index = 1;
-                        let length = parts.clone().count() -1;
-                        for part in parts{
-                            info!("{}",part);
-                            if index == length{
-                                path_include = format!("{}/{}", path_include, "share");
-                            } else{
-                                path_include = format!("{}/{}", path_include, part);
-                            }
-                            index += 1;
-                        }
-                        path_include = format!("{}/{}", path_include, "p4include");
-                        info!("{}",path_include);
-                        match Command::new("sh")
-                        .arg("-c")
-                        .arg(&format!(r#"find "{}" -type f -iname '*.p4' -exec cp --parents "{{}}" "{}" \;"#, ".", p4_include_testing_path.as_os_str().to_str().unwrap()))
-                        .current_dir(path_include.clone())
-                        .output()
-                        .await {
-                            Ok(x) => {
-                                info!("c{:?}",x);
-                            }
-                            Err(e) => {
-                                info!("d{:?}",e);
-                                delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
-                                return;
-                            }
-                        }}
-                    Err(e) => {
-                        info!("e{:?}",e);
-                        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
-                        return;
-                    }
+                // add p4 include testing
+                let (stdout, stderr) = get_command_output(
+                    "".to_string(),
+                    &mut vec!["where".to_string()],
+                    &mut vec!["p4c".to_string()],
+                );
+                if !stderr.is_empty() {
+                    self.delete(
+                        new_p4_testing_path,
+                        new_p4_include_testing_path_str,
+                        p4_testing_file_folder_path_link
+                            .as_os_str()
+                            .to_str()
+                            .unwrap(),
+                    );
+                    return;
                 }
+
+                // TODO : get the path to the p4 include folder from the where, and create a link
+
+            } else {
+                info!("n");
+                // do this command : https://unix.stackexchange.com/questions/406561/gnu-find-get-absolute-and-relative-path-in-exec
+                let (_, stderr) = get_command_output(
+                    "".to_string(),
+                    &mut vec!["sh".to_string(), "-c".to_string()],
+                    &mut vec![format!(
+                        r#"find {look} -iname "*.p4" -exec sh -c '
+                        file="{{}}"
+                        d="{look}"
+                        relative=${{file#"$d/"}}
+                        if [ -d $file ]; then
+                            mkdir -p "{copy}/$relative"
+                        elif [ -f $file ]; then
+                            dir=${{file%/*}}
+                            relative_dir=${{relative%/*}}
+                            relative_dir=${{relative_dir:-.}}
+                            if [ "$relative_dir" != "$relative" ] && [ -d "$dir" ] && [ ! -d "{copy}/$relative_dir" ]; then
+                                mkdir -p "{copy}/$relative_dir"
+                            fi
+                            ln -s "$file" "{copy}/$relative"
+                        fi
+                      ' \;"#,
+                        copy = p4_testing_file_folder_path_link
+                            .as_os_str()
+                            .to_str()
+                            .unwrap(),
+                        look = look_path.clone()
+                    )],
+                );
+                if !stderr.is_empty() {
+                    self.delete(
+                        new_p4_testing_path,
+                        new_p4_include_testing_path_str,
+                        p4_testing_file_folder_path_link
+                            .as_os_str()
+                            .to_str()
+                            .unwrap(),
+                    );
+                    return;
+                }
+                info!("o");
+
+                // add p4 include testing
+                let (stdout, stderr) = get_command_output(
+                    "".to_string(),
+                    &mut vec!["which".to_string()],
+                    &mut vec!["p4c".to_string()],
+                );
+                if !stderr.is_empty() {
+                    self.delete(
+                        new_p4_testing_path,
+                        new_p4_include_testing_path_str,
+                        p4_testing_file_folder_path_link
+                            .as_os_str()
+                            .to_str()
+                            .unwrap(),
+                    );
+                    return;
+                }
+                let stdout = str::from_utf8(&stdout).unwrap();
+                info!("p-{}", stdout);
+                let parts = ((stdout.split("\n").collect::<Vec<&str>>())[0]).split("/");
+                let mut path_include = "".to_string();
+                let mut index = 1;
+                let length = parts.clone().count() - 1;
+                for part in parts {
+                    info!("{}", part);
+                    if index == length {
+                        path_include = format!("{}/{}", path_include, "share");
+                    } else {
+                        path_include = format!("{}/{}", path_include, part);
+                    }
+                    index += 1;
+                }
+                path_include = format!("{}/{}", path_include, "p4include");
+                info!("q-{}", path_include);
+                let (_, stderr) = get_command_output(
+                    "".to_string(),
+                    &mut vec!["sh".to_string(), "-c".to_string()],
+                    &mut vec![format!(
+                        r#"find {look} -iname "*.p4" -exec sh -c '
+                        file="{{}}"
+                        d="{look}"
+                        relative=${{file#"$d/"}}
+                        if [ -d $file ]; then
+                            mkdir -p "{copy}/$relative"
+                        elif [ -f $file ]; then
+                            dir=${{file%/*}}
+                            relative_dir=${{relative%/*}}
+                            relative_dir=${{relative_dir:-.}}
+                            if [ "$relative_dir" != "$relative" ] && [ -d "$dir" ] && [ ! -d "{copy}/$relative_dir" ]; then
+                                mkdir -p "{copy}/$relative_dir"
+                            fi
+                            ln -s "$file" "{copy}/$relative"
+                        fi
+                      ' \;"#,
+                        copy = p4_testing_file_folder_path_link_root
+                            .as_os_str()
+                            .to_str()
+                            .unwrap(),
+                        look = path_include.clone()
+                    )],
+                );
+                if !stderr.is_empty() {
+                    self.delete(
+                        new_p4_testing_path,
+                        new_p4_include_testing_path_str,
+                        p4_testing_file_folder_path_link
+                            .as_os_str()
+                            .to_str()
+                            .unwrap(),
+                    );
+                    return;
+                }
+                info!("r");
+
+                // create link
+                let (_, stderr) = get_command_output(
+                    "".to_string(),
+                    &mut self.liste_command_str[0].clone(),
+                    &mut vec![
+                        format!(
+                            "{}",
+                            p4_testing_file_folder_path_link_root
+                                .as_os_str()
+                                .to_str()
+                                .unwrap()
+                        ),
+                        format!("{}", p4_include_testing_path.as_os_str().to_str().unwrap()),
+                    ],
+                );
+                if !stderr.is_empty() {
+                    self.delete(
+                        new_p4_testing_path,
+                        new_p4_include_testing_path_str,
+                        p4_testing_file_folder_path_link
+                            .as_os_str()
+                            .to_str()
+                            .unwrap(),
+                    );
+                    return;
+                }
+                info!("s");
             }
-
 
             // copy p4 and stf file
             // find in what name the p4 file will be create for the testing
             let mut name_p4_testing = "testing_p4_lsp_file".to_string();
-            let mut p4_testing = petr4_path.clone().join(format!("_build/default/p4stf/custom-stf-tests/{}.p4",name_p4_testing));
-            while p4_testing.exists(){
-                name_p4_testing = format!("{}_exists",name_p4_testing);
-                p4_testing = p4_testing.with_file_name(format!("{}.p4",name_p4_testing))
+            let mut p4_testing = self.get_petr4_path().join(format!(
+                "_build/default/p4stf/custom-stf-tests/{}.p4",
+                name_p4_testing
+            ));
+            while p4_testing.exists() {
+                name_p4_testing = format!("{}_exists", name_p4_testing);
+                p4_testing = p4_testing.with_file_name(format!("{}.p4", name_p4_testing))
             }
-            info!("d");
-    
+            info!("t");
+
             // create the p4 file
-            match create_command(&mut liste_command_str[0])
-                .arg(format!("\"{}\"",path_p4.as_os_str().to_str().unwrap()))
-                .arg(format!("\"{}\"",p4_testing.as_os_str().to_str().unwrap()))
-                .output()
-                .await {
-                    Ok(_) => {}
-                    Err(_) => {
-                        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
-                        return;
-                    }
-                }
-            info!("f");
-    
+            let (_, stderr) = get_command_output(
+                "".to_string(),
+                &mut self.liste_command_str[0].clone(),
+                &mut vec![
+                    format!("{}", path_p4.as_os_str().to_str().unwrap()),
+                    format!("{}", p4_testing.as_os_str().to_str().unwrap()),
+                ],
+            );
+            if !stderr.is_empty() {
+                self.delete(
+                    new_p4_testing_path,
+                    new_p4_include_testing_path_str,
+                    p4_testing_file_folder_path_link
+                        .as_os_str()
+                        .to_str()
+                        .unwrap(),
+                );
+                return;
+            }
+            info!("u");
+
             // create the stf file
-            match create_command(&mut liste_command_str[1])
-                .arg(format!("\"{}\"",path_stf.as_os_str().to_str().unwrap()))
-                .arg(format!("\"{}\"",p4_testing_path.clone().with_extension("stf").as_os_str().to_str().unwrap()))
-                .output()
-                .await {
-                    Ok(_) => {}
-                    Err(_) => {
-                        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
-                        return;
-                    }
-                }
-            info!("j");
-    
-        
+            let (_, stderr) = get_command_output(
+                "".to_string(),
+                &mut self.liste_command_str[0].clone(),
+                &mut vec![
+                    format!("{}", path_stf.as_os_str().to_str().unwrap()),
+                    format!(
+                        "{}",
+                        p4_testing
+                            .clone()
+                            .with_extension("stf")
+                            .as_os_str()
+                            .to_str()
+                            .unwrap()
+                    ),
+                ],
+            );
+            if !stderr.is_empty() {
+                self.delete(
+                    new_p4_testing_path,
+                    new_p4_include_testing_path_str,
+                    p4_testing_file_folder_path_link
+                        .as_os_str()
+                        .to_str()
+                        .unwrap(),
+                );
+                return;
+            }
+            info!("v");
+
             // execute the commande
-            let output = Command::new("./bin/test.exe")
-                .current_dir(format!("\"{}\"",petr4_path.clone().join("/_build/default").as_os_str().to_str().unwrap()))
-                .output()
-                .await;
-            info!("k");
-    
+            info!("{},{:?}", self.petr4_path, self.get_petr4_path());
+            let (stdout, stderr) = get_command_output(
+                format!(
+                    "{}",
+                    self.get_petr4_path()
+                        .clone()
+                        .join("_build/default")
+                        .as_os_str()
+                        .to_str()
+                        .unwrap()
+                ),
+                &mut vec!["./bin/test.exe".to_string()],
+                &mut vec![],
+            );
+            if !stderr.is_empty() {
+                self.delete(
+                    new_p4_testing_path,
+                    new_p4_include_testing_path_str,
+                    p4_testing_file_folder_path_link
+                        .as_os_str()
+                        .to_str()
+                        .unwrap(),
+                );
+                return;
+            }
+            info!("w");
+
             // get the output
-            match output {
-                Ok(x) => {
-                    info!("work,{:?}",x);
-                    let parts = str::from_utf8(&x.stdout).unwrap().split("\n");
-                    for part in parts{
-                        if part.contains(format!(" {}.p4",name_p4_testing).as_str()) && part.contains("petr4 stf tests"){
-                            info!("{}",part);
-    
-                            if part.contains("[FAIL]"){
-                                let mut index = "-1".to_string();
-                                for el in part.split(" "){
-                                    if let Ok(x) = el.parse::<i32>(){
-                                        index = x.to_string();
-                                        break;
-                                    }
-                                }
-                                
-                                let mut p4_testing_name = "petr4 stf tests.".to_string();
-                                let ext = format!("{}.output", index.clone());
-                                let mut t = format!("{}{}",p4_testing_name.clone(), ext.clone());
-                                let mut p4_testing = petr4_path.clone().join(format!("_build/default/_build/_tests/Stf-tests/{}",t));
-                                while !p4_testing.exists(){
-                                    p4_testing_name = format!("{}0",p4_testing_name.clone());
-                                    t = format!("{}{}",p4_testing_name.clone(), ext.clone());
-                                    p4_testing = p4_testing.with_file_name(t);
-                                }
-                                info!("{:?}",p4_testing);
-    
-                                create_command(&mut liste_command_str[1])
-                                    .arg(format!("\"{}\"",p4_testing.as_os_str().to_str().unwrap()))
-                                    .arg(format!("\"{}\"",path_output.as_os_str().to_str().unwrap()))
-                                    .output()
-                                    .await;
+            let parts = str::from_utf8(&stdout).unwrap().split("\n");
+            for part in parts {
+                if part.contains(format!(" {}.p4", name_p4_testing).as_str())
+                    && part.contains("petr4 stf tests")
+                {
+                    info!("{}", part);
+
+                    if part.contains("[FAIL]") {
+                        let mut index = "-1".to_string();
+                        for el in part.split(" ") {
+                            if let Ok(x) = el.parse::<i32>() {
+                                index = x.to_string();
+                                break;
                             }
-                            break;
+                        }
+
+                        let mut p4_testing_name = "petr4 stf tests.".to_string();
+                        let ext = format!("{}.output", index.clone());
+                        let mut t = format!("{}{}", p4_testing_name.clone(), ext.clone());
+                        let mut p4_testing = self
+                            .get_petr4_path()
+                            .join(format!("_build/default/_build/_tests/Stf-tests/{}", t));
+                        while !p4_testing.exists() {
+                            p4_testing_name = format!("{}0", p4_testing_name.clone());
+                            t = format!("{}{}", p4_testing_name.clone(), ext.clone());
+                            p4_testing = p4_testing.with_file_name(t);
+                        }
+                        info!("x-{:?}", p4_testing);
+
+                        let (_, stderr) = get_command_output(
+                            "".to_string(),
+                            &mut self.liste_command_str[1].clone(),
+                            &mut vec![
+                                format!("{}", p4_testing.as_os_str().to_str().unwrap()),
+                                format!("{}", path_output.as_os_str().to_str().unwrap()),
+                            ],
+                        );
+                        if !stderr.is_empty() {
+                            self.delete(
+                                new_p4_testing_path,
+                                new_p4_include_testing_path_str,
+                                p4_testing_file_folder_path_link
+                                    .as_os_str()
+                                    .to_str()
+                                    .unwrap(),
+                            );
+                            return;
                         }
                     }
+                    break;
                 }
-                Err(e) => {
-                    info!("fail,{}",e);
-                },
-            };
-    
+            }
+            info!("y");
+
             // remove the p4 and stf file
-        delete(petr4_path,new_p4_testing_path, new_p4_include_testing_path_str, &mut liste_command_str).await;
+            self.delete(
+                new_p4_testing_path,
+                new_p4_include_testing_path_str,
+                p4_testing_file_folder_path_link
+                    .as_os_str()
+                    .to_str()
+                    .unwrap(),
+            );
+            info!("z");
         }
     }
-}
 
-async fn delete(petr4_path: &Path, new_petr4_path: &str, new_petr4_include_path: &str, liste_command_str: &mut Vec<Vec<String>>){
-    info!("a");
-    let p4_testing_path = petr4_path.clone().join("_build/default/p4stf/custom-stf-tests");
-    let p4_include_testing_path = petr4_path.clone().join("_build/default/examples");
+    fn delete(
+        &mut self,
+        new_petr4_path: &str,
+        new_petr4_include_path: &str,
+        p4_testing_file_folder_path_link: &str,
+    ) {
+        let p4_testing_path = self
+            .get_petr4_path()
+            .join("_build/default/p4stf/custom-stf-tests");
 
-    create_command(&mut liste_command_str[3])
-        .arg(format!("\"{}\"",p4_testing_path.as_os_str().to_str().unwrap()))
-        .output()
-        .await;
+        get_command_output(
+            "".to_string(),
+            &mut self.liste_command_str[3].clone(),
+            &mut vec![format!("{}", p4_testing_path.as_os_str().to_str().unwrap())],
+        );
+        get_command_output(
+            "".to_string(),
+            &mut self.liste_command_str[1].clone(),
+            &mut vec![
+                format!("{}", new_petr4_path),
+                format!("{}", p4_testing_path.as_os_str().to_str().unwrap()),
+            ],
+        );
 
-    create_command(&mut liste_command_str[1])
-        .arg(format!("\"{}\"",new_petr4_path))
-        .arg(format!("\"{}\"",p4_testing_path.as_os_str().to_str().unwrap()))
-        .output()
-        .await;
+        if new_petr4_include_path != "" {
+            let p4_include_testing_path = self.get_petr4_path().join("_build/default/examples");
 
-    create_command(&mut liste_command_str[3])
-        .arg(format!("\"{}\"",p4_include_testing_path.as_os_str().to_str().unwrap()))
-        .output()
-        .await;
+            get_command_output(
+                "".to_string(),
+                &mut self.liste_command_str[3].clone(),
+                &mut vec![format!(
+                    "{}",
+                    p4_include_testing_path.as_os_str().to_str().unwrap()
+                )],
+            );
+            get_command_output(
+                "".to_string(),
+                &mut self.liste_command_str[1].clone(),
+                &mut vec![
+                    format!("{}", new_petr4_include_path),
+                    format!("{}", p4_include_testing_path.as_os_str().to_str().unwrap()),
+                ],
+            );
+        }
 
-    create_command(&mut liste_command_str[1])
-        .arg(format!("\"{}\"",new_petr4_include_path))
-        .arg(format!("\"{}\"",p4_include_testing_path.as_os_str().to_str().unwrap()))
-        .output()
-        .await;
-    
+        if p4_testing_file_folder_path_link != "" {
+            get_command_output(
+                "".to_string(),
+                &mut self.liste_command_str[3].clone(),
+                &mut vec![format!("{}", p4_testing_file_folder_path_link)],
+            );
+        }
+    }
 }

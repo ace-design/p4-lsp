@@ -2,8 +2,8 @@ use std::borrow::BorrowMut;
 use std::env;
 use std::sync::RwLock;
 
-use features::semantic_tokens;
 use features::petr4;
+use features::semantic_tokens;
 use plugin_manager::PluginManager;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
@@ -40,7 +40,6 @@ struct Backend {
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
-
         let log_file_path = env::temp_dir().join("p4-lsp.log");
 
         if let Ok(log_file) = File::create(log_file_path) {
@@ -63,9 +62,16 @@ impl LanguageServer for Backend {
 
         info!("Initializing lsp");
 
-        if let Some(uri) = params.clone().root_uri{
+        if let Some(uri) = params.clone().root_uri {
             let mut petr4 = self.petr4.write().unwrap();
-            (*petr4).config("/home/t/petr4/".to_string(), uri.to_file_path().unwrap().into_os_string().into_string().unwrap());
+            (*petr4).config(
+                "/home/t/petr4/".to_string(),
+                uri.to_file_path()
+                    .unwrap()
+                    .into_os_string()
+                    .into_string()
+                    .unwrap(),
+            );
         }
 
         self.plugin_manager.write().unwrap().load_plugins();
@@ -174,10 +180,8 @@ impl LanguageServer for Backend {
             .await;
 
         info!("0");
-        let petr4_value = {
-            let petr4 = self.petr4.read().unwrap();
-            petr4.get()
-        };
+        let mut petr4 = self.petr4.write().unwrap();
+        (*petr4).testing(uri.path());
         info!("1");
     }
 
