@@ -1,3 +1,6 @@
+use core::fmt;
+use std::fmt::Debug;
+
 use super::symbol_table::SymbolTable;
 use super::{Ast, Symbol};
 
@@ -12,7 +15,7 @@ pub enum SymbolTableEdit {
 
 pub trait SymbolTableEditor {
     fn new_edit(&mut self, edit: SymbolTableEdit);
-    fn update(&mut self, ast: &Ast);
+    fn update(&mut self, ast: &mut Ast);
 }
 
 pub trait SymbolTableQuery {
@@ -28,10 +31,15 @@ pub struct SymbolTableManager {
 }
 
 impl SymbolTableManager {
-    pub fn new(ast: &Ast) -> SymbolTableManager {
+    pub fn new(ast: &mut Ast) -> SymbolTableManager {
         let symbol_table = SymbolTable::new(ast);
-        debug!("\nSymbol Table:\n{symbol_table}");
         SymbolTableManager { symbol_table }
+    }
+}
+
+impl fmt::Display for SymbolTableManager {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(&self.symbol_table.to_string())
     }
 }
 
@@ -63,7 +71,7 @@ impl SymbolTableEditor for SymbolTableManager {
         }
     }
 
-    fn update(&mut self, ast: &Ast) {
+    fn update(&mut self, ast: &mut Ast) {
         *self = SymbolTableManager::new(ast)
     }
 }

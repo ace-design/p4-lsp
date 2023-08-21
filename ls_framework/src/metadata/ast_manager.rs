@@ -1,3 +1,5 @@
+use core::fmt;
+
 use crate::metadata::ast::VisitNode;
 
 use super::Ast;
@@ -12,18 +14,23 @@ pub trait AstQuery {
 
 #[derive(Debug, Clone)]
 pub struct AstManager {
-    pub(crate) ast: Ast,
+    pub ast: Ast,
 }
 
 impl AstManager {
     pub fn new(source_code: &str, tree: tree_sitter::Tree) -> AstManager {
         let ast = Ast::new(source_code, tree).unwrap();
-        debug!("\nAST:\n{ast}");
         AstManager { ast }
     }
 
-    pub fn get_ast(&self) -> &Ast {
-        &self.ast
+    pub fn get_ast(&mut self) -> &mut Ast {
+        &mut self.ast
+    }
+}
+
+impl fmt::Display for AstManager {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(&self.ast.to_string())
     }
 }
 

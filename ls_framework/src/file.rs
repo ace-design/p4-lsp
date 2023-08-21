@@ -26,9 +26,12 @@ impl File {
         )));
 
         let symbol_table_manager = {
-            let ast_manager = ast_manager.lock().unwrap();
+            let mut ast_manager = ast_manager.lock().unwrap();
             Arc::new(Mutex::new(SymbolTableManager::new(ast_manager.get_ast())))
         };
+
+        debug!("\nAST:\n{}", ast_manager.lock().unwrap());
+        debug!("\nSymbol Table:\n{}", symbol_table_manager.lock().unwrap());
 
         File {
             uri,

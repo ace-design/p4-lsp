@@ -20,7 +20,23 @@ pub struct SymbolTable {
     undefined_list: Vec<Range>,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct SymbolId {
+    symbol_table_id: NodeId,
+    index: usize,
+}
+
+impl SymbolId {
+    pub fn new(symbol_table_id: NodeId, index: usize) -> Self {
+        Self {
+            symbol_table_id,
+            index,
+        }
+    }
+}
+
 pub trait SymbolTableActions {
+    fn get_symbol(&self, id: SymbolId) -> Option<&Symbol>;
     fn get_all_symbols(&self) -> Vec<Symbol>;
     fn get_symbols_in_scope(&self, position: Position) -> Vec<Symbol>;
     fn get_variable_at_pos(&self, position: Position, source_code: &str) -> Option<Vec<Symbol>>;
@@ -30,6 +46,11 @@ pub trait SymbolTableActions {
 }
 
 impl SymbolTableActions for SymbolTable {
+    fn get_symbol(&self, id: SymbolId) -> Option<&Symbol> {
+        let scope_table = self.arena.get(id.symbol_table_id)?.get();
+        scope_table.symbols.get(id.index)
+    }
+
     fn get_symbols_in_scope(&self, position: Position) -> Vec<Symbol> {
         let mut current_scope_id = self.root_id.unwrap();
         let mut symbols: Vec<Symbol>;
@@ -190,10 +211,10 @@ impl SymbolTableActions for SymbolTable {
 }
 
 impl SymbolTable {
-    pub fn new(ast: &Ast) -> SymbolTable {
+    pub fn new(ast: &mut Ast) -> SymbolTable {
         let mut table = SymbolTable::default();
 
-        table.root_id = Some(table.parse_scope(ast.visit_root().get_id(), &mut ast.get_arena()));
+        table.root_id = Some(table.parse_scope(ast.visit_root().get_id(), ast.get_arena()));
         table.parse_usages(&mut ast.get_arena());
 
         table
@@ -222,40 +243,40 @@ impl SymbolTable {
         self.root_id
     }
 
-    fn parse_scope(&mut self, node_id: NodeId, arena: &mut Arena<Node>) -> NodeId {
-        let table = ScopeSymbolTable::new(arena.get(node_id).unwrap().get().range);
+    fn parse_scope(&mut self, node_id: NodeId, ast_arena: &mut Arena<Node>) -> NodeId {
+        let table = ScopeSymbolTable::new(ast_arena.get(node_id).unwrap().get().range);
         let current_table_node_id = self.arena.new_node(table);
 
-        let mut queue: Vec<NodeId> = node_id.children(arena).collect();
+        let mut queue: Vec<NodeId> = node_id.children(ast_arena).collect();
 
         while let Some(node_id) = queue.pop() {
             if let crate::language_def::Symbol::Init {
                 kind,
                 name_node,
                 type_node: _,
-            } = &arena.get(node_id).unwrap().get().symbol
+            } = &ast_arena.get(node_id).unwrap().get().symbol
             {
                 let name_node_id = node_id
-                    .children(arena)
+                    .children(ast_arena)
                     .find(|id| {
-                        arena.get(*id).unwrap().get().kind == NodeKind::Node(name_node.clone())
+                        ast_arena.get(*id).unwrap().get().kind == NodeKind::Node(name_node.clone())
                     })
                     .unwrap();
 
-                let name_node = arena.get(name_node_id).unwrap().get();
+                let name_node = ast_arena.get(name_node_id).unwrap().get();
 
                 let mut symbol =
                     Symbol::new(name_node.content.clone(), kind.clone(), name_node.range);
 
-                for id in node_id.descendants(arena) {
+                for id in node_id.descendants(ast_arena) {
                     if let language_def::Symbol::Field { name_node } =
-                        &arena.get(id).unwrap().get().symbol
+                        &ast_arena.get(id).unwrap().get().symbol
                     {
-                        let field_name_node = arena
+                        let field_name_node = ast_arena
                             .get(
-                                id.children(arena)
+                                id.children(ast_arena)
                                     .find(|child_id| {
-                                        arena.get(*child_id).unwrap().get().kind
+                                        ast_arena.get(*child_id).unwrap().get().kind
                                             == NodeKind::Node(name_node.clone())
                                     })
                                     .unwrap(),
@@ -271,19 +292,27 @@ impl SymbolTable {
                     }
                 }
 
-                self.arena
+                let symbols = &mut self
+                    .arena
                     .get_mut(current_table_node_id)
                     .unwrap()
                     .get_mut()
-                    .symbols
-                    .push(symbol);
+                    .symbols;
+                symbols.push(symbol);
+
+                let index = symbols.len() - 1;
+                ast_arena
+                    .get_mut(node_id)
+                    .unwrap()
+                    .get_mut()
+                    .link(current_table_node_id, index);
             }
 
-            if arena.get(node_id).unwrap().get().kind.is_scope_node() {
-                let subtable = self.parse_scope(node_id, arena);
+            if ast_arena.get(node_id).unwrap().get().kind.is_scope_node() {
+                let subtable = self.parse_scope(node_id, ast_arena);
                 current_table_node_id.append(subtable, &mut self.arena);
             } else {
-                queue.append(&mut node_id.children(arena).collect());
+                queue.append(&mut node_id.children(ast_arena).collect());
             }
         }
 

@@ -9,6 +9,7 @@ use tower_lsp::lsp_types::{Position, Range};
 use crate::{
     language_def::{self, Symbol},
     lsp_mappings::HighlightType,
+    metadata::symbol_table::SymbolId,
     utils,
 };
 
@@ -62,14 +63,7 @@ pub struct Node {
     pub content: String,
     pub symbol: Symbol,
     pub semantic_token_type: Option<HighlightType>,
-    pub linked_symbol: Option<SymbolRef>,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct SymbolRef {
-    pub symbol_table_id: NodeId,
-    pub kind: String,
-    pub index: usize,
+    pub linked_symbol: Option<SymbolId>,
 }
 
 impl Node {
@@ -90,12 +84,8 @@ impl Node {
         }
     }
 
-    pub fn link(&mut self, symbol_table_id: NodeId, symbol_kind: String, index: usize) {
-        self.linked_symbol = Some(SymbolRef {
-            symbol_table_id,
-            kind: symbol_kind,
-            index,
-        })
+    pub fn link(&mut self, symbol_table_id: NodeId, index: usize) {
+        self.linked_symbol = Some(SymbolId::new(symbol_table_id, index));
     }
 }
 
@@ -215,8 +205,8 @@ impl Ast {
         result
     }
 
-    pub fn get_arena(&self) -> Arena<Node> {
-        self.arena.clone()
+    pub fn get_arena(&mut self) -> &mut Arena<Node> {
+        &mut self.arena
     }
 
     fn _get_debug_tree(&self, node_id: NodeId, indent: &str, last: bool, result: &mut String) {
@@ -226,8 +216,14 @@ impl Ast {
             indent,
             if last { "+- " } else { "|- " },
             match node.kind.clone() {
-                NodeKind::Node(name) => name,
-                NodeKind::Error(_) => String::from("Error"),
+                NodeKind::Node(name) =>
+                    if node.linked_symbol.is_some() {
+                        format!("{} - Linked Symbol", name)
+                    } else {
+                        name
+                    },
+                NodeKind::Error(msg) =>
+                    format!("Error: {}", msg.unwrap_or(String::from("Unknown"))),
             }
         );
 
