@@ -208,7 +208,7 @@ impl Petr4 {
             let mut temp_name = "p4_lsp_testing_petr4".to_string();
             let mut p4_testing_file_folder_path_link =
                 env::temp_dir().clone().join(temp_name.clone());
-            while new_p4_testing.exists() {
+            while p4_testing_file_folder_path_link.exists() {
                 temp_name = format!("{}_exists", temp_name.clone());
                 p4_testing_file_folder_path_link =
                     p4_testing_file_folder_path_link.with_file_name(temp_name.clone());
