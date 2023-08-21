@@ -302,7 +302,7 @@ impl SymbolTable {
 
                 let index = symbols.len() - 1;
                 ast_arena
-                    .get_mut(node_id)
+                    .get_mut(name_node_id)
                     .unwrap()
                     .get_mut()
                     .link(current_table_node_id, index);
@@ -413,7 +413,7 @@ pub struct Symbol {
     id: usize,
     name: String,
     kind: String,
-    type_symbol: Box<Option<Symbol>>,
+    type_symbol: Option<SymbolId>,
     def_position: Range,
     usages: Vec<Range>,
     fields: Option<Vec<Symbol>>,
@@ -425,7 +425,7 @@ impl Symbol {
             id: get_id(),
             name,
             kind,
-            type_symbol: None.into(),
+            type_symbol: None,
             def_position,
             usages: vec![],
             fields: None,
@@ -436,8 +436,8 @@ impl Symbol {
         self.id
     }
 
-    pub fn set_type_symbol(&mut self, type_symbol: Symbol) {
-        self.type_symbol = Some(type_symbol).into()
+    pub fn set_type_symbol(&mut self, id: SymbolId) {
+        self.type_symbol = Some(id)
     }
 
     pub fn get_name(&self) -> String {

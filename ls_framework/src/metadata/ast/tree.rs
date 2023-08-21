@@ -218,7 +218,7 @@ impl Ast {
             match node.kind.clone() {
                 NodeKind::Node(name) =>
                     if node.linked_symbol.is_some() {
-                        format!("{} - Linked Symbol", name)
+                        format!("{}*", name)
                     } else {
                         name
                     },
