@@ -37,6 +37,7 @@ impl SymbolId {
 
 pub trait SymbolTableActions {
     fn get_symbol(&self, id: SymbolId) -> Option<&Symbol>;
+    fn get_symbol_mut(&mut self, id: SymbolId) -> Option<&mut Symbol>;
     fn get_all_symbols(&self) -> Vec<Symbol>;
     fn get_symbols_in_scope(&self, position: Position) -> Vec<Symbol>;
     fn get_variable_at_pos(&self, position: Position, source_code: &str) -> Option<Vec<Symbol>>;
@@ -49,6 +50,11 @@ impl SymbolTableActions for SymbolTable {
     fn get_symbol(&self, id: SymbolId) -> Option<&Symbol> {
         let scope_table = self.arena.get(id.symbol_table_id)?.get();
         scope_table.symbols.get(id.index)
+    }
+
+    fn get_symbol_mut(&mut self, id: SymbolId) -> Option<&mut Symbol> {
+        let scope_table = self.arena.get_mut(id.symbol_table_id)?.get_mut();
+        scope_table.symbols.get_mut(id.index)
     }
 
     fn get_symbols_in_scope(&self, position: Position) -> Vec<Symbol> {
@@ -216,6 +222,7 @@ impl SymbolTable {
 
         table.root_id = Some(table.parse_scope(ast.visit_root().get_id(), ast.get_arena()));
         table.parse_usages(ast.get_arena());
+        table.parse_types(ast.visit_root().get_id(), ast.get_arena());
 
         table
     }
@@ -322,7 +329,7 @@ impl SymbolTable {
     fn parse_usages(&mut self, arena: &mut Arena<Node>) {
         for node in arena
             .iter_mut()
-            .filter(|node| matches!(node.get().symbol, crate::language_def::Symbol::Usage))
+            .filter(|node| matches!(node.get().symbol, language_def::Symbol::Usage))
         {
             let node = node.get_mut();
             let symbol_name = &node.content;
@@ -354,7 +361,55 @@ impl SymbolTable {
             }
         }
     }
+
+    fn parse_types(&mut self, root_id: NodeId, ast_arena: &mut Arena<Node>) {
+        for node_id in root_id.descendants(ast_arena) {
+            if let language_def::Symbol::Init {
+                kind: _,
+                name_node,
+                type_node: Some(type_node_query),
+            } = ast_arena.get(node_id).unwrap().get().symbol.clone()
+            {
+                let type_node_id = node_id
+                    .children(ast_arena)
+                    .find(|id| {
+                        ast_arena.get(*id).unwrap().get().kind
+                            == NodeKind::Node(type_node_query.clone())
+                    })
+                    .unwrap();
+
+                if let Some(symbol_id) = ast_arena
+                    .get(type_node_id)
+                    .unwrap()
+                    .get()
+                    .linked_symbol
+                    .clone()
+                {
+                    let name_node_id = node_id
+                        .children(ast_arena)
+                        .find(|id| {
+                            ast_arena.get(*id).unwrap().get().kind
+                                == NodeKind::Node(name_node.clone())
+                        })
+                        .unwrap();
+
+                    if let Some(name_symbol_id) = ast_arena
+                        .get(name_node_id)
+                        .unwrap()
+                        .get()
+                        .linked_symbol
+                        .clone()
+                    {
+                        self.get_symbol_mut(name_symbol_id)
+                            .unwrap()
+                            .set_type_symbol(symbol_id);
+                    }
+                }
+            }
+        }
+    }
 }
+
 impl fmt::Display for SymbolTable {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let mut output = String::new();
