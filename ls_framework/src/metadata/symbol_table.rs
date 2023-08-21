@@ -215,7 +215,7 @@ impl SymbolTable {
         let mut table = SymbolTable::default();
 
         table.root_id = Some(table.parse_scope(ast.visit_root().get_id(), ast.get_arena()));
-        table.parse_usages(&mut ast.get_arena());
+        table.parse_usages(ast.get_arena());
 
         table
     }
@@ -321,10 +321,10 @@ impl SymbolTable {
 
     fn parse_usages(&mut self, arena: &mut Arena<Node>) {
         for node in arena
-            .iter()
+            .iter_mut()
             .filter(|node| matches!(node.get().symbol, crate::language_def::Symbol::Usage))
         {
-            let node = node.get();
+            let node = node.get_mut();
             let symbol_name = &node.content;
 
             let scope_id = self.get_scope_id(node.range.start).unwrap();
@@ -332,15 +332,17 @@ impl SymbolTable {
 
             let mut found = false;
             for id in scope_ids {
-                if let Some(symbol) = self
+                if let Some(index) = self
                     .arena
-                    .get_mut(id)
+                    .get(id)
                     .unwrap()
-                    .get_mut()
+                    .get()
                     .symbols
-                    .iter_mut()
-                    .find(|s| &s.name == symbol_name)
+                    .iter()
+                    .position(|s| &s.name == symbol_name)
                 {
+                    let symbol = &mut self.arena.get_mut(id).unwrap().get_mut().symbols[index];
+                    node.link(id, index);
                     found = true;
                     symbol.add_usage(node.range);
                     break;
