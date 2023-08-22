@@ -3,6 +3,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::str;
+use std::env;
 
 pub struct Petr4 {
     petr4_path: String,
