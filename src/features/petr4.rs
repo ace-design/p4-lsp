@@ -6,7 +6,7 @@ use std::str;
 
 pub struct Petr4 {
     petr4_path: String,
-    bool_windows: bool
+    bool_windows: bool,
 }
 
 fn get_command_output(
@@ -50,7 +50,7 @@ impl Petr4 {
 
         Petr4 {
             petr4_path: "".to_string(),
-            bool_windows
+            bool_windows,
         }
     }
     pub fn config(&mut self, petr4: String) {
@@ -85,11 +85,13 @@ impl Petr4 {
     }
 
     pub fn windows(&self, path_output: &Path) {
-        self.write_output(path_output, "the plugin don't work for windows yet.".as_bytes());
+        self.write_output(
+            path_output,
+            "the plugin don't work for windows yet.".as_bytes(),
+        );
     }
 
     pub fn testing(&self, p4: &str) {
-
         let path_p4 = Path::new(p4);
         let mut number_commande = 0;
         let mut command_using = 0;
@@ -100,8 +102,8 @@ impl Petr4 {
             "",
             &mut vec![format!("{}", path_output.as_os_str().to_str().unwrap())],
         );
-        
-        if self.get_bool_windows(){
+
+        if self.get_bool_windows() {
             self.windows(&path_output);
             return;
         }
@@ -116,30 +118,35 @@ impl Petr4 {
         let path_test_binary = self.get_petr4_path().join("_build/default/bin/test.exe");
         if path_test_binary.exists() {
             // execute the commande
-            let (stdout, stderr) = get_command_output(self.get_petr4_path()
-                .clone()
-                .join("_build/default/bin/test.exe")
-                .as_os_str()
-                .to_str()
-                .unwrap(),
+            let (stdout, stderr) = get_command_output(
+                self.get_petr4_path()
+                    .clone()
+                    .join("_build/default/bin/test.exe")
+                    .as_os_str()
+                    .to_str()
+                    .unwrap(),
                 "",
-                &mut vec!["-t".to_string(), path_p4
-                .as_os_str()
-                .to_str()
-                .unwrap().to_string()],
+                &mut vec![
+                    "-t".to_string(),
+                    path_p4.as_os_str().to_str().unwrap().to_string(),
+                ],
             );
             number_commande += 1;
             if !stderr.is_empty() {
-                self.fail(&path_output, number_commande, "./bin/test.exe", stdout, stderr);
+                self.fail(
+                    &path_output,
+                    number_commande,
+                    "./bin/test.exe",
+                    stdout,
+                    stderr,
+                );
                 return;
             }
 
             // get the output
             let parts = str::from_utf8(&stdout).unwrap().split("\n");
             for part in parts {
-                if part.contains("file testing")
-                    && part.contains("p4_lsp stf tests")
-                {
+                if part.contains("file testing") && part.contains("p4_lsp stf tests") {
                     if part.contains("[FAIL]") {
                         let mut index = "0";
 
@@ -177,5 +184,4 @@ impl Petr4 {
             }
         }
     }
-
 }

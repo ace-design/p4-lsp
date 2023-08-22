@@ -64,9 +64,7 @@ impl LanguageServer for Backend {
 
         if let Some(uri) = params.clone().root_uri {
             let mut petr4 = self.petr4.write().unwrap();
-            (*petr4).config(
-                "/home/t/petr4/".to_string()
-            );
+            (*petr4).config("/home/t/petr4/".to_string());
         }
 
         self.plugin_manager.write().unwrap().load_plugins();
