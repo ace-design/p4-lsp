@@ -1,0 +1,44 @@
+@startuml
+
+interface Lsp
+interface Plugins
+component Client
+
+package "Server" {
+  component Backend
+  component PluginManager
+  component Workspace
+  component File
+  component TreesitterTree
+  component SymbolTableManager
+  component AstManager
+  component SymbolTable
+  component Ast
+  component Features
+  interface Functions
+}
+
+frame "InstalledPlugins" {
+ component Plugin1
+ component Plugin2
+ component Plugin3
+}
+
+Plugins -- PluginManager 
+Lsp -- Backend 
+Client ..> Lsp : use
+InstalledPlugins ..> Plugins : use
+
+Backend --> Workspace
+Backend --> PluginManager 
+Workspace --> File 
+File --> TreesitterTree
+File --> SymbolTableManager
+SymbolTableManager --> SymbolTable
+AstManager --> Ast
+
+File --> AstManager 
+
+File ..> Functions : uses
+Functions -- Features
+@enduml

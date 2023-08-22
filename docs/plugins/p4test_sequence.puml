@@ -1,0 +1,6 @@
+@startuml
+Server -> Plugin: Call Diagnostic
+Plugin -> Server: Call Host Command
+Server --> Plugin: Command Output
+Plugin --> Server: Diagnostics
+@enduml
