@@ -118,6 +118,7 @@ pub fn testing(petr4: &String, p4: &String) -> String {
 pub fn main() {
     let os: &str = env::consts::OS;
     if os == "windows" {
+        println!("{{\"result\":\"\"}}")
     } else {
         let mut input = String::new();
         stdin().read_line(&mut input).expect("Failed to read line");
@@ -127,6 +128,6 @@ pub fn main() {
         let p4 = object.get("file").unwrap();
 
         println!("you entered : {} - {}", petr4, p4);
-        println!("{}", testing(petr4, p4));
+        println!("{{\"result\":\"{}\"}}", testing(petr4, p4));
     }
 }
