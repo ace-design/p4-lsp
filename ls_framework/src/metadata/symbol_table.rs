@@ -272,32 +272,9 @@ impl SymbolTable {
 
                 let name_node = ast_arena.get(name_node_id).unwrap().get();
 
-                let mut symbol =
-                    Symbol::new(name_node.content.clone(), kind.clone(), name_node.range);
+                let symbol = Symbol::new(name_node.content.clone(), kind.clone(), name_node.range);
 
-                for id in node_id.descendants(ast_arena) {
-                    if let language_def::Symbol::Field { name_node } =
-                        &ast_arena.get(id).unwrap().get().symbol
-                    {
-                        let field_name_node = ast_arena
-                            .get(
-                                id.children(ast_arena)
-                                    .find(|child_id| {
-                                        ast_arena.get(*child_id).unwrap().get().kind
-                                            == NodeKind::Node(name_node.clone())
-                                    })
-                                    .unwrap(),
-                            )
-                            .unwrap()
-                            .get();
-
-                        symbol.add_field(Symbol::new(
-                            field_name_node.content.clone(),
-                            "Field".to_string(),
-                            field_name_node.range,
-                        ));
-                    }
-                }
+                // TODO: Add child scope id for fields
 
                 let symbols = &mut self
                     .arena
@@ -471,7 +448,7 @@ pub struct Symbol {
     type_symbol: Option<SymbolId>,
     def_position: Range,
     usages: Vec<Range>,
-    fields: Option<Vec<Symbol>>,
+    field_scope_id: Option<NodeId>,
 }
 
 impl Symbol {
@@ -483,7 +460,7 @@ impl Symbol {
             type_symbol: None,
             def_position,
             usages: vec![],
-            fields: None,
+            field_scope_id: None,
         }
     }
 
@@ -511,27 +488,20 @@ impl Symbol {
         &self.usages
     }
 
-    pub fn add_field(&mut self, field: Symbol) {
-        if let Some(fields) = &mut self.fields {
-            fields.push(field);
-        } else {
-            self.fields = Some(vec![field]);
-        }
-    }
-
     pub fn get_fields(&self) -> &Option<Vec<Symbol>> {
-        &self.fields
+        todo!()
     }
 
     pub fn contains_fields(&self, name: String) -> Option<Symbol> {
-        if let Some(fields) = &self.fields {
-            for field in fields {
-                if field.get_name() == name {
-                    return Some(field.clone());
-                }
-            }
-        }
-        None
+        todo!()
+        // if let Some(fields) = &self.fields {
+        //     for field in fields {
+        //         if field.get_name() == name {
+        //             return Some(field.clone());
+        //         }
+        //     }
+        // }
+        // None
     }
 
     pub fn get_kind(&self) -> String {
@@ -541,12 +511,6 @@ impl Symbol {
 
 impl fmt::Display for Symbol {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let fields = if let Some(fields) = &self.fields {
-            fields.len()
-        } else {
-            0
-        };
-
         fmt.write_str(
             format!(
                 "{0: <10} | {1: <15} | {2: <10} | {3: <10} | {4: <10}\n",
@@ -557,7 +521,7 @@ impl fmt::Display for Symbol {
                     self.def_position.start.line, self.def_position.start.character
                 ),
                 self.usages.len(),
-                fields
+                0 // TODO
             )
             .as_str(),
         )

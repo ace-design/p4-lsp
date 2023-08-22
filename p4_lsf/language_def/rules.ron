@@ -133,6 +133,7 @@ LanguageDefinition (
         Rule(
             node_name: "HeaderTypeDeclaration",
             symbol: Init(type: "Type", name_node: "Name"),
+            is_scope: true,
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("name"), rule: Direct(Node("Name"))),
@@ -143,6 +144,7 @@ LanguageDefinition (
         Rule(
             node_name: "HeaderUnionDeclaration",
             symbol: Init(type: "Type", name_node: "Name"),
+            is_scope: true,
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("name"), rule: Direct(Node("Name"))),
@@ -153,6 +155,7 @@ LanguageDefinition (
         Rule(
             node_name: "StructDeclaration",
             symbol: Init(type: "Type", name_node: "Name"),
+            is_scope: true,
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("name"), rule: Direct(Node("Name"))),
