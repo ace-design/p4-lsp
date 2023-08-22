@@ -1,28 +1,21 @@
-use super::host_functions::FUNCTIONS;
-
 use tower_lsp::lsp_types::*;
-
-use std::{env, fs, borrow::BorrowMut};
 use tower_lsp::lsp_types::Diagnostic;
-use serde::Deserialize;
-use serde_json::from_str;
-use serde::Serialize;
-use serde_json::to_string;
+use serde::{Deserialize,Serialize};
+use serde_json::{from_str,to_string};
+use std::io::{self, Write};
+use std::process::{Command, Stdio};
 pub struct PluginManager {
     plugins: Vec<Plugin>,
 }
 
-#[derive(Serialize)]
-#[derive(Deserialize)]
-#[derive(PartialEq,Clone)] 
+#[derive(Serialize,Deserialize,PartialEq,Clone)] 
 pub enum OnState {
     Save,
     Open,
     Change,
 }
 
-#[derive(Serialize)]
-#[derive(Deserialize,Clone)]
+#[derive(Serialize,Deserialize,Clone)]
 pub struct Plugin{
     name:String,
     path:String,
@@ -30,8 +23,7 @@ pub struct Plugin{
     arguments:Vec<Argument>,
     state:bool,
 }
-#[derive(Serialize)]
-#[derive(Deserialize,Clone)]
+#[derive(Serialize,Deserialize,Clone)]
 pub struct Argument{
     key:String,
     value:String
@@ -71,6 +63,32 @@ impl PluginManager {
 
     pub fn execute(&mut self,plugin:Plugin){
         info!("Excute");
+        let mut cmd = Command::new(plugin.path.clone());
+        let json_str = to_string(&plugin).unwrap();
+    
+        cmd.stdin(Stdio::piped());
+        info!("1");
+        let mut child = cmd.spawn().expect("Failed to start the process");
+
+        if let Some(mut stdin) = child.stdin.take() {
+            let data = json_str.as_str();
+ info!("2");
+            if stdin.write_all(data.as_bytes()).is_ok() {
+                drop(stdin);
+ info!("3");
+                let status = child.wait().expect("Failed to wait for the process");
+ info!("4");
+                if status.success() {
+                    info!("Process exited successfully");
+                } else {
+                    info!("Process exited with an error");
+                }
+            } else {
+                info!("Failed to write data to stdin");
+            }
+        } else {
+            info!("Failed to access stdin of the child process");
+        }
     }
 
     pub fn run_diagnostic(&mut self, file_path: String) -> Vec<Diagnostic> {
