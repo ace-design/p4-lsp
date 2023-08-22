@@ -1,11 +1,14 @@
 use super::Ast;
 use super::{symbol_table::SymbolTable, Field};
 
+use crate::file_tree::Node;
 use crate::metadata::{Symbol, Symbols};
-use tower_lsp::lsp_types::Position;
+use tower_lsp::lsp_types::{Position,Url};
 
+use indextree::{Arena, NodeId};
 use crate::metadata::symbol_table::SymbolTableActions;
 
+use std::collections::HashMap;
 #[derive(Debug, Clone)]
 pub enum SymbolTableEdit {
     Rename { symbol_id: usize, new_name: String },
@@ -13,7 +16,7 @@ pub enum SymbolTableEdit {
 
 pub trait SymbolTableEditor {
     fn new_edit(&mut self, edit: SymbolTableEdit);
-    fn update(&mut self, ast: &Ast);
+    fn update(&mut self, ast: &Ast,map:Option<HashMap<Url, NodeId>>,url:Url,arena:Arena<Node>);
 }
 
 pub trait SymbolTableQuery {
@@ -24,13 +27,14 @@ pub trait SymbolTableQuery {
 
 #[derive(Debug, Clone)]
 pub struct SymbolTableManager {
-    symbol_table: SymbolTable,
+    pub symbol_table: SymbolTable,
 }
 
 impl SymbolTableManager {
-    pub fn new(ast: &Ast) -> SymbolTableManager {
-        let symbol_table = SymbolTable::new(ast);
-        debug!("\nSymbol Table:\n{symbol_table}");
+    pub fn new(ast: &Ast,map:Option<HashMap<Url, NodeId>>,url:Url,arena:Arena<Node>) -> SymbolTableManager {
+        let symbol_table = SymbolTable::new(ast,map,url.clone(),arena);
+
+        debug!("\nSymbol Table: {url} \n {symbol_table}");
         SymbolTableManager { symbol_table }
     }
 }
@@ -59,7 +63,7 @@ impl SymbolTableEditor for SymbolTableManager {
         }
     }
 
-    fn update(&mut self, ast: &Ast) {
-        *self = SymbolTableManager::new(ast)
+    fn update(&mut self, ast: &Ast,map:Option<HashMap<Url, NodeId>>,url:Url,arena:Arena<Node>) {
+        *self = SymbolTableManager::new(ast,map,url,arena)
     }
 }

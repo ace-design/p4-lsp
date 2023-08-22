@@ -1,5 +1,6 @@
 use crate::metadata::ast::VisitNode;
 
+use tower_lsp::lsp_types::{Position,Url};
 use super::Ast;
 
 pub trait AstEditor {
@@ -16,9 +17,11 @@ pub struct AstManager {
 }
 
 impl AstManager {
-    pub fn new(source_code: &str, tree: tree_sitter::Tree) -> AstManager {
+    pub fn new(uri:Url,source_code: &str, tree: tree_sitter::Tree) -> AstManager {
         let ast = Ast::new(source_code, tree).unwrap();
-        debug!("\nAST:\n{ast}");
+
+        let url = uri.to_string();
+        debug!("\nAST : Url{url}:\n ");
         AstManager { ast }
     }
 
@@ -35,6 +38,6 @@ impl AstQuery for AstManager {
 
 impl AstEditor for AstManager {
     fn update(&mut self, content: &str, syntax_tree: tree_sitter::Tree) {
-        *self = AstManager::new(content, syntax_tree);
+        *self = AstManager::new(Url::parse("https://example.net").unwrap(),content, syntax_tree);
     }
 }

@@ -53,6 +53,13 @@ pub enum NodeKind {
     Direction(Direction),
     TypeDec(TypeDecType),
     Expression,
+    ExpressionCall,
+    ExpressionUnary,
+    ExpressionBinary,
+    ExpressionBinaryLeft,
+    ExpressionBinaryRight,
+    ExpressionParenthesized,
+    Operator,
     Name,
     Param,
     Params,
@@ -112,6 +119,7 @@ pub enum NodeKind {
     MatchKind,
     Args,
     Arg,
+    DefineSymbol,
 }
 
 const SCOPE_NODES: [NodeKind; 17] = [
@@ -165,6 +173,7 @@ pub trait Visitable {
     fn get_subscopes(&self) -> Vec<VisitNode>;
     fn get_type_node(&self) -> Option<VisitNode>;
     fn get_value_node(&self) -> Option<VisitNode>;
+    fn get_expression_node(&self) -> Option<VisitNode>;
     fn get_value_symbol_node(&self) -> Option<VisitNode>;
     fn get_type(&self) -> Option<Type>;
     fn get_node_at_position(&self, position: Position) -> Option<VisitNode>;
@@ -232,6 +241,17 @@ impl Visitable for VisitNode<'_> {
         self.get_children().into_iter().find_map(|child| {
             let node = child.get();
             if matches!(node.kind, NodeKind::Value) {
+                Some(VisitNode::new(self.arena, child.id))
+            } else {
+                None
+            }
+        })
+    }
+
+    fn get_expression_node(&self) -> Option<VisitNode> {
+        self.get_children().into_iter().find_map(|child| {
+            let node = child.get();
+            if matches!(node.kind, NodeKind::Expression) {
                 Some(VisitNode::new(self.arena, child.id))
             } else {
                 None
@@ -337,5 +357,27 @@ impl Ast {
                 result,
             );
         }
+    }
+    pub fn get_includes(&self) -> Vec<String> {
+        let mut includes = Vec::new();
+        includes.push(String::from("core.p4"));
+        let root = self.visit_root();
+        for child in root.get_descendants() {
+            let node_visit = child.get();
+            if node_visit.kind == NodeKind::PreprocInclude {
+
+                info!("Inlude Child {:?}",node_visit);
+                for child_child in child.get_children() {
+                    let child_visit = child_child.get();
+
+                info!("Inludeeeee Child {:?}",child_visit);
+                    if (child_visit.kind == NodeKind::Name){
+                        includes.push(child_visit.clone().content);
+                    }
+                }
+            }
+        }
+
+        includes
     }
 }

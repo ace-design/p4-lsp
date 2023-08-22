@@ -18,8 +18,10 @@ use std::fs::File;
 #[macro_use]
 extern crate lazy_static;
 
+mod cache;
 mod features;
 mod file;
+mod file_tree;
 mod metadata;
 mod plugin_manager;
 mod settings;
@@ -56,6 +58,13 @@ impl LanguageServer for Backend {
                     .await;
             }
         }
+        std::panic::set_hook(Box::new(|info| {
+            error!("{info}");
+        }));
+        //Init Files
+        let mut workspace = self.workspace.write().unwrap();
+        //info!("a1");
+        (*workspace).init_files();
 
         info!("Initializing lsp");
 
@@ -99,24 +108,31 @@ impl LanguageServer for Backend {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        info!("Lsp initialized");
+        //info!("Lsp initialized");
     }
 
     async fn shutdown(&self) -> Result<()> {
-        info!("Lsp stopped");
+        //info!("Lsp stopped");
         Ok(())
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
+        //info!("0");
         let doc = params.text_document;
+        //info!("1");
         info!("Opening file: {}", doc.uri);
+        //info!("2");
 
         let mut diagnostics = {
+            //info!("a0");
             let mut workspace = self.workspace.write().unwrap();
+            //info!("a1");
             (*workspace).add_file(doc.uri.clone(), &doc.text);
+            //info!("a2");
 
             (*workspace).get_full_diagnostics(doc.uri.clone())
         };
+        //info!("a");
 
         diagnostics.append(
             &mut self
@@ -125,10 +141,14 @@ impl LanguageServer for Backend {
                 .unwrap()
                 .run_diagnostic(doc.uri.path().into()),
         );
+        //info!("b");
+
 
         self.client
             .publish_diagnostics(doc.uri, diagnostics, None)
             .await;
+        //info!("c,{:?}",self.workspace.write().unwrap().cache.as_mut().unwrap().file_tree);
+
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
@@ -146,9 +166,9 @@ impl LanguageServer for Backend {
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
         let mut diagnostics = {
-            let workspace = self.workspace.read().unwrap();
+                let mut workspace = self.workspace.write().unwrap();
 
-            (*workspace).get_full_diagnostics(params.text_document.uri.clone())
+                (*workspace).get_full_diagnostics(params.text_document.uri.clone())
         };
 
         diagnostics.append(
@@ -169,9 +189,10 @@ impl LanguageServer for Backend {
         params: GotoDefinitionParams,
     ) -> Result<Option<GotoDefinitionResponse>> {
         let uri = params.text_document_position_params.text_document.uri;
+        info!("{} {:?}",uri.as_str(),params.text_document_position_params.position);
 
         let maybe_location = {
-            let workspace = self.workspace.read().unwrap();
+            let mut workspace = self.workspace.write().unwrap();
 
             (*workspace).get_definition_location(uri, params.text_document_position_params.position)
         };
@@ -185,7 +206,7 @@ impl LanguageServer for Backend {
 
     async fn hover(&self, params: HoverParams) -> Result<Option<Hover>> {
         let maybe_hover_info = {
-            let workspace = self.workspace.read().unwrap();
+            let mut workspace = self.workspace.write().unwrap();
 
             (*workspace).get_hover_info(
                 params.text_document_position_params.text_document.uri,
@@ -208,7 +229,7 @@ impl LanguageServer for Backend {
         params: SemanticTokensParams,
     ) -> Result<Option<SemanticTokensResult>> {
         let response = {
-            let workspace = self.workspace.read().unwrap();
+            let mut workspace = self.workspace.write().unwrap();
 
             Ok((*workspace).get_semantic_tokens(params.text_document.uri))
         };
@@ -218,7 +239,7 @@ impl LanguageServer for Backend {
 
     async fn completion(&self, params: CompletionParams) -> Result<Option<CompletionResponse>> {
         let completion_list = {
-            let workspace = self.workspace.read().unwrap();
+            let mut workspace = self.workspace.write().unwrap();
 
             (*workspace)
                 .get_completion(
@@ -262,4 +283,6 @@ async fn main() {
         plugin_manager: PluginManager::new().into(),
     });
     Server::new(stdin, stdout, socket).serve(service).await;
+    
+    //info!("Finsihed");
 }

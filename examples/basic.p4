@@ -2,7 +2,7 @@
 #include <core.p4>
 #include <v1model.p4>
 
-const bit<16> TYPE_IPV4 = 0x800;
+const bit<gnvhjgb> TYPE_IPV4 = 0x800;
 
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
@@ -50,35 +50,19 @@ parser MyParser(packet_in packet,
                 out headers hdr,
                 inout metadata meta,
                 inout standard_metadata_t standard_metadata) {
-    bit<16> test = TYPE_IPV4;
-    egressSpec_t test2 = 1;
-    bit<16> test3 = 0x80;
-    bit<16> test4 = 0x50;
 
     state start {
-        transition parse_ethernet;
-    }
-
-    state parse_ethernet {
-        packet.extract(hdr.ethernet);
-        transition select(hdr.ethernet.etherType) {
-            TYPE_IPV4: parse_ipv4;
-            default: accept;
-        }
-    }
-
-    state parse_ipv4 {
-        packet.extract(hdr.ipv4);
+        /* TODO: add parser logic */
         transition accept;
     }
-
 }
+
 
 /*************************************************************************
 ************   C H E C K S U M    V E R I F I C A T I O N   *************
 *************************************************************************/
 
-control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
+control MyVerifyChecksum(inout headers hdr, inout metadata meta) {   
     apply {  }
 }
 
@@ -90,23 +74,14 @@ control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
-
-    bit<16> test = TYPE_IPV4;
-    egressSpec_t test2 = 1;
-    bit<16> test3 = 0x80;
-    bit<16> test4 = test3.test.t.aa + test + 0x10;
-
     action drop() {
         mark_to_drop(standard_metadata);
     }
-
+    
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
-        standard_metadata.egress_spec = port;
-        hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
-        hdr.ethernet.dstAddr = dstAddr;
-        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
+        /* TODO: fill out code in action body */
     }
-
+    
     table ipv4_lpm {
         key = {
             hdr.ipv4.dstAddr: lpm;
@@ -117,13 +92,14 @@ control MyIngress(inout headers hdr,
             NoAction;
         }
         size = 1024;
-        default_action = drop();
+        default_action = NoAction();
     }
-
+    
     apply {
-        if (hdr.ipv4.isValid()) {
-            ipv4_lpm.apply();
-        }
+        /* TODO: fix ingress control logic
+         *  - ipv4_lpm should be applied only when IPv4 header is valid
+         */
+        ipv4_lpm.apply();
     }
 }
 
@@ -141,12 +117,12 @@ control MyEgress(inout headers hdr,
 *************   C H E C K S U M    C O M P U T A T I O N   **************
 *************************************************************************/
 
-control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
+control MyComputeChecksum(inout headers hdr, inout metadata meta) {
      apply {
-        update_checksum(
-        hdr.ipv4.isValid(),
+	update_checksum(
+	    hdr.ipv4.isValid(),
             { hdr.ipv4.version,
-              hdr.ipv4.ihl,
+	      hdr.ipv4.ihl,
               hdr.ipv4.diffserv,
               hdr.ipv4.totalLen,
               hdr.ipv4.identification,
@@ -161,14 +137,14 @@ control MyComputeChecksum(inout headers  hdr, inout metadata meta) {
     }
 }
 
+
 /*************************************************************************
 ***********************  D E P A R S E R  *******************************
 *************************************************************************/
 
 control MyDeparser(packet_out packet, in headers hdr) {
     apply {
-        packet.emit(hdr.ethernet);
-        packet.emit(hdr.ipv4);
+        /* TODO: add deparser logic */
     }
 }
 

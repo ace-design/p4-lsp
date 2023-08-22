@@ -6,10 +6,17 @@ use tower_lsp::lsp_types::{
 };
 use tree_sitter::{InputEdit, Parser, Tree};
 
+use crate::file_tree::Node;
 use crate::features::{completion, diagnostics, goto, hover, rename, semantic_tokens};
 use crate::metadata::{AstEditor, AstManager, SymbolTableEditor, SymbolTableManager};
 use crate::utils;
+use std::fmt;
+use std::collections::HashMap;
 
+use indextree::{Arena, NodeId};
+use crate::metadata::SymbolTable;
+
+#[derive(Debug)]
 pub struct File {
     pub uri: Url,
     pub source_code: String,
@@ -18,17 +25,36 @@ pub struct File {
     pub ast_manager: Arc<Mutex<AstManager>>,
 }
 
+impl fmt::Display for File {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        fmt.write_str(&self.uri.to_string())
+    }
+}
+
 impl File {
-    pub fn new(uri: Url, source_code: &str, tree: &Option<Tree>) -> File {
-        let ast_manager = Arc::new(Mutex::new(AstManager::new(
+    pub fn new(uri: Url, source_code: &str, tree: &Option<Tree>,map:Option<HashMap<Url,NodeId>>) -> File {
+        info!("Data {:?}",map);
+        let t = AstManager::new(uri.clone(),
             source_code,
             tree.to_owned().unwrap(),
-        )));
+        );
+        let tt = Mutex::new(t);
+        
+
+        let ast_manager = Arc::new(tt);
+ 
 
         let symbol_table_manager = {
+           
             let ast_manager = ast_manager.lock().unwrap();
-            Arc::new(Mutex::new(SymbolTableManager::new(ast_manager.get_ast())))
+ 
+            let t = SymbolTableManager::new(ast_manager.get_ast(),map,uri.clone());
+           
+            let tt = Mutex::new(t);
+      
+            Arc::new(tt)
         };
+      
 
         File {
             uri,
@@ -39,7 +65,7 @@ impl File {
         }
     }
 
-    pub fn update(&mut self, changes: Vec<TextDocumentContentChangeEvent>, parser: &mut Parser) {
+    pub fn update(&mut self, changes: Vec<TextDocumentContentChangeEvent>, parser: &mut Parser,map:Option<HashMap<Url,NodeId>>) {
         for change in changes {
             let mut old_tree: Option<&Tree> = None;
             let text: String;
@@ -78,7 +104,7 @@ impl File {
         let mut st_manager = self.symbol_table_manager.lock().unwrap();
 
         ast_manager.update(&self.source_code, self.tree.to_owned().unwrap());
-        st_manager.update(ast_manager.get_ast());
+        st_manager.update(ast_manager.get_ast(),map,self.uri.clone(),A);
     }
 
     pub fn get_quick_diagnostics(&self) -> Vec<Diagnostic> {

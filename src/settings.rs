@@ -1,5 +1,7 @@
 use serde_json::Value;
+use std::path::Path;
 use std::path::PathBuf;
+use std::process::Command;
 
 #[derive(Debug, Default)]
 pub struct Settings {
@@ -32,5 +34,22 @@ impl Settings {
                 ..Default::default()
             }
         }
+    }
+    pub fn get_includes_folder() -> Option<PathBuf> {
+        let output = if cfg!(target_os = "windows") {
+            Command::new("where")
+                .arg("p4c")
+                .output()
+                .expect("failed to execute process")
+        } else {
+            Command::new("which")
+                .arg("p4c")
+                .output()
+                .expect("failed to execute process")
+        };
+
+        let text = "/usr/local/share/p4c/p4include"; //str::from_utf8(&output.stderr).expect("failed to convert output to string");
+        let file_path = Path::new(text);
+        Some(file_path.to_path_buf())
     }
 }
