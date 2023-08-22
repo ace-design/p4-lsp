@@ -119,7 +119,7 @@ impl SymbolTableActions for SymbolTable {
 
             let symbols: &Option<&Symbol> =
                 &self.get_symbol_at_pos(names[0].to_string(), position_start);
-            if let Some(symbol) = symbols {
+            if let Some(_symbol) = symbols {
                 // if let Some(x) = symbol.type_.get_name() {
                 //     if x == Type::Name {
                 //         let node = symbol.type_.get_node()?;
@@ -136,35 +136,35 @@ impl SymbolTableActions for SymbolTable {
                 //     }
                 // }
                 //
-                for name in names.iter().take(names.len() - 1).skip(1) {
-                    let fields = symbol.contains_fields(name.to_string());
-                    if let Some(_field) = fields {
-                        // if let Some(x) = field.type_.get_name() {
-                        //     if x == Type::Name {
-                        //         let node = field.type_.get_node()?;
-                        //         let name = node.content.clone();
-                        //         let pos = node.range.start;
-                        //         match self.get_symbol_at_pos(name, pos) {
-                        //             Some(x) => {
-                        //                 symbol = x;
-                        //             }
-                        //             None => {
-                        //                 return Some(vec![]);
-                        //             }
-                        //         }
-                        //     }
-                        // }
-                    } else {
-                        return Some(vec![]);
-                    }
-                }
+                // for name in names.iter().take(names.len() - 1).skip(1) {
+                //     let fields = symbol.contains_fields(name.to_string());
+                //     if let Some(_field) = fields {
+                //         // if let Some(x) = field.type_.get_name() {
+                //         //     if x == Type::Name {
+                //         //         let node = field.type_.get_node()?;
+                //         //         let name = node.content.clone();
+                //         //         let pos = node.range.start;
+                //         //         match self.get_symbol_at_pos(name, pos) {
+                //         //             Some(x) => {
+                //         //                 symbol = x;
+                //         //             }
+                //         //             None => {
+                //         //                 return Some(vec![]);
+                //         //             }
+                //         //         }
+                //         //     }
+                //         // }
+                //     } else {
+                //         return Some(vec![]);
+                //     }
+                // }
 
-                match symbol.get_fields() {
-                    Some(fields) => {
-                        return Some(fields.to_owned());
-                    }
-                    None => {}
-                }
+                // match symbol.get_fields() {
+                //     Some(fields) => {
+                //         return Some(fields.to_owned());
+                //     }
+                //     None => {}
+                // }
             }
 
             Some(vec![]) //Some(name_fields)
