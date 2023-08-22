@@ -65,12 +65,7 @@ impl LanguageServer for Backend {
         if let Some(uri) = params.clone().root_uri {
             let mut petr4 = self.petr4.write().unwrap();
             (*petr4).config(
-                "/home/t/petr4/".to_string(),
-                uri.to_file_path()
-                    .unwrap()
-                    .into_os_string()
-                    .into_string()
-                    .unwrap(),
+                "/home/t/petr4/".to_string()
             );
         }
 
