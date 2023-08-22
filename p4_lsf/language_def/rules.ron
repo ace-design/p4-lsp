@@ -45,6 +45,7 @@ LanguageDefinition (
         (name: "Type", completion_type: Class, highlight_type: Type),
         (name: "Function", completion_type: Function, highlight_type: Function),
         (name: "Parameter", completion_type: Variable, highlight_type: Parameter),
+        (name: "Field", completion_type: Property, highlight_type: Property),
     ],
     global_ast_rules: [
         (query: Kind("line_comment"), rule: Direct(Node("Comment")), highlight_type: Comment),
@@ -213,11 +214,11 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "Field",
-            symbol: Field(name_node: "Name"),
+            symbol: Init(type: "Field", name_node: "Name", type_node: "Type"),
             children: [
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("type"), rule: Rule("Type")),
-                One(query: Field("name"), rule: Direct(Node("Name")), highlight_type: Property),
+                One(query: Field("name"), rule: Direct(Node("Name"))),
             ]
         ),
         Rule(

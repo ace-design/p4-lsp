@@ -257,7 +257,7 @@ impl SymbolTable {
         let mut queue: Vec<NodeId> = node_id.children(ast_arena).collect();
 
         while let Some(node_id) = queue.pop() {
-            if let crate::language_def::Symbol::Init {
+            let symbol_index = if let crate::language_def::Symbol::Init {
                 kind,
                 name_node,
                 type_node: _,
@@ -274,8 +274,6 @@ impl SymbolTable {
 
                 let symbol = Symbol::new(name_node.content.clone(), kind.clone(), name_node.range);
 
-                // TODO: Add child scope id for fields
-
                 let symbols = &mut self
                     .arena
                     .get_mut(current_table_node_id)
@@ -290,10 +288,24 @@ impl SymbolTable {
                     .unwrap()
                     .get_mut()
                     .link(current_table_node_id, index);
-            }
+
+                Some(index)
+            } else {
+                None
+            };
 
             if ast_arena.get(node_id).unwrap().get().kind.is_scope_node() {
                 let subtable = self.parse_scope(node_id, ast_arena);
+
+                if let Some(i) = symbol_index {
+                    self.arena
+                        .get_mut(current_table_node_id)
+                        .unwrap()
+                        .get_mut()
+                        .symbols[i]
+                        .field_scope_id = Some(subtable);
+                }
+
                 current_table_node_id.append(subtable, &mut self.arena);
             } else {
                 queue.append(&mut node_id.children(ast_arena).collect());
@@ -486,22 +498,6 @@ impl Symbol {
 
     pub fn get_usages(&self) -> &Vec<Range> {
         &self.usages
-    }
-
-    pub fn get_fields(&self) -> &Option<Vec<Symbol>> {
-        todo!()
-    }
-
-    pub fn contains_fields(&self, name: String) -> Option<Symbol> {
-        todo!()
-        // if let Some(fields) = &self.fields {
-        //     for field in fields {
-        //         if field.get_name() == name {
-        //             return Some(field.clone());
-        //         }
-        //     }
-        // }
-        // None
     }
 
     pub fn get_kind(&self) -> String {
