@@ -461,9 +461,6 @@ LanguageDefinition (
         Rule(
             node_name: "Type",
             symbol: Usage,
-            children: [
-                Maybe(query: Kind("type_name"), rule: Direct(Node("Name"))),
-            ]
         ),
         Rule(
             node_name: "NameUsage",
