@@ -486,6 +486,10 @@ impl Symbol {
         self.type_symbol = Some(id)
     }
 
+    pub fn get_type_symbol(&self) -> Option<SymbolId> {
+        self.type_symbol.clone()
+    }
+
     pub fn get_name(&self) -> String {
         self.name.clone()
     }

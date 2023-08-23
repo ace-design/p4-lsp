@@ -109,25 +109,7 @@ impl File {
     }
 
     pub fn get_hover_info(&self, position: Position) -> Option<HoverContents> {
-        let tree: &Tree = self.tree.as_ref()?;
-
-        let point = utils::pos_to_point(position);
-
-        let mut node: tree_sitter::Node = tree
-            .root_node()
-            .named_descendant_for_point_range(point, point)?;
-
-        let mut node_hierarchy = node.kind().to_string();
-        while node.kind() != "source_file" {
-            node = node.parent()?;
-            node_hierarchy = [node.kind().into(), node_hierarchy].join(" > ");
-        }
-
-        let hover_content = hover::HoverContentBuilder::new()
-            .add_text(&node_hierarchy)
-            .build();
-
-        Some(hover_content)
+        hover::get_hover_info(&self.ast_manager, &self.symbol_table_manager, position)
     }
 
     pub fn get_semantic_tokens(&self) -> Option<SemanticTokensResult> {

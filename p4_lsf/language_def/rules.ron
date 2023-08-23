@@ -124,7 +124,7 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "TypeDefDeclaration",
-            symbol: Init(type: "Type", name_node: "Name"),
+            symbol: Init(type: "Type", name_node: "Name", type_node: "Type"),
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("type"), rule: Rule("Type")),
@@ -166,7 +166,7 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "EnumDeclaration", // Maybe split this to EnumDeclaration and SpecifiedEnumDeclaration ?
-            symbol: Init(type: "Type", name_node: "Name"),
+            symbol: Init(type: "Type", name_node: "Name", type_node: "Type"),
             children: [ 
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 Maybe(query: Field("type"), rule: Rule("Type")),
@@ -326,7 +326,7 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "Parameter",
-            symbol: Init(type: "Parameter", name_node: "Name"),
+            symbol: Init(type: "Parameter", name_node: "Name", type_node: "Type"),
             children: [
                 Maybe(query: Field("direction"), rule: Direct(Node("Direction")), highlight_type: EnumMember),
                 One(query: Field("type"), rule: Rule("Type")),
@@ -367,7 +367,7 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "VariableDeclaration",
-            symbol: Init(type: "Variable", name_node: "Name"),
+            symbol: Init(type: "Variable", name_node: "Name", type_node: "Type"),
             children: [
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("type"), rule: Rule("Type")),
