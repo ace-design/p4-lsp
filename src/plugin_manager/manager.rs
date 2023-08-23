@@ -62,33 +62,33 @@ impl PluginManager {
     }
 
     pub fn execute(&mut self,plugin:Plugin){
-        info!("Excute");
-        let mut cmd = Command::new(plugin.path.clone());
-        let json_str = to_string(&plugin).unwrap();
-    
-        cmd.stdin(Stdio::piped());
-        info!("1");
-        let mut child = cmd.spawn().expect("Failed to start the process");
+        info!("Execute");
+        
+            let uri = Url::parse(plugin.path.clone().as_str()).unwrap().to_file_path().unwrap().into_os_string().into_string().unwrap();
+            // Replace "your_program" with the actual binary you want to execute
+            let mut child = Command::new(uri)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .spawn().unwrap();
+            
 
-        if let Some(mut stdin) = child.stdin.take() {
-            let data = json_str.as_str();
- info!("2");
-            if stdin.write_all(data.as_bytes()).is_ok() {
-                drop(stdin);
- info!("3");
-                let status = child.wait().expect("Failed to wait for the process");
- info!("4");
-                if status.success() {
-                    info!("Process exited successfully");
-                } else {
-                    info!("Process exited with an error");
-                }
-            } else {
-                info!("Failed to write data to stdin");
+            // Write data to the child process's stdin
+            if let Some(mut stdin) = child.stdin.take() {
+                let arguments = plugin.arguments;
+                let json_str = to_string(&arguments).unwrap();
+                stdin.write_all(json_str.as_bytes()).unwrap();
             }
-        } else {
-            info!("Failed to access stdin of the child process");
-        }
+        
+            // Wait for the child process to finish and capture its stdout
+            match child.wait_with_output() {
+                Ok(output) => {
+                    info!("f-{}",String::from_utf8(output.stdout).unwrap());
+                    info!("g-{}",String::from_utf8(output.stderr).unwrap());
+                }
+                Err(e) => {
+                    info!("h-{}",e);
+                }
+            }
     }
 
     pub fn run_diagnostic(&mut self, file_path: String) -> Vec<Diagnostic> {
