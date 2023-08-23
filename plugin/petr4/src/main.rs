@@ -1,4 +1,5 @@
 use lsp_types::*;
+use serde::*;
 use serde_json::*;
 use std::collections::HashMap;
 use std::env;
@@ -50,9 +51,9 @@ pub fn windows() -> String {
     return "the plugin don't work for windows yet.".to_string();
 }
 
-pub fn testing(petr4: &String, p4: &String) -> String {
-    let path_petr4 = Path::new(petr4);
-    let path_p4 = Path::new(p4);
+pub fn testing(petr4: String, p4: String) -> String {
+    let path_petr4 = Path::new(&petr4);
+    let path_p4 = Path::new(&p4);
     let mut number_commande = 0;
 
     // verify the stf file exists
@@ -115,6 +116,12 @@ pub fn testing(petr4: &String, p4: &String) -> String {
     return pass();
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Argument {
+    key: String,
+    value: String,
+}
+
 pub fn main() {
     let os: &str = env::consts::OS;
     if os == "windows" {
@@ -122,12 +129,22 @@ pub fn main() {
     } else {
         let mut input = String::new();
         stdin().read_line(&mut input).expect("Failed to read line");
-        let object: HashMap<String, String> = serde_json::from_str(&input).unwrap();
+        let object: Vec<Argument> = serde_json::from_str(&input).unwrap();
 
-        let petr4 = object.get("petr4").unwrap();
-        let p4 = object.get("file").unwrap();
+        let mut petr4: String = "".to_string(); //object.get("petr4").unwrap();
+        let mut p4: String = "".to_string(); //object.get("file").unwrap();
+
+        for arg in object {
+            if arg.key == "petr4" {
+                petr4 = arg.value;
+            } else if arg.key == "file" {
+                p4 = arg.value;
+            }
+        }
 
         println!("you entered : {} - {}", petr4, p4);
-        println!("{{\"result\":\"{}\"}}", testing(petr4, p4));
+        if petr4 != "" && p4 != "" {
+            println!("{{\"result\":\"{}\"}}", testing(petr4, p4));
+        }
     }
 }
