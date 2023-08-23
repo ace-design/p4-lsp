@@ -8,5 +8,6 @@ edition = "2021"
 
 [dependencies]
 lsp-types = "0.94.0"
+regex = "1.9.3"
 serde = "1.0.185"
 serde_json = "1.0.105"
