@@ -29,6 +29,7 @@ mod plugin_manager;
 mod settings;
 mod utils;
 mod workspace;
+mod notification;
 
 use workspace::Workspace;
 
@@ -154,7 +155,7 @@ impl LanguageServer for Backend {
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        self.plugin_manager.write().unwrap().run_plugins(params.text_document.uri.clone(),OnState::Save);
+        let (message,data) =self.plugin_manager.write().unwrap().run_plugins(params.text_document.uri.clone(),OnState::Save).unwrap();
         let mut diagnostics = {
             let workspace = self.workspace.read().unwrap();
 
@@ -168,7 +169,9 @@ impl LanguageServer for Backend {
                 .unwrap()
                 .run_diagnostic(params.text_document.uri.path().into()),
         );
-
+       self.client.send_notification::<notification::CustomNotification>(notification::CustomParams::new(
+             message,data
+        )).await;
         self.client
             .publish_diagnostics(params.text_document.uri, diagnostics, None)
             .await;

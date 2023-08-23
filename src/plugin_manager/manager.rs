@@ -29,19 +29,24 @@ pub struct Argument{
     value:String
 }
 
+#[derive(Serialize,Deserialize,Clone)]
+pub struct CustomResult{
+    message:String,
+    data:String
+}
+
 impl PluginManager {
     pub fn new() -> PluginManager {
         PluginManager {
             plugins: Vec::new(),
         }
     }
-
-    pub fn load_plugins(&mut self,uri:Option<Url> ,json_str:&str){
+pub fn load_plugins(&mut self,uri:Option<Url> ,json_str:&str){
         let mut plugins: Vec<Plugin> = from_str(json_str).unwrap();
         if let Some(url) = uri{
             let key = String::from("workspace");
             for plugin in plugins.iter_mut(){
-                plugin.arguments.push(Argument { key:key.clone(), value: url.to_string() })
+                plugin.arguments.push(Argument { key:key.clone(), value: url.to_file_path().unwrap().into_os_string().into_string().unwrap() })
             }
            
         }
@@ -51,22 +56,32 @@ impl PluginManager {
         info!("Deserialized Personn: {json_str}");
     }
 
-    pub fn run_plugins(&mut self,file:Url,state:OnState){
+    pub fn run_plugins(&mut self,file:Url,state:OnState) ->Option<(String,String)>{
+        let mut message = String::from("");
+        let mut data = String::from("");
          for plugin in self.plugins.clone().iter_mut(){
             let key = String::from("file");
-            plugin.arguments.push(Argument { key:key.clone(), value: file.to_string() });
+            plugin.arguments.push(Argument { key:key.clone(), value: file.to_file_path().unwrap().into_os_string().into_string().unwrap() });
             if plugin.on.contains(&state) {
-                self.execute(plugin.clone());
+                let json_str = self.execute(plugin.clone()).unwrap();
+                let results: CustomResult = from_str(json_str.as_str()).unwrap();
+                if(!results.message.is_empty()){
+                    message = results.message;
+                }
+                if(!results.data.is_empty()){
+                    data = results.data;
+                }
             }
         }
+        Some((message,data))
     }
 
-    pub fn execute(&mut self,plugin:Plugin){
+    pub fn execute(&mut self,plugin:Plugin) -> Option<String>{
         info!("Execute");
-        
-            let uri = Url::parse(plugin.path.clone().as_str()).unwrap().to_file_path().unwrap().into_os_string().into_string().unwrap();
+
+
             // Replace "your_program" with the actual binary you want to execute
-            let mut child = Command::new(uri)
+            let mut child = Command::new(plugin.path.clone())
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .spawn().unwrap();
@@ -76,19 +91,21 @@ impl PluginManager {
             if let Some(mut stdin) = child.stdin.take() {
                 let arguments = plugin.arguments;
                 let json_str = to_string(&arguments).unwrap();
+                info!("a-{}",json_str);
                 stdin.write_all(json_str.as_bytes()).unwrap();
+                info!("b");
             }
         
             // Wait for the child process to finish and capture its stdout
-            match child.wait_with_output() {
+            let result = match child.wait_with_output() {
                 Ok(output) => {
-                    info!("f-{}",String::from_utf8(output.stdout).unwrap());
-                    info!("g-{}",String::from_utf8(output.stderr).unwrap());
+                    String::from_utf8(output.stderr).unwrap()
                 }
                 Err(e) => {
-                    info!("h-{}",e);
+                    e.to_string()
                 }
-            }
+            };
+            return Some(result);
     }
 
     pub fn run_diagnostic(&mut self, file_path: String) -> Vec<Diagnostic> {
