@@ -1,7 +1,7 @@
 use core::fmt;
 use std::fmt::Debug;
 
-use super::symbol_table::SymbolTable;
+use super::symbol_table::{SymbolId, SymbolTable};
 use super::{Ast, Symbol};
 
 use tower_lsp::lsp_types::Position;
@@ -23,6 +23,7 @@ pub trait SymbolTableQuery {
     fn get_name_field(&self, position: Position, source_code: &str) -> Option<Vec<Symbol>>;
     fn get_symbol_at_pos(&self, name: String, position: Position) -> Option<&Symbol>;
     fn get_all_symbols(&self) -> Vec<Symbol>;
+    fn get_symbol(&self, symbol_id: SymbolId) -> Option<&Symbol>;
 }
 
 #[derive(Debug, Clone)]
@@ -58,6 +59,10 @@ impl SymbolTableQuery for SymbolTableManager {
 
     fn get_all_symbols(&self) -> Vec<Symbol> {
         self.symbol_table.get_all_symbols()
+    }
+
+    fn get_symbol(&self, symbol_id: SymbolId) -> Option<&Symbol> {
+        self.symbol_table.get_symbol(symbol_id)
     }
 }
 

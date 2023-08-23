@@ -13,7 +13,7 @@ pub fn get_definition_range(
     let node = root_visit.get_node_at_position(position)?;
 
     let symbol_table_query = symbol_table_query.lock().unwrap();
-    let symbol = symbol_table_query.get_symbol_at_pos(node.get().content.clone(), position)?;
+    let symbol = symbol_table_query.get_symbol(node.get().linked_symbol.clone()?)?;
 
     Some(symbol.get_definition_range())
 }
