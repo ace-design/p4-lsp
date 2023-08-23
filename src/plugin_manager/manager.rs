@@ -99,7 +99,7 @@ pub fn load_plugins(&mut self,uri:Option<Url> ,json_str:&str){
             // Wait for the child process to finish and capture its stdout
             let result = match child.wait_with_output() {
                 Ok(output) => {
-                    String::from_utf8(output.stderr).unwrap()
+                    String::from_utf8(output.stdout).unwrap()
                 }
                 Err(e) => {
                     e.to_string()
