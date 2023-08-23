@@ -363,7 +363,11 @@ LanguageDefinition (
                 Many(query: Kind("exit_statement"), rule: Direct(Node("ExitStatement"))),
                 Many(query: Kind("return_statement"), rule: Rule("Return")),
                 Many(query: Kind("switch_statement"), rule: Rule("Switch")),
+                Many(query: Kind("transition_statement"), rule: Rule("Transition")),
             ]
+        ),
+        Rule(
+            node_name: "Transition",
         ),
         Rule(
             node_name: "VariableDeclaration",
