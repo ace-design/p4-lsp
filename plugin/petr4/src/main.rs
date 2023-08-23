@@ -122,8 +122,11 @@ pub struct Argument {
 pub fn main() {
     let os: &str = env::consts::OS;
     if os == "windows" {
-        println!("{{\"result\":\"\"}}")
+        println!("{{\"message\":\"petr4 testing : fail.\\\nThe plugin don't work on windows.\", \"data\":\"\"}}")
     } else {
+        //example of input tat I will receive :
+        // [{"key":"petr4","value":"/home/t/petr4/"},{"key":"workspace","value":"/home/t/p4-lsp"},{"key":"file","value":"/home/t/p4-lsp/examples/casts.p4"}]
+        
         let mut input = String::new();
         stdin().read_line(&mut input).expect("Failed to read line");
         let object: Vec<Argument> = serde_json::from_str(&input).unwrap();
@@ -140,8 +143,6 @@ pub fn main() {
         }
 
         //println!("you entered : {} - {}", petr4, p4);
-        //[{"key":"petr4","value":"/home/t/petr4/"},{"key":"workspace","value":"/home/t/p4-lsp"},{"key":"file","value":"/home/t/p4-lsp/examples/casts.p4"}]
-
         if petr4 != "" && p4 != "" {
             let (message, mut data) = testing(petr4, p4);
             data = data.replace("\\","\\\\").replace("\n","\\n").replace("\r","\\r").replace("\t","\\t");
@@ -150,6 +151,8 @@ pub fn main() {
             let t = Regex::new(r"\x1b\[[0-9;]*[mK]").unwrap();
             data = t.replace_all(&data,"").to_string();
             println!("{{\"message\":\"{}\", \"data\":\"{}\"}}", message, data);
+        } else {
+            println!("{{\"message\":\"petr4 testing : fail.\\\nYou didn't give me all the arguments that I need.\", \"data\":\"\"}}");
         }
     }
 }
