@@ -36,6 +36,8 @@ pub fn rename(
         new_name: new_name.clone(),
     });
 
+    // TODO: Change this to utilize symbol id
+
     Some(WorkspaceEdit::new(build_changes(uri, &symbol, new_name)))
 }
 

@@ -13,21 +13,23 @@ fn get_id() -> usize {
     SYMBOL_ID_COUNTER.fetch_add(1, Ordering::Relaxed)
 }
 
+type ScopeId = NodeId;
+
 #[derive(Debug, Default, Clone)]
 pub struct SymbolTable {
     arena: Arena<ScopeSymbolTable>,
-    root_id: Option<NodeId>,
+    root_id: Option<ScopeId>,
     undefined_list: Vec<Range>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct SymbolId {
-    symbol_table_id: NodeId,
+    symbol_table_id: ScopeId,
     index: usize,
 }
 
 impl SymbolId {
-    pub fn new(symbol_table_id: NodeId, index: usize) -> Self {
+    pub fn new(symbol_table_id: ScopeId, index: usize) -> Self {
         Self {
             symbol_table_id,
             index,
@@ -227,11 +229,11 @@ impl SymbolTable {
         table
     }
 
-    fn get_scope_id(&self, position: Position) -> Option<NodeId> {
+    fn get_scope_id(&self, position: Position) -> Option<ScopeId> {
         self._get_scope_id(position, self.root_id?)
     }
 
-    fn _get_scope_id(&self, position: Position, current: NodeId) -> Option<NodeId> {
+    fn _get_scope_id(&self, position: Position, current: ScopeId) -> Option<ScopeId> {
         for child_scope_id in current.children(&self.arena) {
             let child_scope = self.arena.get(child_scope_id).unwrap().get();
 
@@ -250,7 +252,7 @@ impl SymbolTable {
         self.root_id
     }
 
-    fn parse_scope(&mut self, node_id: NodeId, ast_arena: &mut Arena<Node>) -> NodeId {
+    fn parse_scope(&mut self, node_id: NodeId, ast_arena: &mut Arena<Node>) -> ScopeId {
         let table = ScopeSymbolTable::new(ast_arena.get(node_id).unwrap().get().range);
         let current_table_node_id = self.arena.new_node(table);
 
@@ -460,7 +462,7 @@ pub struct Symbol {
     type_symbol: Option<SymbolId>,
     def_position: Range,
     usages: Vec<Range>,
-    field_scope_id: Option<NodeId>,
+    field_scope_id: Option<ScopeId>,
 }
 
 impl Symbol {

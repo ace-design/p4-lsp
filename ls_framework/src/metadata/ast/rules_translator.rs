@@ -82,7 +82,7 @@ impl RulesTranslator {
         let (query, node_or_rule) = (&child.query, &child.rule);
 
         let mut counter = 0;
-        for (i, ts_node) in children.iter().enumerate().filter(|node| node.1.is_named()) {
+        for (i, ts_node) in children.iter().enumerate() {
             let target_node = if let TreesitterNodeQuery::Path(path) = query {
                 if path.is_empty() {
                     continue;

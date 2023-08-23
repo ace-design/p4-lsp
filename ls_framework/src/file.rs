@@ -82,6 +82,9 @@ impl File {
 
         ast_manager.update(&self.source_code, self.tree.to_owned().unwrap());
         st_manager.update(ast_manager.get_ast());
+
+        debug!("\nAST:\n{}", ast_manager);
+        debug!("\nSymbol Table:\n{}", st_manager);
     }
 
     pub fn get_quick_diagnostics(&self) -> Vec<Diagnostic> {

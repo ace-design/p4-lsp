@@ -470,6 +470,9 @@ LanguageDefinition (
             symbol: Usage
         ),
         Rule(
+            node_name: "Member",
+        ),
+        Rule(
             node_name: "Value",
             children: [
                 Maybe(query: Kind("integer"), rule: Direct(Node("Integer")), highlight_type: Number),
@@ -479,6 +482,8 @@ LanguageDefinition (
                 Maybe(query: Kind("named_type"), rule: Rule("NameUsage")),
                 Maybe(query: Kind("type_name"), rule: Rule("NameUsage")),
                 Many(query: Kind("expression"), rule: Rule("Value")),
+                Many(query: Kind("member"), rule: Rule("Member")),
+                Many(query: Field("operator"), rule: Direct(Node("Operator"))),
             ]
         ),
         Rule(
