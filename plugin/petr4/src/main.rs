@@ -43,15 +43,11 @@ pub fn fail(number_command: i32, type_command: &str, stdout: Vec<u8>, stderr: Ve
     return content;
 }
 
-pub fn pass() -> String {
-    return "success".to_string();
-}
-
 pub fn windows() -> String {
     return "the plugin don't work for windows yet.".to_string();
 }
 
-pub fn testing(petr4: String, p4: String) -> String {
+pub fn testing(petr4: String, p4: String) -> (String,String) {
     let path_petr4 = Path::new(&petr4);
     let path_p4 = Path::new(&p4);
     let mut number_commande = 0;
@@ -59,7 +55,7 @@ pub fn testing(petr4: String, p4: String) -> String {
     // verify the stf file exists
     let path_stf: std::path::PathBuf = path_p4.clone().with_extension("stf");
     if !path_stf.exists() {
-        return "".to_string();
+        return ("".to_string(), "".to_string());
     }
 
     // verify the binary of the petr4 exists
@@ -82,7 +78,7 @@ pub fn testing(petr4: String, p4: String) -> String {
         );
         number_commande += 1;
         if !stderr.is_empty() {
-            return fail(number_commande, "./bin/test.exe", stdout, stderr);
+            return ("petr4 testing : fail".to_string(), fail(number_commande, "./bin/test.exe", stdout, stderr));
         }
 
         // get the output
@@ -104,16 +100,16 @@ pub fn testing(petr4: String, p4: String) -> String {
                         p4_testing = p4_testing.with_file_name(t);
                     }
 
-                    return fs::read_to_string(p4_testing.clone()).expect(&format!(
+                    return ("petr4 testing : fail".to_string(), fs::read_to_string(p4_testing.clone()).expect(&format!(
                         "petr4 fail, but can't read the file of the output '{}'",
                         p4_testing.as_os_str().to_str().unwrap()
-                    ));
+                    )));
                 }
                 break;
             }
         }
     }
-    return pass();
+    return ("petr4 testing : success".to_string(), "".to_string());
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -144,7 +140,8 @@ pub fn main() {
 
         println!("you entered : {} - {}", petr4, p4);
         if petr4 != "" && p4 != "" {
-            println!("{{\"result\":\"{}\"}}", testing(petr4, p4));
+            let (message, data) = testing(petr4, p4);
+            println!("{{\"message\":\"{}\", \"data\":\"{}\"}}", message, data);
         }
     }
 }
