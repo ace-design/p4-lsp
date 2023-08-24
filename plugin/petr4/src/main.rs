@@ -195,18 +195,6 @@ pub fn testing(petr4: String, p4: String, workspace: String) -> (String, String)
     return ("petr4 testing : success".to_string(), "".to_string());
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct Argument {
-    key: String,
-    value: String,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct Notification {
-    message: String,
-    data: String,
-}
-
 fn prepare_string(content: String) -> String {
     let data = content
         .replace("\\", "\\\\")
@@ -217,6 +205,18 @@ fn prepare_string(content: String) -> String {
 }
 fn string_to_html(content: String) -> String {
     return content.replace("\n", "<br>");
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Argument {
+    key: String,
+    value: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Notification {
+    message: String,
+    data: String,
 }
 
 pub fn main() {
