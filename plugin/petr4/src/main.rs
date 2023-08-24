@@ -86,7 +86,7 @@ pub fn write_error(workspace: String, file: String, pert4: String, explanation: 
         workspace = workspace,
         file = file,
         pert4 = pert4,
-        explanation = explanation
+        explanation = string_to_html(explanation)
     );
 }
 
@@ -177,10 +177,14 @@ pub fn testing(petr4: String, p4: String, workspace: String) -> (String, String)
                             workspace,
                             p4,
                             petr4,
-                            t.replace_all(&fs::read_to_string(p4_testing.clone()).expect(&format!(
-                                "petr4 fail, but can't read the file of the output '{}'",
-                                p4_testing.as_os_str().to_str().unwrap()
-                            )), "").to_string(),
+                            t.replace_all(
+                                &fs::read_to_string(p4_testing.clone()).expect(&format!(
+                                    "petr4 fail, but can't read the file of the output '{}'",
+                                    p4_testing.as_os_str().to_str().unwrap()
+                                )),
+                                "",
+                            )
+                            .to_string(),
                         ),
                     );
                 }
@@ -211,6 +215,9 @@ fn prepare_string(content: String) -> String {
         .replace("\t", "\\t");
     return data.replace("\"", "\\\"");
 }
+fn string_to_html(content: String) -> String {
+    return content.replace("\n", "<br>");
+}
 
 pub fn main() {
     let os: &str = env::consts::OS;
@@ -222,7 +229,7 @@ pub fn main() {
         .unwrap();
         println!(
             "{{\"output\":\"notification\", \"data\":\"{}\"}}",
-            prepare_string(json)
+            json //prepare_string(json)
         );
     } else {
         //example of input tat I will receive :
@@ -253,7 +260,7 @@ pub fn main() {
             let json = serde_json::to_string(&Notification { message, data }).unwrap();
             println!(
                 "{{\"output\":\"notification\", \"data\":\"{}\"}}",
-                prepare_string(json)
+                json //prepare_string(json)
             );
         } else {
             let json = serde_json::to_string(&Notification {
@@ -265,7 +272,7 @@ pub fn main() {
             .unwrap();
             println!(
                 "{{\"output\":\"notification\", \"data\":\"{}\"}}",
-                prepare_string(json)
+                json //prepare_string(json)
             );
         }
     }
