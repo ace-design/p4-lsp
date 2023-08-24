@@ -1,14 +1,12 @@
-use lsp_types::*;
+use chrono::Utc;
+use regex::Regex;
 use serde::*;
-use serde_json::*;
-use std::collections::HashMap;
 use std::env;
 use std::fs;
 use std::io::*;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use std::str;
-use regex::Regex;
 
 fn get_command_output(
     command: &str,
@@ -39,16 +37,74 @@ fn get_command_output(
     }
 }
 
-pub fn fail(number_command: i32, type_command: &str, stdout: Vec<u8>, stderr: Vec<u8>) -> String {
-    let content = format!("Petr4 plugin fail.\nNumber commande : {}\nThe type of commande : {}\nstdout : {}\n stderr : {}", number_command, type_command, String::from_utf8(stdout).unwrap(), String::from_utf8(stderr).unwrap());
-    return content;
+pub fn write_error(workspace: String, file: String, pert4: String, explanation: String) -> String {
+    return format!(
+        "<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <meta http-equiv='content-type' content='text/html; charset=utf-8'>
+  <title>PETR4 STF TESTING FAIL</title>
+  <style type='text/css'>
+    html * {{ margin:0; }}
+    body * {{ padding:10px 20px; }}
+    body * * {{ padding:0; }}
+    body {{ font:small sans-serif; background:#ddd; color:#000; }}
+    h1 {{ font-weight:normal; margin-bottom:.4em; }}
+    h1 span {{ font-size:60%; color:#eee; }}
+    table {{ border-collapse: collapse; }}
+    td, th {{ padding:3px 4px; }}
+    th {{ width:12em; text-align:right; color:#eee; }}
+    #title {{ background: #F4364C; }}
+  </style>
+</head>
+<body>
+  <div id='title'>
+    <h1>PETR4 STF TESTING FAIL <span>{date}</span></h1>
+    <table>
+      <tr>
+        <th>WORKSPACE :</th>
+        <td>{workspace}</td>
+      </tr>
+      <tr>
+        <th>FILE :</th>
+        <td>{file}</td>
+      </tr>
+      <tr>
+        <th>PETR4 PATH :</th>
+        <td>{pert4}</td>
+      </tr>
+    </table>
+  </div>
+  <div>
+    <p>
+        {explanation}
+    </p>
+  </div>
+</body>
+</html>",
+        date = Utc::now(),
+        workspace = workspace,
+        file = file,
+        pert4 = pert4,
+        explanation = explanation
+    );
 }
 
-pub fn windows() -> String {
-    return "the plugin don't work for windows yet.".to_string();
+pub fn fail(
+    workspace: String,
+    p4: String,
+    pert4: String,
+    message: &str,
+    number_command: i32,
+    type_command: &str,
+    stdout: Vec<u8>,
+    stderr: Vec<u8>,
+) -> String {
+    let content = format!("Petr4 plugin fail :\n{}\n\nMore Information :\nNumber commande : {}\nThe type of commande : {}\nstdout : {}\n stderr : {}", message, number_command, type_command, String::from_utf8(stdout).unwrap(), String::from_utf8(stderr).unwrap());
+    return write_error(workspace, p4, pert4, content);
 }
 
-pub fn testing(petr4: String, p4: String) -> (String,String) {
+pub fn testing(petr4: String, p4: String, workspace: String) -> (String, String) {
     let path_petr4 = Path::new(&petr4);
     let path_p4 = Path::new(&p4);
     let mut number_commande = 0;
@@ -79,7 +135,19 @@ pub fn testing(petr4: String, p4: String) -> (String,String) {
         );
         number_commande += 1;
         if !stderr.is_empty() {
-            return ("petr4 testing : fail".to_string(), fail(number_commande, "./bin/test.exe", stdout, stderr));
+            return (
+                "petr4 testing : fail".to_string(),
+                fail(
+                    workspace,
+                    p4,
+                    petr4,
+                    "The execution of the binary of Petr4 fail.",
+                    number_commande,
+                    "./bin/test.exe",
+                    stdout,
+                    stderr,
+                ),
+            );
         }
 
         // get the output
@@ -101,10 +169,20 @@ pub fn testing(petr4: String, p4: String) -> (String,String) {
                         p4_testing = p4_testing.with_file_name(t);
                     }
 
-                    return ("petr4 testing : fail".to_string(), fs::read_to_string(p4_testing.clone()).expect(&format!(
-                        "petr4 fail, but can't read the file of the output '{}'",
-                        p4_testing.as_os_str().to_str().unwrap()
-                    )));
+                    let t = Regex::new(r"\x1b\[[0-9;]*[mK]").unwrap();
+
+                    return (
+                        "petr4 testing : fail".to_string(),
+                        write_error(
+                            workspace,
+                            p4,
+                            petr4,
+                            t.replace_all(&fs::read_to_string(p4_testing.clone()).expect(&format!(
+                                "petr4 fail, but can't read the file of the output '{}'",
+                                p4_testing.as_os_str().to_str().unwrap()
+                            )), "").to_string(),
+                        ),
+                    );
                 }
                 break;
             }
@@ -119,40 +197,76 @@ pub struct Argument {
     value: String,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Notification {
+    message: String,
+    data: String,
+}
+
+fn prepare_string(content: String) -> String {
+    let data = content
+        .replace("\\", "\\\\")
+        .replace("\n", "\\n")
+        .replace("\r", "\\r")
+        .replace("\t", "\\t");
+    return data.replace("\"", "\\\"");
+}
+
 pub fn main() {
     let os: &str = env::consts::OS;
     if os == "windows" {
-        println!("{{\"message\":\"petr4 testing : fail.\\\nThe plugin don't work on windows.\", \"data\":\"\"}}")
+        let json = serde_json::to_string(&Notification {
+            message: "petr4 testing : fail.\nThe plugin don't work on windows.".to_string(),
+            data: "".to_string(),
+        })
+        .unwrap();
+        println!(
+            "{{\"output\":\"notification\", \"data\":\"{}\"}}",
+            prepare_string(json)
+        );
     } else {
         //example of input tat I will receive :
         // [{"key":"petr4","value":"/home/t/petr4/"},{"key":"workspace","value":"/home/t/p4-lsp"},{"key":"file","value":"/home/t/p4-lsp/examples/casts.p4"}]
-        
+
         let mut input = String::new();
         stdin().read_line(&mut input).expect("Failed to read line");
         let object: Vec<Argument> = serde_json::from_str(&input).unwrap();
 
         let mut petr4: String = "".to_string(); //object.get("petr4").unwrap();
         let mut p4: String = "".to_string(); //object.get("file").unwrap();
+        let mut workspace: String = "".to_string(); //object.get("workspace").unwrap();
 
         for arg in object {
             if arg.key == "petr4" {
                 petr4 = arg.value;
             } else if arg.key == "file" {
                 p4 = arg.value;
+            } else if arg.key == "workspace" {
+                workspace = arg.value;
             }
         }
 
         //println!("you entered : {} - {}", petr4, p4);
-        if petr4 != "" && p4 != "" {
-            let (message, mut data) = testing(petr4, p4);
-            data = data.replace("\\","\\\\").replace("\n","\\n").replace("\r","\\r").replace("\t","\\t");
-            data = data.replace("\"","\\\"");
+        if petr4 != "" && p4 != "" && workspace != "" {
+            let (message, mut data) = testing(petr4, p4, workspace);
 
-            let t = Regex::new(r"\x1b\[[0-9;]*[mK]").unwrap();
-            data = t.replace_all(&data,"").to_string();
-            println!("{{\"message\":\"{}\", \"data\":\"{}\"}}", message, data);
+            let json = serde_json::to_string(&Notification { message, data }).unwrap();
+            println!(
+                "{{\"output\":\"notification\", \"data\":\"{}\"}}",
+                prepare_string(json)
+            );
         } else {
-            println!("{{\"message\":\"petr4 testing : fail.\\\nYou didn't give me all the arguments that I need.\", \"data\":\"\"}}");
+            let json = serde_json::to_string(&Notification {
+                message:
+                    "petr4 testing : fail.\\nYou didn't give me all the arguments that I need."
+                        .to_string(),
+                data: "".to_string(),
+            })
+            .unwrap();
+            println!(
+                "{{\"output\":\"notification\", \"data\":\"{}\"}}",
+                prepare_string(json)
+            );
         }
     }
 }
