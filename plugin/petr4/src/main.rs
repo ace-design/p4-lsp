@@ -8,11 +8,7 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 use std::str;
 
-fn get_command_output(
-    command: &str,
-    current_dir: &str,
-    args: &mut Vec<String>,
-) -> (Vec<u8>, Vec<u8>) {
+fn get_command_output(command: &str, current_dir: &str, args: Vec<String>) -> (Vec<u8>, Vec<u8>) {
     let mut partial_command = Command::new(command);
 
     if !args.is_empty() {
@@ -104,7 +100,7 @@ pub fn fail(
     return write_error(workspace, p4, pert4, content);
 }
 
-pub fn testing(petr4: String, p4: String, workspace: String) -> (String, String) {
+pub fn testing(petr4: String, p4: String, workspace: String) -> (bool, String, String) {
     let path_petr4 = Path::new(&petr4);
     let path_p4 = Path::new(&p4);
     let mut number_commande = 0;
@@ -112,7 +108,7 @@ pub fn testing(petr4: String, p4: String, workspace: String) -> (String, String)
     // verify the stf file exists
     let path_stf: std::path::PathBuf = path_p4.clone().with_extension("stf");
     if !path_stf.exists() {
-        return ("".to_string(), "".to_string());
+        return (true, "".to_string(), "".to_string());
     }
 
     // verify the binary of the petr4 exists
@@ -128,7 +124,7 @@ pub fn testing(petr4: String, p4: String, workspace: String) -> (String, String)
                 .to_str()
                 .unwrap(),
             "",
-            &mut vec![
+            vec![
                 "-t".to_string(),
                 path_p4.as_os_str().to_str().unwrap().to_string(),
             ],
@@ -136,6 +132,7 @@ pub fn testing(petr4: String, p4: String, workspace: String) -> (String, String)
         number_commande += 1;
         if !stderr.is_empty() {
             return (
+                false,
                 "petr4 testing : fail".to_string(),
                 fail(
                     workspace,
@@ -172,6 +169,7 @@ pub fn testing(petr4: String, p4: String, workspace: String) -> (String, String)
                     let t = Regex::new(r"\x1b\[[0-9;]*[mK]").unwrap();
 
                     return (
+                        false,
                         "petr4 testing : fail".to_string(),
                         write_error(
                             workspace,
@@ -192,7 +190,7 @@ pub fn testing(petr4: String, p4: String, workspace: String) -> (String, String)
             }
         }
     }
-    return ("petr4 testing : success".to_string(), "".to_string());
+    return (false, "petr4 testing : success".to_string(), "".to_string());
 }
 
 fn prepare_string(content: String) -> String {
@@ -228,7 +226,7 @@ pub fn main() {
         })
         .unwrap();
         println!(
-            "{{\"output\":\"notification\", \"data\":\"{}\"}}",
+            "{{\"output_type\":\"Notification\", \"data\":\"{}\"}}",
             json //prepare_string(json)
         );
     } else {
@@ -255,13 +253,17 @@ pub fn main() {
 
         //println!("you entered : {} - {}", petr4, p4);
         if petr4 != "" && p4 != "" && workspace != "" {
-            let (message, mut data) = testing(petr4, p4, workspace);
+            let (nothing, message, mut data) = testing(petr4, p4, workspace);
 
-            let json = serde_json::to_string(&Notification { message, data }).unwrap();
-            println!(
-                "{{\"output\":\"notification\", \"data\":\"{}\"}}",
-                json //prepare_string(json)
-            );
+            if nothing {
+                println!("{{\"output_type\":\"Nothing\", \"data\":\"\"}}");
+            } else {
+                let json = serde_json::to_string(&Notification { message, data }).unwrap();
+                println!(
+                    "{{\"output_type\":\"Notification\", \"data\":\"{}\"}}",
+                    json //prepare_string(json)
+                );
+            }
         } else {
             let json = serde_json::to_string(&Notification {
                 message:
@@ -271,7 +273,7 @@ pub fn main() {
             })
             .unwrap();
             println!(
-                "{{\"output\":\"notification\", \"data\":\"{}\"}}",
+                "{{\"output_type\":\"Notification\", \"data\":\"{}\"}}",
                 json //prepare_string(json)
             );
         }
