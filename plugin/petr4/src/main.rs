@@ -193,14 +193,6 @@ pub fn testing(petr4: String, p4: String, workspace: String) -> (bool, String, S
     return (false, "petr4 testing : success".to_string(), "".to_string());
 }
 
-fn prepare_string(content: String) -> String {
-    let data = content
-        .replace("\\", "\\\\")
-        .replace("\n", "\\n")
-        .replace("\r", "\\r")
-        .replace("\t", "\\t");
-    return data.replace("\"", "\\\"");
-}
 fn string_to_html(content: String) -> String {
     return content.replace("\n", "<br>");
 }
@@ -227,19 +219,16 @@ pub fn main() {
         .unwrap();
         println!(
             "{{\"output_type\":\"Notification\", \"data\":\"{}\"}}",
-            json //prepare_string(json)
+            json
         );
     } else {
-        //example of input tat I will receive :
-        // [{"key":"petr4","value":"/home/t/petr4/"},{"key":"workspace","value":"/home/t/p4-lsp"},{"key":"file","value":"/home/t/p4-lsp/examples/casts.p4"}]
-
         let mut input = String::new();
         stdin().read_line(&mut input).expect("Failed to read line");
         let object: Vec<Argument> = serde_json::from_str(&input).unwrap();
 
-        let mut petr4: String = "".to_string(); //object.get("petr4").unwrap();
-        let mut p4: String = "".to_string(); //object.get("file").unwrap();
-        let mut workspace: String = "".to_string(); //object.get("workspace").unwrap();
+        let mut petr4: String = "".to_string();
+        let mut p4: String = "".to_string();
+        let mut workspace: String = "".to_string();
 
         for arg in object {
             if arg.key == "petr4" {
@@ -251,7 +240,6 @@ pub fn main() {
             }
         }
 
-        //println!("you entered : {} - {}", petr4, p4);
         if petr4 != "" && p4 != "" && workspace != "" {
             let (nothing, message, mut data) = testing(petr4, p4, workspace);
 
@@ -261,7 +249,7 @@ pub fn main() {
                 let json = serde_json::to_string(&Notification { message, data }).unwrap();
                 println!(
                     "{{\"output_type\":\"Notification\", \"data\":\"{}\"}}",
-                    json //prepare_string(json)
+                    json
                 );
             }
         } else {
@@ -274,7 +262,7 @@ pub fn main() {
             .unwrap();
             println!(
                 "{{\"output_type\":\"Notification\", \"data\":\"{}\"}}",
-                json //prepare_string(json)
+                json
             );
         }
     }

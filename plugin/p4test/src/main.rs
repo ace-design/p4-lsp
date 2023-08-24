@@ -29,8 +29,6 @@ fn get_command_output(command: &str, current_dir: &str, args: Vec<String>) -> (V
     }
 }
 
-// [{"key":"workspace","value":"/home/t/p4-lsp"},{"key":"file","value":"/home/mc/Documents/p4-lsp/examples/casts.p4"}]
-
 pub fn diagnostic(file_path: String) -> String {
     let (stdout, stderr) = get_command_output("p4test", "", vec![file_path.clone()]);
 
