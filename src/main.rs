@@ -4,11 +4,10 @@ use std::sync::RwLock;
 use features::semantic_tokens;
 use plugin_manager::PluginManager;
 
-use plugin_manager::OnState;
+use plugin_manager::*;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
 use tower_lsp::{Client, LanguageServer, LspService, Server};
-
 
 
 #[macro_use]
@@ -29,7 +28,6 @@ mod plugin_manager;
 mod settings;
 mod utils;
 mod workspace;
-mod notification;
 
 use workspace::Workspace;
 
@@ -155,7 +153,7 @@ impl LanguageServer for Backend {
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        let (message,data) =self.plugin_manager.write().unwrap().run_plugins(params.text_document.uri.clone(),OnState::Save).unwrap();
+        self.plugin_manager.write().unwrap().run_notification(&self.client,params.text_document.uri.clone(),OnState::Save);
         let mut diagnostics = {
             let workspace = self.workspace.read().unwrap();
 
@@ -169,9 +167,7 @@ impl LanguageServer for Backend {
                 .unwrap()
                 .run_diagnostic(params.text_document.uri.path().into()),
         );
-       self.client.send_notification::<notification::CustomNotification>(notification::CustomParams::new(
-             message,data
-        )).await;
+      
         self.client
             .publish_diagnostics(params.text_document.uri, diagnostics, None)
             .await;
@@ -277,3 +273,4 @@ async fn main() {
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
+

@@ -1,9 +1,12 @@
-use tower_lsp::lsp_types::*;
+use tower_lsp::{lsp_types::*, Client};
 use tower_lsp::lsp_types::Diagnostic;
 use serde::{Deserialize,Serialize};
 use serde_json::{from_str,to_string};
 use std::io::{self, Write};
 use std::process::{Command, Stdio};
+use crate::plugin_manager::notification::CustomParams;
+
+use super::CustomNotification;
 pub struct PluginManager {
     plugins: Vec<Plugin>,
 }
@@ -13,6 +16,13 @@ pub enum OnState {
     Save,
     Open,
     Change,
+}
+
+#[derive(Serialize,Deserialize,PartialEq,Clone)] 
+pub enum TypesNotification {
+    Notification,
+    Diagnostic,
+    Nothing
 }
 
 #[derive(Serialize,Deserialize,Clone)]
@@ -31,8 +41,22 @@ pub struct Argument{
 
 #[derive(Serialize,Deserialize,Clone)]
 pub struct CustomResult{
-    message:String,
+    output_type:TypesNotification,
     data:String
+}
+
+
+pub struct PluginsResult {
+    pub diagnostic : Vec<Diagnostic>,
+    pub notification : Vec<CustomParams>
+}
+impl PluginsResult{
+    pub fn new() -> PluginsResult {
+        PluginsResult {
+            diagnostic: Vec::new(),
+            notification:Vec::new()
+        }
+    }
 }
 
 impl PluginManager {
@@ -41,7 +65,7 @@ impl PluginManager {
             plugins: Vec::new(),
         }
     }
-pub fn load_plugins(&mut self,uri:Option<Url> ,json_str:&str){
+    pub fn load_plugins(&mut self,uri:Option<Url> ,json_str:&str){
         let mut plugins: Vec<Plugin> = from_str(json_str).unwrap();
         if let Some(url) = uri{
             let key = String::from("workspace");
@@ -51,32 +75,52 @@ pub fn load_plugins(&mut self,uri:Option<Url> ,json_str:&str){
            
         }
         
-        let json_str = to_string(&plugins).unwrap();
         self.plugins = plugins;
-        info!("Deserialized Personn: {json_str}");
     }
 
-    pub fn run_plugins(&mut self,file:Url,state:OnState) ->Option<(String,String)>{
-        let mut message = String::from("");
-        let mut data = String::from("");
+
+    pub async fn run_notification(&mut self,client:&Client,file:Url,state:OnState) -> Result<(), Box<dyn std::error::Error>> {
+        let plugin_result:PluginsResult =self.run_plugins(file.clone(),state);
+
+        client.send_notification::<notification::PublishDiagnostics>(PublishDiagnosticsParams::new(
+                file, plugin_result.diagnostic, None,
+            )).await;
+            
+        for plugin_notification in plugin_result.notification.into_iter(){
+            client.send_notification::<CustomNotification>(plugin_notification).await;
+        }
+        Ok(())
+    }
+
+    fn run_plugins(&mut self,file:Url,state:OnState) -> PluginsResult{
+        let mut plugins_result : PluginsResult = PluginsResult::new();
          for plugin in self.plugins.clone().iter_mut(){
             let key = String::from("file");
             plugin.arguments.push(Argument { key:key.clone(), value: file.to_file_path().unwrap().into_os_string().into_string().unwrap() });
             if plugin.on.contains(&state) {
                 let json_str = self.execute(plugin.clone()).unwrap();
                 let results: CustomResult = from_str(json_str.as_str()).unwrap();
-                if(!results.message.is_empty()){
-                    message = results.message;
+              
+
+                match results.output_type {
+                    TypesNotification::Diagnostic => {
+                        let temp = results.data.as_str();
+                        let mut diag:Vec<Diagnostic> = from_str::<Vec<Diagnostic>>(temp).unwrap();
+                        plugins_result.diagnostic.append(&mut diag);
+                    },
+                    TypesNotification::Notification => {
+                        let notification: CustomParams = from_str(results.data.as_str()).unwrap();
+                        plugins_result.notification.push(notification);
+                    }
+                    TypesNotification::Nothing =>{}
                 }
-                if(!results.data.is_empty()){
-                    data = results.data;
-                }
+                
             }
         }
-        Some((message,data))
+        plugins_result
     }
 
-    pub fn execute(&mut self,plugin:Plugin) -> Option<String>{
+    fn execute(&mut self,plugin:Plugin) -> Option<String>{
         info!("Execute");
 
 
