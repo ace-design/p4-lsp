@@ -2,6 +2,7 @@ use extism_pdk::*;
 use lsp_types::{Diagnostic, DiagnosticSeverity, Position, Range};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::io::*;
 
 extern "C" {
     fn host_command(ptr: i64) -> i64;
@@ -13,30 +14,33 @@ struct CommandOutput {
     stderr: Vec<u8>,
 }
 
-#[derive(Serialize, Deserialize)]
-struct TestOutput {
-    stdout: String,
-    stderr: String,
-}
-
-#[plugin_fn]
-pub fn diagnostic(file_path: String) -> FnResult<Json<Vec<Diagnostic>>> {
+pub fn diagnostic(file_path: String) -> String {
     let command = format!("p4test {}", file_path);
     let memory = Memory::from_bytes(&command);
     let offset = unsafe { host_command(memory.offset as i64) };
 
-    let out: CommandOutput = serde_json::from_str(get_string(offset as u64)?.as_str()).unwrap();
+    let out: CommandOutput =
+        serde_json::from_str(get_string(offset as u64).unwrap().as_str()).unwrap();
 
-    let diags =
-        parse_output(String::from_bytes(out.stderr).unwrap(), file_path).unwrap_or_default();
-    Ok(Json(diags))
+    serde_json::to_string(&parse_output(
+        String::from_bytes(out.stderr).unwrap(),
+        file_path,
+    ))
+    .unwrap()
 }
 
-fn parse_output(message: String, file_path: String) -> Option<Vec<Diagnostic>> {
+fn parse_output(message: String, file_path: String) -> Vec<Diagnostic> {
     // Parse and remove line number
     let line_nb_re = Regex::new(format!(r"{}\((\d+)\):?", file_path).as_str()).unwrap();
-    let captures = line_nb_re.captures(&message)?;
-    let line_nb = captures.get(1)?.as_str().parse::<u32>().ok()? - 1;
+    let captures = line_nb_re.captures(&message).unwrap();
+    let line_nb = captures
+        .get(1)
+        .unwrap()
+        .as_str()
+        .parse::<u32>()
+        .ok()
+        .unwrap()
+        - 1;
     let current_msg = line_nb_re.replace(&message, "");
 
     let kind_re = Regex::new(r"\[--W(.*)=(.*)\]").unwrap();
@@ -74,7 +78,7 @@ fn parse_output(message: String, file_path: String) -> Option<Vec<Diagnostic>> {
     let diag_msg = lines[0].replace("error:", "").replace("warning:", "");
     let diag_range = get_range(line_nb, lines[2]);
 
-    Some(vec![Diagnostic::new(
+    vec![Diagnostic::new(
         diag_range,
         Some(severity),
         Some(lsp_types::NumberOrString::String(kind.to_string())),
@@ -82,7 +86,7 @@ fn parse_output(message: String, file_path: String) -> Option<Vec<Diagnostic>> {
         diag_msg.trim().to_string(),
         None,
         None,
-    )])
+    )]
 }
 
 fn get_range(line_nb: u32, arrows: &str) -> Range {
@@ -110,5 +114,44 @@ fn get_string(offset: u64) -> FnResult<String> {
         free: false,
     };
 
-    Ok(memory.to_string()?)
+    Ok(memory.to_string().unwrap())
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Argument {
+    key: String,
+    value: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct Notification {
+    message: String,
+    data: String,
+}
+
+pub fn main() {
+    let mut input = String::new();
+    stdin().read_line(&mut input).expect("Failed to read line");
+    let object: Vec<Argument> = serde_json::from_str(&input).unwrap();
+
+    let mut p4: String = "".to_string();
+
+    for arg in object {
+        if arg.key == "file" {
+            p4 = arg.value;
+        }
+    }
+
+    if p4 != "" {
+        let json = diagnostic(p4);
+        println!("{{\"output\":\"diagnostic\", \"data\":\"{}\"}}", json);
+    } else {
+        let json = serde_json::to_string(&Notification {
+            message: "p4test testing : fail.\\nYou didn't give me all the arguments that I need."
+                .to_string(),
+            data: "".to_string(),
+        })
+        .unwrap();
+        println!("{{\"output\":\"notification\", \"data\":\"{}\"}}", json);
+    }
 }
