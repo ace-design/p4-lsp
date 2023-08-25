@@ -369,6 +369,30 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "Transition",
+            children: [
+                Maybe(query: Kind("select_expression"), rule: Rule("Select")),
+            ]
+        ),
+        Rule(
+            node_name: "Select",
+            children: [
+                One(query: Path([Kind("select_expression_params"), Kind("expression_list")]), rule: Rule("ValueList")),
+                One(query: Path([Kind("select_expression_body"), Kind("select_case_list")]), rule: Rule("SelectCaseList")),
+            ]
+        ),
+        Rule(
+            node_name: "SelectCaseList",
+            children: [
+                Many(query: Kind("select_case"), rule: Rule("SelectCase")),
+            ]
+        ),
+        Rule(
+            node_name: "SelectCase",
+            children: [
+                Many(query: Path([Kind("simple_keyset_expression"), Kind("expression")]), rule: Rule("Value")),
+                // TODO: tuple_keyset_expression
+                One(query: Field("name"), rule: Rule("NameUsage")),
+            ]
         ),
         Rule(
             node_name: "VariableDeclaration",
@@ -508,6 +532,12 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "Member",
+        ),
+        Rule(
+            node_name: "ValueList",
+            children: [
+                Many(query: Kind("expression"), rule: Rule("Value")),
+            ]
         ),
         Rule(
             node_name: "Value",
