@@ -420,7 +420,41 @@ LanguageDefinition (
         Rule(
             node_name: "Table",
             children: [
-                // TODO
+                One(query: Path([Kind("keys_table"), Field("keys")]), rule: Rule("KeyElementList")),
+                One(query: Path([Kind("action_table"), Field("actions")]), rule: Rule("ActionList")),
+                Many(query: Kind("name_table"), rule: Rule("NameTable")),
+            ]
+        ),
+        Rule(
+            node_name: "KeyElementList",
+            children: [
+                Many(query: Kind("key_element"), rule: Rule("KeyElement")),
+            ]
+        ),
+        Rule(
+            node_name: "KeyElement",
+            children: [
+                One(query: Field("expression"), rule: Rule("Value")),
+                One(query: Field("name"), rule: Direct(Node("Name"))),
+            ]
+        ),
+        Rule(
+            node_name: "ActionList",
+            children: [
+                Many(query: Kind("action"), rule: Rule("Action")),
+            ]
+        ),
+        Rule(
+            node_name: "Action",
+            children: [
+                One(query: Kind("prefixed_non_type_name"), rule: Rule("NameUsage")),
+            ]
+        ),
+        Rule(
+            node_name: "NameTable",
+            children: [
+                One(query: Field("name"), rule: Direct(Node("Name"))),
+                One(query: Field("expression"), rule: Rule("Value")),
             ]
         ),
         Rule(
