@@ -46,6 +46,7 @@ LanguageDefinition (
         (name: "Function", completion_type: Function, highlight_type: Function),
         (name: "Parameter", completion_type: Variable, highlight_type: Parameter),
         (name: "Field", completion_type: Property, highlight_type: Property),
+        (name: "Table", completion_type: Class, highlight_type: Class),
     ],
     global_ast_rules: [
         (query: Kind("line_comment"), rule: Direct(Node("Comment")), highlight_type: Comment),
@@ -411,6 +412,7 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "ControlTable",
+            symbol: Init(type: "Table", name_node: "Name"),
             children: [
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("name"), rule: Direct(Node("Name"))),
@@ -478,7 +480,7 @@ LanguageDefinition (
             node_name: "DirectApplication", // Deviates from 'translator.rs', name instead of type 
             children: [
                 // Change tree-sitter-p4 field names to combine both ?
-                Maybe(query: Field("name"), rule: Direct(Node("Name"))), 
+                Maybe(query: Field("name"), rule: Rule("NameUsage")), 
                 Maybe(query: Field("specialized"), rule: Direct(Node("Name"))),
 
                 Maybe(query: Field("args"), rule: Rule("Args")),
