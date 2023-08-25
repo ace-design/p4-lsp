@@ -47,16 +47,23 @@ pub fn write_error(workspace: String, file: String, pert4: String, explanation: 
     body {{ font:small sans-serif; background:#ddd; color:#000; }}
     h1 {{ font-weight:normal; margin-bottom:.4em; }}
     h1 span {{ font-size:60%; color:#eee; }}
-    table {{ border-collapse: collapse; }}
+    table {{ border-collapse: collapse; width: 100%; }}
+    tbody tr:first-child {{ color: #422; font-size: 19px; }}
+    tbody tr:not(:first-child):hover {{ background: #F4364C; }}
     td, th {{ padding:3px 4px; }}
     th {{ width:12em; text-align:right; color:#eee; }}
-    #title {{ background: #F4364C; }}
+    #title {{ background: #CC0202; }}
+    #content > p {{ margin: 10px; }}
   </style>
 </head>
 <body>
   <div id='title'>
-    <h1>PETR4 STF TESTING FAIL <span>{date}</span></h1>
+    <h1>PETR4 STF TESTING FAIL <span>({date})</span></h1>
     <table>
+      <tr>
+        <th style='color: #422;'>Arguments :</th>
+        <td></td>
+      </tr>
       <tr>
         <th>WORKSPACE :</th>
         <td>{workspace}</td>
@@ -71,10 +78,8 @@ pub fn write_error(workspace: String, file: String, pert4: String, explanation: 
       </tr>
     </table>
   </div>
-  <div>
-    <p>
+  <div id='content'>
         {explanation}
-    </p>
   </div>
 </body>
 </html>",
@@ -129,6 +134,7 @@ pub fn testing(petr4: String, p4: String, workspace: String) -> (bool, String, S
                 path_p4.as_os_str().to_str().unwrap().to_string(),
             ],
         );
+
         number_commande += 1;
         if !stderr.is_empty() {
             return (
@@ -157,33 +163,41 @@ pub fn testing(petr4: String, p4: String, workspace: String) -> (bool, String, S
                     let mut p4_testing_name = "p4_lsp stf tests.".to_string();
                     let ext = format!("{}.output", index.clone());
                     let mut t = format!("{}{}", p4_testing_name.clone(), ext.clone());
-                    let mut p4_testing = path_petr4
-                        .clone()
-                        .join(format!("_build/default/_build/_tests/Stf-tests/{}", t));
+                    let mut p4_testing = Path::new("./_build/_tests/Stf-tests/").join(t); /*path_petr4
+                                                                                          .clone()
+                                                                                          .join(format!("_build/default/_build/_tests/Stf-tests/{}", t));*/
                     while !p4_testing.exists() {
                         p4_testing_name = format!("{}0", p4_testing_name.clone());
                         t = format!("{}{}", p4_testing_name.clone(), ext.clone());
                         p4_testing = p4_testing.with_file_name(t);
                     }
 
-                    let t = Regex::new(r"\x1b\[[0-9;]*[mK]").unwrap();
+                    //let re = Regex::new(r"\x1b\[[0-9;]*[mK]").unwrap();
+
+                    let mut t = &fs::read_to_string(p4_testing.clone()).expect(&format!(
+                        "petr4 fail, but can't read the file of the output '{}'",
+                        p4_testing.as_os_str().to_str().unwrap()
+                    ));
+
+                    let content = ansi_to_html::convert_escaped(t)
+                        .unwrap()
+                        .as_str()
+                        .to_string();
+
+                    let mut parts = content.split("Raised at ").collect::<Vec<&str>>();
+                    let mut explanation = format!("<p>{}</p>", parts.remove(0));
+                    while (parts.len() != 0) {
+                        explanation = format!(
+                            "{}<hr><p>Raised at {}</p>",
+                            explanation.clone(),
+                            parts.remove(0)
+                        );
+                    }
 
                     return (
                         false,
                         "petr4 testing : fail".to_string(),
-                        write_error(
-                            workspace,
-                            p4,
-                            petr4,
-                            t.replace_all(
-                                &fs::read_to_string(p4_testing.clone()).expect(&format!(
-                                    "petr4 fail, but can't read the file of the output '{}'",
-                                    p4_testing.as_os_str().to_str().unwrap()
-                                )),
-                                "",
-                            )
-                            .to_string(),
-                        ),
+                        write_error(workspace, p4, petr4, explanation),
                     );
                 }
                 break;
@@ -240,8 +254,8 @@ pub fn main() {
             }
         }
 
-        if petr4 != "" && p4 != "" && workspace != "" {
-            let (nothing, message, mut data) = testing(petr4, p4, workspace);
+        if petr4 != "" && p4 != "" {
+            let (nothing, message, data) = testing(petr4, p4, workspace);
 
             if nothing {
                 println!("{{\"output_type\":\"Nothing\", \"data\":\"\"}}");
