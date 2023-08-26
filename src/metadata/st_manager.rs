@@ -16,7 +16,7 @@ pub enum SymbolTableEdit {
 
 pub trait SymbolTableEditor {
     fn new_edit(&mut self, edit: SymbolTableEdit);
-    fn update(&mut self, ast: &Ast,map:Option<HashMap<Url, NodeId>>,url:Url,arena:Arena<Node>);
+    fn update(&mut self, ast: &Ast,map:Option<HashMap<Url, NodeId>>,url:Url,arena: &mut Arena<Node>);
 }
 
 pub trait SymbolTableQuery {
@@ -31,7 +31,7 @@ pub struct SymbolTableManager {
 }
 
 impl SymbolTableManager {
-    pub fn new(ast: &Ast,map:Option<HashMap<Url, NodeId>>,url:Url,arena:Arena<Node>) -> SymbolTableManager {
+    pub fn new(ast: &Ast,map:Option<HashMap<Url, NodeId>>,url:Url,arena: &mut Arena<Node>) -> SymbolTableManager {
         let symbol_table = SymbolTable::new(ast,map,url.clone(),arena);
 
         debug!("\nSymbol Table: {url} \n {symbol_table}");
@@ -63,7 +63,7 @@ impl SymbolTableEditor for SymbolTableManager {
         }
     }
 
-    fn update(&mut self, ast: &Ast,map:Option<HashMap<Url, NodeId>>,url:Url,arena:Arena<Node>) {
+    fn update(&mut self, ast: &Ast,map:Option<HashMap<Url, NodeId>>,url:Url,arena: &mut Arena<Node>) {
         *self = SymbolTableManager::new(ast,map,url,arena)
     }
 }

@@ -32,7 +32,7 @@ impl fmt::Display for File {
 }
 
 impl File {
-    pub fn new(uri: Url, source_code: &str, tree: &Option<Tree>,map:Option<HashMap<Url,NodeId>>) -> File {
+    pub fn new(uri: Url, source_code: &str, tree: &Option<Tree>,map:Option<HashMap<Url,NodeId>>,arena: &mut Arena<Node>) -> File {
         info!("Data {:?}",map);
         let t = AstManager::new(uri.clone(),
             source_code,
@@ -48,7 +48,7 @@ impl File {
            
             let ast_manager = ast_manager.lock().unwrap();
  
-            let t = SymbolTableManager::new(ast_manager.get_ast(),map,uri.clone());
+            let t = SymbolTableManager::new(ast_manager.get_ast(),map,uri.clone(),arena);
            
             let tt = Mutex::new(t);
       
@@ -65,7 +65,7 @@ impl File {
         }
     }
 
-    pub fn update(&mut self, changes: Vec<TextDocumentContentChangeEvent>, parser: &mut Parser,map:Option<HashMap<Url,NodeId>>) {
+    pub fn update(&mut self, changes: Vec<TextDocumentContentChangeEvent>, parser: &mut Parser,map:Option<HashMap<Url,NodeId>>,arena: &mut Arena<Node>) {
         for change in changes {
             let mut old_tree: Option<&Tree> = None;
             let text: String;
@@ -104,7 +104,7 @@ impl File {
         let mut st_manager = self.symbol_table_manager.lock().unwrap();
 
         ast_manager.update(&self.source_code, self.tree.to_owned().unwrap());
-        st_manager.update(ast_manager.get_ast(),map,self.uri.clone(),A);
+        st_manager.update(ast_manager.get_ast(),map,self.uri.clone(),arena);
     }
 
     pub fn get_quick_diagnostics(&self) -> Vec<Diagnostic> {

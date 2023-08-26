@@ -233,11 +233,11 @@ impl SymbolTableActions for SymbolTable {
 }
 
 impl SymbolTable {
-    pub fn new(ast: &Ast,map: Option<HashMap<Url,NodeId>>, curr_url: Url,arena:Arena<Node>) -> SymbolTable {
+    pub fn new(ast: &Ast,map: Option<HashMap<Url,NodeId>>, curr_url: Url,arena: &mut Arena<Node>) -> SymbolTable {
         let mut table = SymbolTable::default();
 
         table.root_id = Some(table.parse_scope(ast.visit_root(), None).unwrap());
-        table.parse_usages(ast.visit_root(),map, curr_url,arena);
+        table.parse_usages(ast.visit_root(),curr_url, None);
 
         table
     }
@@ -391,11 +391,15 @@ impl SymbolTable {
         pass
     }
 
-    fn parse_usages(&mut self, visit_node: VisitNode,
-        extra_symbols: Option<HashMap<Url, NodeId>>,
-        curr_url: Url,arena:Arena<Node>) {
+    pub fn parse_usages(&mut self, visit_node: VisitNode,
+        curr_url: Url,hashmap:Option<HashMap<Url,&mut SymbolTable>>) {
+        let mut map = hashmap.unwrap();
+        let mut state = false;
+        if(!map.is_empty()){
+            state = true;
+        }
         for child_visit in visit_node.get_descendants() {
-            for type_node_visit in child_visit.get_children().into_iter() {
+            for type_node_visit in child_visit.get_children().iter() {
                 let type_node = type_node_visit.get();
                 if matches!(type_node.kind, NodeKind::Type(_)) {
                     //debug!("{:?}:{:?}",child_visit.get(),type_node);
@@ -421,14 +425,9 @@ impl SymbolTable {
                                     ) == false)
                                     {
                                         //info!("PArse Uasgae, {:?}, {:?}",curr_url, extra_symbols);
-                                        if let Some(x) = extra_symbols{
+                                        if state{
                                             //////info!("as19");
-                                            for (url, node) in x {
-                                                //////info!("as2");
-                                                /// 
-                                                let f =  node.file.as_mut().unwrap();
-                                                let mut t = f.symbol_table_manager.lock().unwrap();
-                                                let table = t.symbol_table.borrow_mut();
+                                            for (url, table) in map.iter_mut() {
                                                 info!("Asking {:?} : {:?} ",name_symbol.clone(),
                                         url.clone(),);
                                                 if (table.add_usage(
@@ -486,11 +485,11 @@ impl SymbolTable {
                             ) == false)
                             {
                                 //info!("PArse Uasgae, {:?}, {:?}",curr_url, extra_symbols);
-                                if let Some(x) = extra_symbols{
+                                if state{
                                     //////info!("as19");
-                                    for (url, mut node) in x {
-                                        let table = node.file.unwrap().symbol_table_manager.lock().unwrap().symbol_table;
+                                    for (url, mut table) in map.iter_mut() {
 
+                                    
                                         info!("as2 {:?} : {:?} ",name_symbol.clone(),
                                         url.clone(),);
                                         if (table.add_usage(

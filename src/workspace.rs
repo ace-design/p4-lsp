@@ -79,7 +79,7 @@ impl Workspace {
         //info!("Updating Local File");
         let (mut file, mut information) = self.cache.as_mut().unwrap().get(url).unwrap(); //self.files.get_mut(&url).unwrap();
 
-        file.update(changes, &mut self.parser, None);
+        //file.update(changes, &mut self.parser, None);
     }
 
     pub fn get_definition_location(

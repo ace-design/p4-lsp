@@ -139,7 +139,7 @@ impl Cache {
         }
     }
     fn check_exp(&mut self) {
-        loop {
+       /*  loop {
             let cloned_files = self.files.clone();
             for (url, exp) in cloned_files {
                 let file_path = exp.file.uri.as_str();
@@ -172,7 +172,7 @@ impl Cache {
                         let modified_time = metadata.modified().unwrap();
 
                         let new_exp = Exp {
-                            file: File::new(url.clone(), &content.as_str().clone(), &tree, None),
+                            file: File::new(url.clone(), &content.as_str().clone(), &tree, None,arena),
                             duration_time: modified_time,
                             information: exp.information,
                         };
@@ -180,12 +180,13 @@ impl Cache {
                     }
                 }
             }
-        }
+        }*/
     }
 
     pub fn add_file(&mut self, url: Url, content: &str, control_state: ControlState) {
         if(!self.files.contains_key(&url)){
         //Creating node from data
+        let arena: &mut Arena<Node> =self.file_tree.get_arena();
         let tree = self.parser.parse(content, None);
         let url_str = url.clone().to_file_path().unwrap().into_os_string().into_string().unwrap().clone();
         let url_custom = Url::parse(&url.as_str()).unwrap();
@@ -193,7 +194,7 @@ impl Cache {
         let metadata = fs::metadata(url_str.as_str()).unwrap();
         let modified_time = metadata.modified().unwrap();
     
-        let file = File::new(url_custom.clone(), content, &tree, None);
+        let file = File::new(url_custom.clone(), content, &tree, None,arena);
         
         let information: Information = Information::new(url_custom.clone(), control_state);
  
@@ -401,7 +402,7 @@ fn fun_name1(exp: Exp, url: Url, map: HashMap<Url, NodeId>, arena: &mut Arena<No
 
     let tree = exp.file.tree.clone();
     let node = tree::Node::new(
-        Some(File::new(url.clone(), content, &tree, Some(map))),
+        Some(File::new(url.clone(), content, &tree, Some(map),arena)),
         Some(information.clone()),
     );
     //info!("Root Arena {:?}",arena);
@@ -412,7 +413,7 @@ fn fun_name1(exp: Exp, url: Url, map: HashMap<Url, NodeId>, arena: &mut Arena<No
 }
 
 fn fun_name(array_temp: Vec<NodeId>, visit_node: NodeId, arena: &mut Arena<Node>, url: Url, file: File, nodes_array: &mut Vec<NodeId>) {
-    let mut map: HashMap<Url, NodeId> = HashMap::new();
+    let mut map: HashMap<Url,&mut SymbolTable> = HashMap::new();
   
     info!("Array For info  {} {:?} ",visit_node,array_temp);
     for i in array_temp {
@@ -422,18 +423,19 @@ fn fun_name(array_temp: Vec<NodeId>, visit_node: NodeId, arena: &mut Arena<Node>
             visit_node.append(i.clone(), arena);
 
         
-        let temp_node = arena.get(i.clone()).unwrap().get();
-        map.insert(temp_node.file.clone().unwrap().uri, i);
+            let temp_node = arena.get_mut(i.clone()).unwrap().get();
+            let t = temp_node.file.as_ref().unwrap();
+            let mut tt = t.symbol_table_manager.lock().unwrap();
+            map.insert(temp_node.file.clone().unwrap().uri, &mut tt.symbol_table);
+            // map.insert(temp_node.file.clone().unwrap().uri, i);
         }
     }
-    let node_temp = arena.get_mut(visit_node.clone()).unwrap().get_mut();
     info!("Data Added To Node {:?}",map);
-    node_temp.file = Some(File::new(
-        url.clone(),
-        file.source_code.as_str(),
-        &file.tree,
-        Some(map),
-    ));
+    let node_temp = arena.get_mut(visit_node.clone()).unwrap().get_mut();
+    let file = node_temp.file.as_mut().unwrap();
+    let t = file.ast_manager.lock().unwrap();
+    let nodeId = t.ast.visit_root();
+    file.symbol_table_manager.lock().unwrap().symbol_table.parse_usages(nodeId, url, Some(map));
     nodes_array.push(visit_node);
 }
 
