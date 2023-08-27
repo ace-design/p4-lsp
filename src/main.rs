@@ -153,7 +153,7 @@ impl LanguageServer for Backend {
     }
 
     async fn did_save(&self, params: DidSaveTextDocumentParams) {
-        self.plugin_manager.write().unwrap().run_notification(&self.client,params.text_document.uri.clone(),OnState::Save);
+        let plugin_result:PluginsResult =self.plugin_manager.write().unwrap().run_plugins(params.text_document.uri.clone(),OnState::Save);
         let mut diagnostics = {
             let workspace = self.workspace.read().unwrap();
 
@@ -167,7 +167,13 @@ impl LanguageServer for Backend {
                 .unwrap()
                 .run_diagnostic(params.text_document.uri.path().into()),
         );
-      
+        self.client.send_notification::<notification::PublishDiagnostics>(PublishDiagnosticsParams::new(
+            params.text_document.uri.clone(), plugin_result.diagnostic, None,
+        )).await;
+        
+        for plugin_notification in plugin_result.notification.into_iter(){
+            self.client.send_notification::<plugin_manager::CustomNotification>(plugin_notification).await;
+        }
         self.client
             .publish_diagnostics(params.text_document.uri, diagnostics, None)
             .await;
@@ -273,4 +279,3 @@ async fn main() {
     });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
-

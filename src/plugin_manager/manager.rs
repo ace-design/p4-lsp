@@ -79,20 +79,8 @@ impl PluginManager {
     }
 
 
-    pub async fn run_notification(&mut self,client:&Client,file:Url,state:OnState) -> Result<(), Box<dyn std::error::Error>> {
-        let plugin_result:PluginsResult =self.run_plugins(file.clone(),state);
 
-        client.send_notification::<notification::PublishDiagnostics>(PublishDiagnosticsParams::new(
-                file, plugin_result.diagnostic, None,
-            )).await;
-            
-        for plugin_notification in plugin_result.notification.into_iter(){
-            client.send_notification::<CustomNotification>(plugin_notification).await;
-        }
-        Ok(())
-    }
-
-    fn run_plugins(&mut self,file:Url,state:OnState) -> PluginsResult{
+    pub fn run_plugins(&mut self,file:Url,state:OnState) -> PluginsResult{
         let mut plugins_result : PluginsResult = PluginsResult::new();
          for plugin in self.plugins.clone().iter_mut(){
             let key = String::from("file");
