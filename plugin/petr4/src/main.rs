@@ -88,7 +88,7 @@ pub fn write_error(workspace: String, file: String, pert4: String, explanation: 
         file = file,
         pert4 = pert4,
         explanation = string_to_html(explanation)
-    );
+    ).replace("\n","\\n");
 }
 
 pub fn fail(
@@ -263,7 +263,7 @@ pub fn main() {
                 let json = serde_json::to_string(&Notification { message, data }).unwrap();
                 println!(
                     "{{\"output_type\":\"Notification\", \"data\":\"{}\"}}",
-                    json
+                    json.replace("\"","\\\"")
                 );
             }
         } else {
@@ -276,7 +276,7 @@ pub fn main() {
             .unwrap();
             println!(
                 "{{\"output_type\":\"Notification\", \"data\":\"{}\"}}",
-                json
+                json.replace("\"","\\\"")
             );
         }
     }

@@ -147,7 +147,7 @@ pub fn main() {
 
     if p4 != "" {
         let json = diagnostic(p4);
-        println!("{{\"output_type\":\"Diagnostic\", \"data\":\"{}\"}}", json);
+        println!("{{\"output_type\":\"Diagnostic\", \"data\":\"{}\"}}", json.replace("\"","\\\""));
     } else {
         let json = serde_json::to_string(&Notification {
             message: "p4test testing : fail.\\nYou didn't give me all the arguments that I need."
@@ -157,7 +157,7 @@ pub fn main() {
         .unwrap();
         println!(
             "{{\"output_type\":\"Notification\", \"data\":\"{}\"}}",
-            json
+            json.replace("\"","\\\"")
         );
     }
 }
