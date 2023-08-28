@@ -46,58 +46,60 @@ fn parse_output(message: String, file_path: String) -> Vec<Diagnostic> {
     let lines: Vec<&str> = message.trim().lines().collect();
     for index in (0..(lines.len())).step_by(3) {
         let line = lines.get(index).unwrap();
-        let line_nb_re = Regex::new(format!(r"{}\((\d+)\):?", file_path.clone()).as_str()).unwrap();
-        let captures = line_nb_re.captures(&line).unwrap();
-        let line_nb = captures
-            .get(1)
-            .unwrap()
-            .as_str()
-            .parse::<u32>()
-            .ok()
-            .unwrap()
-            - 1;
-        let current_msg = line_nb_re.replace(&line, "");
+        if '/' == line.clone().chars().next().unwrap(){
+            let line_nb_re = Regex::new(format!(r"{}\((\d+)\):?", file_path.clone()).as_str()).unwrap();
+            let captures = line_nb_re.captures(&line).unwrap();
+            let line_nb = captures
+                .get(1)
+                .unwrap()
+                .as_str()
+                .parse::<u32>()
+                .ok()
+                .unwrap()
+                - 1;
+            let current_msg = line_nb_re.replace(&line, "");
 
-        let kind_re = Regex::new(r"\[--W(.*)=(.*)\]").unwrap();
-        let captures = kind_re.captures(&current_msg);
+            let kind_re = Regex::new(r"\[--W(.*)=(.*)\]").unwrap();
+            let captures = kind_re.captures(&current_msg);
 
-        // Parse and remove severity and kind
-        let (severity, kind) = if let Some(captures) = captures {
-            let severity_capture = captures.get(1);
-            let severity = if let Some(cap) = severity_capture {
-                match cap.as_str() {
-                    "error" => DiagnosticSeverity::ERROR,
-                    "warn" => DiagnosticSeverity::WARNING,
-                    _ => DiagnosticSeverity::ERROR,
-                }
+            // Parse and remove severity and kind
+            let (severity, kind) = if let Some(captures) = captures {
+                let severity_capture = captures.get(1);
+                let severity = if let Some(cap) = severity_capture {
+                    match cap.as_str() {
+                        "error" => DiagnosticSeverity::ERROR,
+                        "warn" => DiagnosticSeverity::WARNING,
+                        _ => DiagnosticSeverity::ERROR,
+                    }
+                } else {
+                    DiagnosticSeverity::ERROR
+                };
+
+                let kind_cap = captures.get(2);
+                let kind = if let Some(cap) = kind_cap {
+                    cap.as_str()
+                } else {
+                    ""
+                };
+
+                (severity, kind)
             } else {
-                DiagnosticSeverity::ERROR
+                (DiagnosticSeverity::ERROR, "")
             };
+            let current_msg = kind_re.replace(&current_msg, "");
 
-            let kind_cap = captures.get(2);
-            let kind = if let Some(cap) = kind_cap {
-                cap.as_str()
-            } else {
-                ""
-            };
-
-            (severity, kind)
-        } else {
-            (DiagnosticSeverity::ERROR, "")
-        };
-        let current_msg = kind_re.replace(&current_msg, "");
-
-        let diag_msg = current_msg.replace("error:", "").replace("warning:", "");
-        let diag_range = get_range(line_nb, lines.get(index + 2).unwrap());
-        vec_diagnostic.push(Diagnostic::new(
-            diag_range,
-            Some(severity),
-            Some(lsp_types::NumberOrString::String(kind.to_string())),
-            Some("p4test".to_string()),
-            diag_msg.trim().to_string(),
-            None,
-            None,
-        ));
+            let diag_msg = current_msg.replace("error:", "").replace("warning:", "");
+            let diag_range = get_range(line_nb, lines.get(index + 2).unwrap());
+            vec_diagnostic.push(Diagnostic::new(
+                diag_range,
+                Some(severity),
+                Some(lsp_types::NumberOrString::String(kind.to_string())),
+                Some("p4test".to_string()),
+                diag_msg.trim().to_string(),
+                None,
+                None,
+            ));
+        }
     }
 
     vec_diagnostic
