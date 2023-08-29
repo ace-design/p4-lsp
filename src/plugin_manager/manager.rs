@@ -92,8 +92,7 @@ impl PluginManager {
 
                 match results.output_type {
                     TypesNotification::Diagnostic => {
-                        let temp = results.data.as_str();
-                        let mut diag:Vec<Diagnostic> = from_str::<Vec<Diagnostic>>(temp).unwrap();
+                        let mut diag:Vec<Diagnostic> = from_str(results.data.as_str()).unwrap();
                         plugins_result.diagnostic.append(&mut diag);
                     },
                     TypesNotification::Notification => {
