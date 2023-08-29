@@ -14,16 +14,16 @@ impl DiagnosticProvider for Parse {
     ) -> Vec<Diagnostic> {
         let ast_query = ast_query.lock().unwrap();
         let root = ast_query.visit_root();
-        let mut errors: Vec<VisitNode> = vec![];
+        let mut errors: Vec<(VisitNode, Option<String>)> = vec![];
         for node in root.get_descendants() {
-            if let NodeKind::Error = node.get().kind {
-                errors.push(node)
+            if let NodeKind::Error(msg) = &node.get().kind {
+                errors.push((node, msg.clone()))
             };
         }
 
         errors
             .into_iter()
-            .map(|node| {
+            .map(|(node, msg)| {
                 Diagnostic::new(
                     node.get().range,
                     Some(DiagnosticSeverity::ERROR),
@@ -31,7 +31,11 @@ impl DiagnosticProvider for Parse {
                         "parsing".to_string(),
                     )),
                     Some("AST".to_string()),
-                    "Parsing error.".to_string(),
+                    if let Some(msg) = msg {
+                        format!("Syntax error: {}", msg)
+                    } else {
+                        "Syntax error.".to_string()
+                    },
                     None,
                     None,
                 )

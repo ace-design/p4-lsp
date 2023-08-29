@@ -1,43 +1,42 @@
 use std::env;
 use std::sync::RwLock;
 
-use features::semantic_tokens;
-use plugin_manager::PluginManager;
+use crate::language_def::{self, LanguageDefinition};
+use crate::plugin_manager::PluginManager;
+use crate::workspace::Workspace;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
-use tower_lsp::{Client, LanguageServer, LspService, Server};
+use tower_lsp::{Client, LanguageServer};
 
-#[macro_use]
-extern crate log;
 extern crate simplelog;
 
 use simplelog::*;
 
 use std::fs::File;
 
-#[macro_use]
-extern crate lazy_static;
-
-mod features;
-mod file;
-mod metadata;
-mod plugin_manager;
-mod settings;
-mod utils;
-mod workspace;
-
-use workspace::Workspace;
-
-struct Backend {
+pub struct Backend {
     client: Client,
     workspace: RwLock<Workspace>,
     plugin_manager: RwLock<PluginManager>,
 }
 
+impl Backend {
+    pub fn init(client: Client, ts_language: tree_sitter::Language) -> Backend {
+        Backend {
+            client,
+            workspace: Workspace::new(ts_language).into(),
+            plugin_manager: PluginManager::new().into(),
+        }
+    }
+}
+
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
     async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
-        let log_file_path = env::temp_dir().join("p4-lsp.log");
+        let log_file_path = env::temp_dir().join(format!(
+            "{}-lsf.log",
+            LanguageDefinition::get().language.name.to_lowercase()
+        ));
 
         if let Ok(log_file) = File::create(log_file_path) {
             let result = WriteLogger::init(
@@ -57,6 +56,10 @@ impl LanguageServer for Backend {
             }
         }
 
+        std::panic::set_hook(Box::new(|info| {
+            error!("{info}");
+        }));
+
         info!("Initializing lsp");
 
         self.plugin_manager.write().unwrap().load_plugins();
@@ -67,7 +70,7 @@ impl LanguageServer for Backend {
                     SemanticTokensServerCapabilities::SemanticTokensOptions(
                         SemanticTokensOptions {
                             range: Some(false),
-                            legend: semantic_tokens::get_legend(),
+                            legend: language_def::LanguageDefinition::get_semantic_token_legend(),
                             full: Some(SemanticTokensFullOptions::Delta { delta: Some(true) }),
                             ..Default::default()
                         },
@@ -224,6 +227,7 @@ impl LanguageServer for Backend {
                 .get_completion(
                     params.text_document_position.text_document.uri,
                     params.text_document_position.position,
+                    params.context,
                 )
                 .unwrap_or_default()
         };
@@ -249,17 +253,4 @@ impl LanguageServer for Backend {
         let mut workspace = self.workspace.write().unwrap();
         (*workspace).update_settings(params.settings);
     }
-}
-
-#[tokio::main]
-async fn main() {
-    let stdin = tokio::io::stdin();
-    let stdout = tokio::io::stdout();
-
-    let (service, socket) = LspService::new(|client| Backend {
-        client,
-        workspace: Workspace::new().into(),
-        plugin_manager: PluginManager::new().into(),
-    });
-    Server::new(stdin, stdout, socket).serve(service).await;
 }

@@ -3,12 +3,17 @@
 use std::fmt;
 
 use indextree::{Arena, NodeId};
+use serde::Deserialize;
 use tower_lsp::lsp_types::{Position, Range};
 
-use crate::metadata::types::Type;
-use crate::utils;
+use crate::{
+    language_def::{self, Symbol},
+    lsp_mappings::HighlightType,
+    metadata::symbol_table::SymbolId,
+    utils,
+};
 
-use super::translator::TreesitterTranslator;
+use super::rules_translator::RulesTranslator;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum Operator {
@@ -20,7 +25,7 @@ pub enum Operator {
     //...
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Deserialize)]
 pub enum TypeDecType {
     TypeDef,
     HeaderType,
@@ -32,111 +37,22 @@ pub enum TypeDecType {
     Package,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Deserialize)]
 pub enum Direction {
     In,
     Out,
     InOut,
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, Deserialize, PartialEq, Clone)]
 pub enum NodeKind {
-    Body,
-    Root,
-    ConstantDec,
-    VariableDec,
-    ParserDec,
-    StateParser,
-    ControlDec,
-    Type(Type),
-    TypeList(Type),
-    Direction(Direction),
-    TypeDec(TypeDecType),
-    Expression,
-    Name,
-    Param,
-    Params,
-    Field,
-    Fields,
-    Option,
-    Options,
-    Error,
-    Value,
-    ValueSymbol,
-    ControlAction,
-    Block,
-    Assignment,
-    Conditional,
-    BodyIf,
-    BodyElse,
-    Return,
-    ValueSet,
-    ParamsList,
-    TransitionStatement,
-    Row,
-    Instantiation,
-    Obj,
-    Function,
-    FunctionName,
-    Switch,
-    SwitchLabel,
-    ParserBlock,
-    DirectApplication,
-    ControlTable,
-    Table,
-    Keys,
-    Key,
-    Actions,
-    Action,
-    Entries,
-    Entrie,
-    TableKw,
-    PreprocInclude,
-    PreprocDefine,
-    PreprocUndef,
-    ErrorCst,
-    Methods,
-    Method,
-    Annotations,
-    Annotation,
-    Token,
-    KvList,
-    Kv,
-    KeyWord,
-    ParamType,
-    NameStatement,
-    StatementDouble,
-    StatementExpr,
-    StatementDot,
-    Extern,
-    MatchKind,
-    Args,
-    Arg,
+    Node(String),
+    Error(Option<String>),
 }
-
-const SCOPE_NODES: [NodeKind; 17] = [
-    NodeKind::Root,
-    NodeKind::ParserDec,
-    NodeKind::TransitionStatement,
-    NodeKind::ControlDec,
-    NodeKind::Table,
-    NodeKind::Switch,
-    NodeKind::Obj,
-    NodeKind::Function,
-    NodeKind::Block,
-    NodeKind::Extern,
-    NodeKind::Body,
-    NodeKind::StateParser,
-    NodeKind::ControlTable,
-    NodeKind::Block,
-    NodeKind::Instantiation,
-    NodeKind::ControlAction,
-    NodeKind::SwitchLabel,
-];
 
 impl NodeKind {
     pub fn is_scope_node(&self) -> bool {
-        SCOPE_NODES.contains(self)
+        language_def::LanguageDefinition::get_scope_nodes().contains(self)
     }
 }
 
@@ -145,28 +61,41 @@ pub struct Node {
     pub kind: NodeKind,
     pub range: Range,
     pub content: String,
+    pub symbol: Symbol,
+    pub semantic_token_type: Option<HighlightType>,
+    pub linked_symbol: Option<SymbolId>,
 }
 
 impl Node {
-    pub fn new(kind: NodeKind, syntax_node: &tree_sitter::Node, source_code: &str) -> Node {
+    pub fn new(
+        kind: NodeKind,
+        syntax_node: &tree_sitter::Node,
+        source_code: &str,
+        symbol: Symbol,
+        semantic_token_type: Option<HighlightType>,
+    ) -> Node {
         Node {
             kind,
             range: utils::ts_range_to_lsp_range(syntax_node.range()),
             content: utils::get_node_text(syntax_node, source_code),
+            symbol,
+            semantic_token_type,
+            linked_symbol: None,
         }
+    }
+
+    pub fn link(&mut self, symbol_table_id: NodeId, index: usize) {
+        self.linked_symbol = Some(SymbolId::new(symbol_table_id, index));
     }
 }
 
 pub trait Visitable {
     fn get(&self) -> &Node;
+    fn get_id(&self) -> NodeId;
     fn get_children(&self) -> Vec<VisitNode>;
     fn get_descendants(&self) -> Vec<VisitNode>;
     fn get_child_of_kind(&self, kind: NodeKind) -> Option<VisitNode>;
     fn get_subscopes(&self) -> Vec<VisitNode>;
-    fn get_type_node(&self) -> Option<VisitNode>;
-    fn get_value_node(&self) -> Option<VisitNode>;
-    fn get_value_symbol_node(&self) -> Option<VisitNode>;
-    fn get_type(&self) -> Option<Type>;
     fn get_node_at_position(&self, position: Position) -> Option<VisitNode>;
 }
 
@@ -217,47 +146,6 @@ impl Visitable for VisitNode<'_> {
             .collect::<Vec<VisitNode>>()
     }
 
-    fn get_type_node(&self) -> Option<VisitNode> {
-        self.get_children().into_iter().find_map(|child| {
-            let node = child.get();
-            if matches!(node.kind, NodeKind::Type(_)) {
-                Some(VisitNode::new(self.arena, child.id))
-            } else {
-                None
-            }
-        })
-    }
-
-    fn get_value_node(&self) -> Option<VisitNode> {
-        self.get_children().into_iter().find_map(|child| {
-            let node = child.get();
-            if matches!(node.kind, NodeKind::Value) {
-                Some(VisitNode::new(self.arena, child.id))
-            } else {
-                None
-            }
-        })
-    }
-
-    fn get_value_symbol_node(&self) -> Option<VisitNode> {
-        self.get_children().into_iter().find_map(|child| {
-            let node = child.get();
-            if matches!(node.kind, NodeKind::ValueSymbol) {
-                return Some(VisitNode::new(self.arena, child.id));
-            } else {
-                None
-            }
-        })
-    }
-
-    fn get_type(&self) -> Option<Type> {
-        if let NodeKind::Type(type_) = self.get().kind {
-            Some(type_)
-        } else {
-            None
-        }
-    }
-
     fn get_node_at_position(&self, position: Position) -> Option<VisitNode> {
         let mut child_id = self.id;
 
@@ -273,6 +161,14 @@ impl Visitable for VisitNode<'_> {
             }
         }
     }
+
+    fn get_id(&self) -> NodeId {
+        self.id
+    }
+}
+
+pub trait Translator {
+    fn translate(source_code: String, syntax_tree: tree_sitter::Tree) -> Ast;
 }
 
 #[derive(Debug, Clone)]
@@ -293,7 +189,7 @@ impl Ast {
     }
 
     pub fn new(source_code: &str, syntax_tree: tree_sitter::Tree) -> Option<Ast> {
-        Some(TreesitterTranslator::translate(
+        Some(RulesTranslator::translate(
             source_code.to_string(),
             syntax_tree,
         ))
@@ -309,17 +205,26 @@ impl Ast {
         result
     }
 
-    pub fn get_arena(&self) -> Arena<Node> {
-        self.arena.clone()
+    pub fn get_arena(&mut self) -> &mut Arena<Node> {
+        &mut self.arena
     }
 
     fn _get_debug_tree(&self, node_id: NodeId, indent: &str, last: bool, result: &mut String) {
         let node = self.arena.get(node_id).unwrap().get();
         let line = format!(
-            "{}{} {:?}\n",
+            "{}{} {}\n",
             indent,
             if last { "+- " } else { "|- " },
-            node.kind
+            match node.kind.clone() {
+                NodeKind::Node(name) =>
+                    if node.linked_symbol.is_some() {
+                        format!("{}*", name)
+                    } else {
+                        name
+                    },
+                NodeKind::Error(msg) =>
+                    format!("Error: {}", msg.unwrap_or(String::from("Unknown"))),
+            }
         );
 
         result.push_str(&line);
@@ -329,7 +234,19 @@ impl Ast {
             indent.to_string() + "|  "
         };
 
-        for (i, child) in node_id.children(&self.arena).enumerate() {
+        // Sorting since nodes aren't parsed in order currently
+        let mut children: Vec<NodeId> = node_id.children(&self.arena).collect();
+        children.sort_by(|a, b| {
+            self.arena
+                .get(*a)
+                .unwrap()
+                .get()
+                .range
+                .start
+                .cmp(&self.arena.get(*b).unwrap().get().range.start)
+        });
+
+        for (i, child) in children.into_iter().enumerate() {
             self._get_debug_tree(
                 child,
                 &indent,

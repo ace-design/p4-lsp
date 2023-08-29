@@ -1,8 +1,8 @@
 use std::sync::{Arc, Mutex};
 
 use tower_lsp::lsp_types::{
-    CompletionItem, Diagnostic, HoverContents, Location, Position, SemanticTokensResult,
-    TextDocumentContentChangeEvent, Url, WorkspaceEdit,
+    CompletionContext, CompletionItem, Diagnostic, HoverContents, Location, Position,
+    SemanticTokensResult, TextDocumentContentChangeEvent, Url, WorkspaceEdit,
 };
 use tree_sitter::{InputEdit, Parser, Tree};
 
@@ -26,9 +26,12 @@ impl File {
         )));
 
         let symbol_table_manager = {
-            let ast_manager = ast_manager.lock().unwrap();
+            let mut ast_manager = ast_manager.lock().unwrap();
             Arc::new(Mutex::new(SymbolTableManager::new(ast_manager.get_ast())))
         };
+
+        debug!("\nAST:\n{}", ast_manager.lock().unwrap());
+        debug!("\nSymbol Table:\n{}", symbol_table_manager.lock().unwrap());
 
         File {
             uri,
@@ -79,6 +82,9 @@ impl File {
 
         ast_manager.update(&self.source_code, self.tree.to_owned().unwrap());
         st_manager.update(ast_manager.get_ast());
+
+        debug!("\nAST:\n{}", ast_manager);
+        debug!("\nSymbol Table:\n{}", st_manager);
     }
 
     pub fn get_quick_diagnostics(&self) -> Vec<Diagnostic> {
@@ -89,34 +95,32 @@ impl File {
         diagnostics::get_full_diagnostics(&self.ast_manager, &self.symbol_table_manager)
     }
 
-    pub fn get_completion_list(&self, position: Position) -> Option<Vec<CompletionItem>> {
-        completion::get_list(position, &self.source_code, &self.symbol_table_manager)
+    pub fn get_completion_list(
+        &self,
+        position: Position,
+        context: Option<CompletionContext>,
+    ) -> Option<Vec<CompletionItem>> {
+        completion::get_list(
+            position,
+            &self.source_code,
+            &self.symbol_table_manager,
+            context,
+        )
     }
 
     pub fn get_hover_info(&self, position: Position) -> Option<HoverContents> {
-        let tree: &Tree = self.tree.as_ref()?;
-
-        let point = utils::pos_to_point(position);
-
-        let mut node: tree_sitter::Node = tree
-            .root_node()
-            .named_descendant_for_point_range(point, point)?;
-
-        let mut node_hierarchy = node.kind().to_string();
-        while node.kind() != "source_file" {
-            node = node.parent()?;
-            node_hierarchy = [node.kind().into(), node_hierarchy].join(" > ");
-        }
-
-        let hover_content = hover::HoverContentBuilder::new()
-            .add_text(&node_hierarchy)
-            .build();
-
-        Some(hover_content)
+        hover::get_hover_info(&self.ast_manager, &self.symbol_table_manager, position)
     }
 
     pub fn get_semantic_tokens(&self) -> Option<SemanticTokensResult> {
-        Some(semantic_tokens::get_tokens(&self.ast_manager))
+        self.tree.as_ref().map(|ts_tree| {
+            semantic_tokens::get_tokens(
+                &self.ast_manager,
+                &self.symbol_table_manager,
+                ts_tree,
+                &self.source_code,
+            )
+        })
     }
 
     pub fn get_definition_location(&self, position: Position) -> Option<Location> {

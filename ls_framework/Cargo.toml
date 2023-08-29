@@ -1,0 +1,23 @@
+[package]
+name = "ls_framework"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+extism = "0.4.0"
+indextree = "4.5.0"
+itertools = "0.11.0"
+lazy_static = "1.4.0"
+log = "0.4.19"
+regex = "1.7.2"
+ron = "0.8.0"
+serde = { version = "1.0.152", features = ["derive"] }
+serde_json = "1.0.93"
+shell-words = "1.1.0"
+simplelog = "0.12.1"
+time = "0.3.20"
+tokio = { version = "1.28.2", features = ["full"] }
+tower-lsp = "0.19.0"
+tree-sitter = "0.20.9"
