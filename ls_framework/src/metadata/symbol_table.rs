@@ -225,6 +225,7 @@ impl SymbolTable {
         table.root_id = Some(table.parse_scope(ast.visit_root().get_id(), ast.get_arena()));
         table.parse_usages(ast.get_arena());
         table.parse_types(ast.visit_root().get_id(), ast.get_arena());
+        table.parse_member_usages(ast.get_arena());
 
         table
     }
@@ -394,6 +395,43 @@ impl SymbolTable {
                         self.get_symbol_mut(name_symbol_id)
                             .unwrap()
                             .set_type_symbol(symbol_id);
+                    }
+                }
+            }
+        }
+    }
+
+    fn parse_member_usages(&mut self, arena: &mut Arena<Node>) {
+        let arena_clone = arena.clone();
+        for node in arena
+            .iter_mut()
+            .filter(|node| matches!(node.get().symbol, language_def::Symbol::MemberUsage))
+        {
+            if let Some(previous_sibling_id) = node.previous_sibling() {
+                let previous_sibling = arena_clone.get(previous_sibling_id).unwrap().get();
+                if let Some(symbol_id) = previous_sibling.linked_symbol.clone() {
+                    let parent_symbol = self.get_symbol(symbol_id).unwrap();
+
+                    if let Some(parent_type_symbol_id) = parent_symbol.type_symbol.clone() {
+                        let parent_type_symbol = self.get_symbol(parent_type_symbol_id).unwrap();
+                        if let Some(field_scope_id) = parent_type_symbol.field_scope_id {
+                            let scope_table = self.arena.get_mut(field_scope_id).unwrap().get_mut();
+
+                            debug!("HELLO THIS IS A TEST 2");
+                            if let Some(member_symbol_index) = scope_table
+                                .symbols
+                                .iter()
+                                .position(|s| s.name == node.get().content)
+                            {
+                                debug!("HELLO THIS IS A TEST 3");
+                                node.get_mut().link(field_scope_id, member_symbol_index);
+                                scope_table
+                                    .symbols
+                                    .get_mut(member_symbol_index)
+                                    .unwrap()
+                                    .add_usage(node.get().range);
+                            }
+                        }
                     }
                 }
             }

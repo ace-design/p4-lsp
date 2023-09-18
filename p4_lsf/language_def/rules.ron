@@ -75,7 +75,7 @@ LanguageDefinition (
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("type"), rule: Rule("Type")),
                 One(query: Field("name"), rule: Direct(Node("Name"))),
-                One(query: Field("value"), rule: Rule("Value")),
+                One(query: Field("value"), rule: Rule("Expression")),
             ]
         ),
         Rule(
@@ -238,7 +238,7 @@ LanguageDefinition (
             node_name: "SpecifiedOption",
             children: [
                 One(query: Kind("name"), rule: Direct(Node("Option"))),
-                One(query: Kind("initializer"), rule: Rule("Value")),
+                One(query: Kind("initializer"), rule: Rule("Expression")),
             ]
         ),
         Rule(
@@ -316,7 +316,7 @@ LanguageDefinition (
         Rule(
             node_name: "Arg",
             children: [
-                One(query: Kind("expression"), rule: Rule("Value")),
+                One(query: Kind("expression"), rule: Rule("Expression")),
             ]
         ),
         Rule(
@@ -389,7 +389,7 @@ LanguageDefinition (
         Rule(
             node_name: "SelectCase",
             children: [
-                Many(query: Path([Kind("simple_keyset_expression"), Kind("expression")]), rule: Rule("Value")),
+                Many(query: Path([Kind("simple_keyset_expression"), Kind("expression")]), rule: Rule("Expression")),
                 // TODO: tuple_keyset_expression
                 One(query: Field("name"), rule: Rule("NameUsage")),
             ]
@@ -401,13 +401,13 @@ LanguageDefinition (
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("type"), rule: Rule("Type")),
                 One(query: Field("name"), rule: Direct(Node("Name"))),
-                Maybe(query: Field("value"), rule: Rule("Value")),
+                Maybe(query: Field("value"), rule: Rule("Expression")),
             ]
         ),
         Rule(
             node_name: "Conditional",
             children: [
-                One(query: Field("expression"), rule: Rule("Value")),
+                One(query: Field("expression"), rule: Rule("Expression")),
                 One(query: Field("bodyIf"), rule: Rule("Block")),
                 Maybe(query: Field("bodyElse"), rule: Rule("Block")),
             ]
@@ -415,14 +415,14 @@ LanguageDefinition (
         Rule(
             node_name: "Switch",
             children: [
-                One(query: Field("expression"), rule: Rule("Value")),
+                One(query: Field("expression"), rule: Rule("Expression")),
                 Many(query: Path([Field("body"), Field("switch_case")]), rule: Rule("SwitchCase")),
             ]
         ),
         Rule(
             node_name: "SwitchCase",
             children: [
-                One(query: Field("name"), rule: Rule("Value")),
+                One(query: Field("name"), rule: Rule("Expression")),
                 One(query: Field("value"), rule: Rule("Block")),
             ]
         ),
@@ -430,7 +430,7 @@ LanguageDefinition (
             node_name: "AssignmentOrMethodCall",
             children: [
                 One(query: Field("name"), rule: Direct(Node("Name"))),
-                Maybe(query: Field("expression"), rule: Rule("Value")),
+                Maybe(query: Field("expression"), rule: Rule("Expression")),
                 Maybe(query: Field("parameters"), rule: Rule("Args")),
             ]
         ),
@@ -460,7 +460,7 @@ LanguageDefinition (
         Rule(
             node_name: "KeyElement",
             children: [
-                One(query: Field("expression"), rule: Rule("Value")),
+                One(query: Field("expression"), rule: Rule("Expression")),
                 One(query: Field("name"), rule: Direct(Node("Name"))),
             ]
         ),
@@ -480,7 +480,7 @@ LanguageDefinition (
             node_name: "NameTable",
             children: [
                 One(query: Field("name"), rule: Direct(Node("Name"))),
-                One(query: Field("expression"), rule: Rule("Value")),
+                One(query: Field("expression"), rule: Rule("Expression")),
             ]
         ),
         Rule(
@@ -497,7 +497,7 @@ LanguageDefinition (
                 Maybe(query: Field("annotation"), rule: Rule("Annotation")),
                 One(query: Field("type"), rule: Rule("Type")),
                 One(query: Field("name"), rule: Direct(Node("Name"))),
-                One(query: Field("expression"), rule: Rule("Value")),
+                One(query: Field("expression"), rule: Rule("Expression")),
             ]
         ),
         Rule(
@@ -513,7 +513,7 @@ LanguageDefinition (
         Rule(
             node_name: "Return",
             children: [
-                One(query: Field("value"), rule: Rule("Value")),
+                One(query: Field("value"), rule: Rule("Expression")),
             ]
         ),
         Rule(
@@ -532,15 +532,17 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "Member",
+            symbol: MemberUsage,
         ),
         Rule(
             node_name: "ValueList",
             children: [
-                Many(query: Kind("expression"), rule: Rule("Value")),
+                Many(query: Kind("expression"), rule: Rule("Expression")),
             ]
         ),
         Rule(
-            node_name: "Value",
+            node_name: "Expression",
+            symbol: Expression,
             children: [
                 Maybe(query: Kind("integer"), rule: Direct(Node("Integer")), highlight_type: Number),
                 Maybe(query: Kind("string"), rule: Direct(Node("String")), highlight_type: String),
@@ -548,7 +550,7 @@ LanguageDefinition (
                 Maybe(query: Kind("non_type_name"), rule: Rule("NameUsage")),
                 Maybe(query: Kind("named_type"), rule: Rule("NameUsage")),
                 Maybe(query: Kind("type_name"), rule: Rule("NameUsage")),
-                Many(query: Kind("expression"), rule: Rule("Value")),
+                Many(query: Kind("expression"), rule: Rule("Expression")),
                 Many(query: Kind("member"), rule: Rule("Member")),
                 Many(query: Field("operator"), rule: Direct(Node("Operator"))),
             ]

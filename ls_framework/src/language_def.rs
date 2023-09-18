@@ -66,6 +66,8 @@ pub enum Symbol {
     Field {
         name_node: String,
     },
+    Expression,
+    MemberUsage,
     #[default]
     None,
 }

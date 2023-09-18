@@ -50,7 +50,8 @@ parser MyParser(packet_in packet,
                 out headers hdr,
                 inout metadata meta,
                 inout standard_metadata_t standard_metadata) {
-    ipv4_t test = hdr.ipv4_t;
+    bit<4> test = hdr.ipv4;
+    ethernet_t test2 = hdr.ethernet;
 
     state start {
         transition parse_ethernet;
