@@ -417,13 +417,11 @@ impl SymbolTable {
                         if let Some(field_scope_id) = parent_type_symbol.field_scope_id {
                             let scope_table = self.arena.get_mut(field_scope_id).unwrap().get_mut();
 
-                            debug!("HELLO THIS IS A TEST 2");
                             if let Some(member_symbol_index) = scope_table
                                 .symbols
                                 .iter()
                                 .position(|s| s.name == node.get().content)
                             {
-                                debug!("HELLO THIS IS A TEST 3");
                                 node.get_mut().link(field_scope_id, member_symbol_index);
                                 scope_table
                                     .symbols
