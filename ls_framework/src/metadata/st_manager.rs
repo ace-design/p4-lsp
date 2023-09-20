@@ -8,13 +8,7 @@ use tower_lsp::lsp_types::Position;
 
 use crate::metadata::symbol_table::SymbolTableActions;
 
-#[derive(Debug, Clone)]
-pub enum SymbolTableEdit {
-    Rename { symbol_id: usize, new_name: String },
-}
-
 pub trait SymbolTableEditor {
-    fn new_edit(&mut self, edit: SymbolTableEdit);
     fn update(&mut self, ast: &mut Ast);
 }
 
@@ -67,15 +61,6 @@ impl SymbolTableQuery for SymbolTableManager {
 }
 
 impl SymbolTableEditor for SymbolTableManager {
-    fn new_edit(&mut self, edit: SymbolTableEdit) {
-        match edit {
-            SymbolTableEdit::Rename {
-                symbol_id,
-                new_name,
-            } => self.symbol_table.rename_symbol(symbol_id, new_name),
-        }
-    }
-
     fn update(&mut self, ast: &mut Ast) {
         *self = SymbolTableManager::new(ast)
     }

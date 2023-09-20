@@ -133,7 +133,6 @@ impl File {
         rename::rename(
             &self.ast_manager,
             &self.symbol_table_manager,
-            &self.symbol_table_manager,
             self.uri.clone(),
             new_name,
             position,

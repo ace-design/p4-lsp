@@ -3,15 +3,9 @@ use std::fmt;
 
 use crate::metadata::ast::{Ast, Visitable};
 use indextree::{Arena, NodeId};
-use std::sync::atomic::{AtomicUsize, Ordering};
 use tower_lsp::lsp_types::{Position, Range};
 
 use super::Node;
-
-fn get_id() -> usize {
-    static SYMBOL_ID_COUNTER: AtomicUsize = AtomicUsize::new(1);
-    SYMBOL_ID_COUNTER.fetch_add(1, Ordering::Relaxed)
-}
 
 type ScopeId = NodeId;
 
@@ -562,7 +556,6 @@ impl fmt::Display for ScopeSymbolTable {
 
 #[derive(Debug, Clone)]
 pub struct Symbol {
-    id: usize,
     name: String,
     kind: String,
     type_symbol: Option<SymbolId>,
@@ -574,7 +567,6 @@ pub struct Symbol {
 impl Symbol {
     pub fn new(name: String, kind: String, def_position: Range) -> Symbol {
         Symbol {
-            id: get_id(),
             name,
             kind,
             type_symbol: None,
@@ -582,10 +574,6 @@ impl Symbol {
             usages: vec![],
             field_scope_id: None,
         }
-    }
-
-    pub fn get_id(&self) -> usize {
-        self.id
     }
 
     pub fn set_type_symbol(&mut self, id: SymbolId) {
