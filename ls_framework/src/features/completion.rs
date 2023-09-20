@@ -38,7 +38,6 @@ fn get_symbol_completion_type(symbol_kind: String) -> Option<CompletionItemKind>
 
 pub fn get_list(
     position: Position,
-    source_code: &str,
     ast_query: &Arc<Mutex<impl AstQuery>>,
     st_query: &Arc<Mutex<impl SymbolTableQuery>>,
     context: Option<CompletionContext>,

@@ -102,7 +102,6 @@ impl File {
     ) -> Option<Vec<CompletionItem>> {
         completion::get_list(
             position,
-            &self.source_code,
             &self.ast_manager,
             &self.symbol_table_manager,
             context,
