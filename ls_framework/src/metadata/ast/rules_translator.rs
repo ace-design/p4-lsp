@@ -52,7 +52,7 @@ impl RulesTranslator {
         );
         // TODO: has_error vs is_error
         for error_ts_node in children.iter().filter(|node| node.has_error()) {
-            current_node_id.append(self.new_error_node(error_ts_node, None), &mut self.arena);
+            // current_node_id.append(self.new_error_node(error_ts_node, None), &mut self.arena);
         }
 
         for child in current_rule.children.iter() {
@@ -139,8 +139,8 @@ impl RulesTranslator {
                 match node_or_rule {
                     DirectOrRule::Direct(node_kind) => {
                         if ts_node.has_error() {
-                            current_node_id
-                                .append(self.new_error_node(ts_node, None), &mut self.arena);
+                            // current_node_id
+                            //     .append(self.new_error_node(ts_node, None), &mut self.arena);
                         }
 
                         current_node_id.append(
@@ -164,18 +164,18 @@ impl RulesTranslator {
 
             if matches!(multiplicity, Multiplicity::One(_) | Multiplicity::Maybe(_)) && counter > 1
             {
-                current_node_id.append(
-                    self.new_error_node(ts_node, Some(format!("Too many '{:?}'.", query))),
-                    &mut self.arena,
-                );
+                // current_node_id.append(
+                //     self.new_error_node(ts_node, Some(format!("Too many '{:?}'.", query))),
+                //     &mut self.arena,
+                // );
             }
         }
 
         if matches!(multiplicity, Multiplicity::One(_)) && counter == 0 {
-            current_node_id.append(
-                self.new_error_node(current_ts_node, Some(format!("Missing '{:?}'.", query))),
-                &mut self.arena,
-            );
+            // current_node_id.append(
+            //     self.new_error_node(current_ts_node, Some(format!("Missing '{:?}'.", query))),
+            //     &mut self.arena,
+            // );
         }
     }
 
