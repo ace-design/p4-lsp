@@ -225,7 +225,7 @@ impl SymbolTable {
         table.root_id = Some(table.parse_scope(ast.visit_root().get_id(), ast.get_arena()));
         table.parse_usages(ast.get_arena());
         table.parse_types(ast.visit_root().get_id(), ast.get_arena());
-        table.parse_member_usages(ast.get_arena());
+        table.parse_member_usages(ast.visit_root().get_id(), ast.get_arena());
 
         table
     }
@@ -401,36 +401,106 @@ impl SymbolTable {
         }
     }
 
-    fn parse_member_usages(&mut self, arena: &mut Arena<Node>) {
-        let arena_clone = arena.clone();
-        for node in arena
-            .iter_mut()
-            .filter(|node| matches!(node.get().symbol, language_def::Symbol::MemberUsage))
-        {
-            if let Some(previous_sibling_id) = node.previous_sibling() {
-                let previous_sibling = arena_clone.get(previous_sibling_id).unwrap().get();
-                if let Some(symbol_id) = previous_sibling.linked_symbol.clone() {
-                    let parent_symbol = self.get_symbol(symbol_id).unwrap();
+    fn parse_member_usages(&mut self, root_id: NodeId, arena: &mut Arena<Node>) {
+        let ids: Vec<NodeId> = root_id
+            .descendants(arena)
+            .filter(|id| {
+                matches!(
+                    arena.get(*id).unwrap().get().symbol,
+                    language_def::Symbol::MemberUsage
+                )
+            })
+            .collect();
 
-                    if let Some(parent_type_symbol_id) = parent_symbol.type_symbol.clone() {
-                        let parent_type_symbol = self.get_symbol(parent_type_symbol_id).unwrap();
-                        if let Some(field_scope_id) = parent_type_symbol.field_scope_id {
-                            let scope_table = self.arena.get_mut(field_scope_id).unwrap().get_mut();
+        for id in ids {
+            if let Some(previous_sibling_id) = arena.get(id).unwrap().previous_sibling() {
+                let previous_sibling = arena.get(previous_sibling_id).unwrap().get();
+                match previous_sibling.symbol {
+                    language_def::Symbol::Usage => {
+                        if let Some(symbol_id) = previous_sibling.linked_symbol.clone() {
+                            let parent_symbol = self.get_symbol(symbol_id).unwrap();
 
-                            if let Some(member_symbol_index) = scope_table
-                                .symbols
-                                .iter()
-                                .position(|s| s.name == node.get().content)
-                            {
-                                node.get_mut().link(field_scope_id, member_symbol_index);
-                                scope_table
-                                    .symbols
-                                    .get_mut(member_symbol_index)
-                                    .unwrap()
-                                    .add_usage(node.get().range);
+                            if let Some(parent_type_symbol_id) = parent_symbol.type_symbol.clone() {
+                                let parent_type_symbol =
+                                    self.get_symbol(parent_type_symbol_id).unwrap();
+
+                                if let Some(field_scope_id) = parent_type_symbol.field_scope_id {
+                                    let scope_table =
+                                        self.arena.get_mut(field_scope_id).unwrap().get_mut();
+
+                                    if let Some(member_symbol_index) =
+                                        scope_table.symbols.iter().position(|s| {
+                                            s.name == arena.get(id).unwrap().get().content
+                                        })
+                                    {
+                                        arena
+                                            .get_mut(id)
+                                            .unwrap()
+                                            .get_mut()
+                                            .link(field_scope_id, member_symbol_index);
+                                        scope_table
+                                            .symbols
+                                            .get_mut(member_symbol_index)
+                                            .unwrap()
+                                            .add_usage(arena.get(id).unwrap().get().range);
+                                    }
+                                }
                             }
                         }
                     }
+                    language_def::Symbol::Expression => {
+                        if let Some(previous_symbol_id) =
+                            previous_sibling_id.children(arena).find(|id| {
+                                matches!(
+                                    arena.get(*id).unwrap().get().symbol,
+                                    language_def::Symbol::MemberUsage
+                                )
+                            })
+                        {
+                            if let Some(previous_sibling) = arena.get(previous_symbol_id) {
+                                if let Some(symbol_id) =
+                                    previous_sibling.get().linked_symbol.clone()
+                                {
+                                    let parent_symbol = self.get_symbol(symbol_id).unwrap();
+
+                                    if let Some(parent_type_symbol_id) =
+                                        parent_symbol.type_symbol.clone()
+                                    {
+                                        let parent_type_symbol =
+                                            self.get_symbol(parent_type_symbol_id).unwrap();
+
+                                        if let Some(field_scope_id) =
+                                            parent_type_symbol.field_scope_id
+                                        {
+                                            let scope_table = self
+                                                .arena
+                                                .get_mut(field_scope_id)
+                                                .unwrap()
+                                                .get_mut();
+
+                                            if let Some(member_symbol_index) =
+                                                scope_table.symbols.iter().position(|s| {
+                                                    s.name == arena.get(id).unwrap().get().content
+                                                })
+                                            {
+                                                arena
+                                                    .get_mut(id)
+                                                    .unwrap()
+                                                    .get_mut()
+                                                    .link(field_scope_id, member_symbol_index);
+                                                scope_table
+                                                    .symbols
+                                                    .get_mut(member_symbol_index)
+                                                    .unwrap()
+                                                    .add_usage(arena.get(id).unwrap().get().range);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {}
                 }
             }
         }

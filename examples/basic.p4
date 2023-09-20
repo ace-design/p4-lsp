@@ -31,6 +31,7 @@ header ipv4_t {
     bit<16>   hdrChecksum;
     ip4Addr_t srcAddr;
     ip4Addr_t dstAddr;
+    ethernet_t test3;
 }
 
 struct metadata {
@@ -50,7 +51,7 @@ parser MyParser(packet_in packet,
                 out headers hdr,
                 inout metadata meta,
                 inout standard_metadata_t standard_metadata) {
-    bit<4> test = hdr.ipv4;
+    bit<4> test = hdr.ipv4.test3.srcAddr;
     ethernet_t test2 = hdr.ethernet;
 
     state start {
