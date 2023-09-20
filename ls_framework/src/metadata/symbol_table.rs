@@ -1,4 +1,4 @@
-use crate::{language_def, metadata::NodeKind, utils};
+use crate::{language_def, metadata::NodeKind};
 use std::fmt;
 
 use crate::metadata::ast::{Ast, Visitable};
@@ -7,7 +7,7 @@ use tower_lsp::lsp_types::{Position, Range};
 
 use super::Node;
 
-type ScopeId = NodeId;
+pub type ScopeId = NodeId;
 
 #[derive(Debug, Default, Clone)]
 pub struct SymbolTable {
@@ -35,8 +35,8 @@ pub trait SymbolTableActions {
     fn get_symbol(&self, id: SymbolId) -> Option<&Symbol>;
     fn get_symbol_mut(&mut self, id: SymbolId) -> Option<&mut Symbol>;
     fn get_all_symbols(&self) -> Vec<Symbol>;
-    fn get_symbols_in_scope(&self, position: Position) -> Vec<Symbol>;
-    fn get_variable_at_pos(&self, position: Position, source_code: &str) -> Option<Vec<Symbol>>;
+    fn get_symbols_in_scope_at_pos(&self, position: Position) -> Vec<Symbol>;
+    fn get_symbols_in_scope(&self, scope_id: ScopeId) -> Vec<Symbol>;
     fn get_top_level_symbols(&self) -> Vec<Symbol>;
     fn get_symbol_at_pos(&self, name: String, position: Position) -> Option<&Symbol>;
     fn rename_symbol(&mut self, id: usize, new_name: String);
@@ -53,7 +53,7 @@ impl SymbolTableActions for SymbolTable {
         scope_table.symbols.get_mut(id.index)
     }
 
-    fn get_symbols_in_scope(&self, position: Position) -> Vec<Symbol> {
+    fn get_symbols_in_scope_at_pos(&self, position: Position) -> Vec<Symbol> {
         let mut current_scope_id = self.root_id.unwrap();
         let mut symbols: Vec<Symbol>;
         symbols = self
@@ -83,90 +83,6 @@ impl SymbolTableActions for SymbolTable {
         }
 
         symbols
-    }
-
-    fn get_variable_at_pos(&self, position: Position, source_code_t: &str) -> Option<Vec<Symbol>> {
-        let mut source_code = source_code_t.to_string();
-        let pos = utils::pos_to_byte(position, &source_code);
-        let _ = source_code.split_off(pos);
-        let mut index = source_code.len();
-        let mut text: String;
-        loop {
-            index -= 1;
-            let chara = source_code.chars().nth(index).unwrap();
-            if !(chara.is_ascii_alphanumeric()
-                || chara == '.'
-                || chara == '_'
-                || chara.is_ascii_whitespace())
-            {
-                text = source_code.split_off(index + 1);
-                break;
-            }
-        }
-        text = text.split_whitespace().collect::<Vec<&str>>().join("");
-        if text.contains('.') {
-            let t: Vec<&str> = source_code.split('\n').collect::<Vec<&str>>();
-            let l = t.len();
-            let position_start = Position {
-                line: l as u32,
-                character: (t[l - 1].len() + 1) as u32,
-            };
-            let names: Vec<&str> = text.split('.').collect();
-
-            let symbols: &Option<&Symbol> =
-                &self.get_symbol_at_pos(names[0].to_string(), position_start);
-            if let Some(_symbol) = symbols {
-                // if let Some(x) = symbol.type_.get_name() {
-                //     if x == Type::Name {
-                //         let node = symbol.type_.get_node()?;
-                //         let name = node.content.clone();
-                //         let pos = node.range.start;
-                //         match self.get_symbol_at_pos(name, pos) {
-                //             Some(x) => {
-                //                 symbol = x;
-                //             }
-                //             None => {
-                //                 return Some(vec![]);
-                //             }
-                //         }
-                //     }
-                // }
-                //
-                // for name in names.iter().take(names.len() - 1).skip(1) {
-                //     let fields = symbol.contains_fields(name.to_string());
-                //     if let Some(_field) = fields {
-                //         // if let Some(x) = field.type_.get_name() {
-                //         //     if x == Type::Name {
-                //         //         let node = field.type_.get_node()?;
-                //         //         let name = node.content.clone();
-                //         //         let pos = node.range.start;
-                //         //         match self.get_symbol_at_pos(name, pos) {
-                //         //             Some(x) => {
-                //         //                 symbol = x;
-                //         //             }
-                //         //             None => {
-                //         //                 return Some(vec![]);
-                //         //             }
-                //         //         }
-                //         //     }
-                //         // }
-                //     } else {
-                //         return Some(vec![]);
-                //     }
-                // }
-
-                // match symbol.get_fields() {
-                //     Some(fields) => {
-                //         return Some(fields.to_owned());
-                //     }
-                //     None => {}
-                // }
-            }
-
-            Some(vec![]) //Some(name_fields)
-        } else {
-            None
-        }
     }
 
     fn get_top_level_symbols(&self) -> Vec<Symbol> {
@@ -209,6 +125,10 @@ impl SymbolTableActions for SymbolTable {
         }
 
         symbols
+    }
+
+    fn get_symbols_in_scope(&self, scope_id: ScopeId) -> Vec<Symbol> {
+        self.arena.get(scope_id).unwrap().get().symbols.clone()
     }
 }
 
@@ -602,6 +522,10 @@ impl Symbol {
 
     pub fn get_kind(&self) -> String {
         self.kind.clone()
+    }
+
+    pub fn get_field_scope_id(&self) -> Option<NodeId> {
+        self.field_scope_id
     }
 }
 
