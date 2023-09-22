@@ -35,7 +35,7 @@ pub enum TreesitterNodeQuery {
 
 #[derive(Debug, Deserialize, Clone)]
 pub enum DirectOrRule {
-    Direct(NodeKind),
+    Direct(String),
     Rule(String),
 }
 

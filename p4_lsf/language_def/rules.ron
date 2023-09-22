@@ -49,8 +49,8 @@ LanguageDefinition (
         (name: "Table", completion_type: Class, highlight_type: Class),
     ],
     global_ast_rules: [
-        (query: Kind("line_comment"), rule: Direct(Node("Comment")), highlight_type: Comment),
-        (query: Kind("block_comment"), rule: Direct(Node("Comment")), highlight_type: Comment),
+        (query: Kind("line_comment"), rule: Direct("Comment"), highlight_type: Comment),
+        (query: Kind("block_comment"), rule: Direct("Comment"), highlight_type: Comment),
     ],
     ast_rules: [
         Rule(
@@ -74,7 +74,7 @@ LanguageDefinition (
             children: [ 
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Field("type"), rule: Rule("Type")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Field("value"), rule: Rule("Expression")),
             ]
         ),
@@ -84,7 +84,7 @@ LanguageDefinition (
             symbol: Init(type: "Function", name_node: "Name"),
             children: [
                 (query: Field("annotation"), rule: Rule("Annotation")),
-                (query: Path([Field("declaration"), Field("name")]), rule: Direct(Node("Name"))),
+                (query: Path([Field("declaration"), Field("name")]), rule: Direct("Name")),
                 (query: Path([Field("declaration"), Field("parameters")]), rule: Rule("Parameters")),
                 (query: Field("body"), rule: Rule("Body")),
             ]
@@ -95,7 +95,7 @@ LanguageDefinition (
             symbol: Init(type: "Function", name_node: "Name"),
             children: [
                 (query: Field("annotation"), rule: Rule("Annotation")),
-                (query: Path([Field("declaration"), Field("name")]), rule: Direct(Node("Name"))),
+                (query: Path([Field("declaration"), Field("name")]), rule: Direct("Name")),
                 (query: Path([Field("declaration"), Field("parameters")]), rule: Rule("Parameters")),
                 (query: Field("body"), rule: Rule("Body")),
             ]
@@ -106,7 +106,7 @@ LanguageDefinition (
             children: [ 
                 (query: Kind("annotation"), rule: Rule("Annotation")),
                 (query: Kind("type_ref"), rule: Rule("Type")),
-                (query: Kind("name"), rule: Direct(Node("Name"))),
+                (query: Kind("name"), rule: Direct("Name")),
                 (query: Kind("argument_list"), rule: Rule("Args")),
             ]
         ),
@@ -129,7 +129,7 @@ LanguageDefinition (
             children: [ 
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Field("type"), rule: Rule("Type")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
             ]
         ),
         Rule(
@@ -138,7 +138,7 @@ LanguageDefinition (
             is_scope: true,
             children: [ 
                 (query: Field("annotation"), rule: Rule("Annotation")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Field("field_list"), rule: Rule("FieldList"))
                 // maybe type parameters
             ]
@@ -149,7 +149,7 @@ LanguageDefinition (
             is_scope: true,
             children: [ 
                 (query: Field("annotation"), rule: Rule("Annotation")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Field("field_list"), rule: Rule("FieldList"))
                 // maybe type parameters
             ]
@@ -160,7 +160,7 @@ LanguageDefinition (
             is_scope: true,
             children: [ 
                 (query: Field("annotation"), rule: Rule("Annotation")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Field("field_list"), rule: Rule("FieldList"))
                 // maybe type parameters
             ]
@@ -171,7 +171,7 @@ LanguageDefinition (
             children: [ 
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Field("type"), rule: Rule("Type")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Kind("identifier_list"), rule: Rule("OptionList")),
                 (query: Kind("specified_identifier_list"), rule: Rule("SpecifiedOptionList"))
                 // maybe type parameters
@@ -182,7 +182,7 @@ LanguageDefinition (
             symbol: Init(type: "Function", name_node: "Name"),
             children: [ 
                 (query: Field("annotation"), rule: Rule("Annotation")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Field("parameters"), rule: Rule("Parameters"))
                 // maybe type parameters
             ]
@@ -192,7 +192,7 @@ LanguageDefinition (
             symbol: Init(type: "Function", name_node: "Name"),
             children: [ 
                 (query: Field("annotation"), rule: Rule("Annotation")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Field("parameters"), rule: Rule("Parameters"))
                 // maybe type parameters
             ]
@@ -202,7 +202,7 @@ LanguageDefinition (
             symbol: Init(type: "Function", name_node: "Name"),
             children: [ 
                 (query: Field("annotation"), rule: Rule("Annotation")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Field("parameters"), rule: Rule("Parameters"))
                 // maybe type parameters
             ]
@@ -219,25 +219,25 @@ LanguageDefinition (
             children: [
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Field("type"), rule: Rule("Type")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
             ]
         ),
         Rule(
             node_name: "OptionList",
             children: [
-                (query: Kind("name"), rule: Direct(Node("Option"))),
+                (query: Kind("name"), rule: Direct("Option")),
             ]
         ),
         Rule(
             node_name: "SpecifiedOptionList",
             children: [
-                (query: Kind("name"), rule: Direct(Node("Option"))),
+                (query: Kind("name"), rule: Direct("Option")),
             ]
         ),
         Rule(
             node_name: "SpecifiedOption",
             children: [
-                (query: Kind("name"), rule: Direct(Node("Option"))),
+                (query: Kind("name"), rule: Direct("Option")),
                 (query: Kind("initializer"), rule: Rule("Expression")),
             ]
         ),
@@ -247,7 +247,7 @@ LanguageDefinition (
             is_scope: true,
             children: [
                 (query: Field("annotation"), rule: Rule("Annotation")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Field("parameters"), rule: Rule("Parameters")),
                 (query: Field("block"), rule: Rule("Block")),
             ],
@@ -272,7 +272,7 @@ LanguageDefinition (
             symbol: Init(type: "Function", name_node: "Name"),
             children: [
                 (query: Field("annotation"), rule: Rule("Annotation")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 // maybe type parameters
                 (query: Field("function"), rule: Rule("FunctionPrototype")),
                 (query: Field("method"), rule: Rule("MethodList")),
@@ -282,7 +282,7 @@ LanguageDefinition (
             node_name: "FunctionPrototype",
             children: [
                 (query: Kind("type_or_void"), rule: Rule("Type")),
-                (query: Kind("name"), rule: Direct(Node("Name"))),
+                (query: Kind("name"), rule: Direct("Name")),
                 (query: Kind("parameter_list"), rule: Rule("Parameters")),
             ]
         ),
@@ -304,7 +304,7 @@ LanguageDefinition (
         Rule(
             node_name: "Options",
             children: [
-                (query: Kind("name"), rule: Direct(Node("Option"))),
+                (query: Kind("name"), rule: Direct("Option")),
             ]
         ),
         Rule(
@@ -329,9 +329,9 @@ LanguageDefinition (
             node_name: "Parameter",
             symbol: Init(type: "Parameter", name_node: "Name", type_node: "Type"),
             children: [
-                (query: Field("direction"), rule: Direct(Node("Direction")), highlight_type: EnumMember),
+                (query: Field("direction"), rule: Direct("Direction"), highlight_type: EnumMember),
                 (query: Field("type"), rule: Rule("Type")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
             ]
         ),
         Rule(
@@ -358,10 +358,10 @@ LanguageDefinition (
                 (query: Kind("assignment_or_method_call_statement"), rule: Rule("AssignmentOrMethodCall")),
                 (query: Kind("direct_application"), rule: Rule("DirectApplication")),
                 (query: Kind("conditional_statement"), rule: Rule("Conditional")),
-                (query: Kind("empty_statement"), rule: Direct(Node("EmptyStatement"))),
+                (query: Kind("empty_statement"), rule: Direct("EmptyStatement")),
                 (query: Kind("block_statement"), rule: Rule("Block")),
                 (query: Kind("parser_block_statement"), rule: Rule("Block")),
-                (query: Kind("exit_statement"), rule: Direct(Node("ExitStatement"))),
+                (query: Kind("exit_statement"), rule: Direct("ExitStatement")),
                 (query: Kind("return_statement"), rule: Rule("Return")),
                 (query: Kind("switch_statement"), rule: Rule("Switch")),
                 (query: Kind("transition_statement"), rule: Rule("Transition")),
@@ -400,7 +400,7 @@ LanguageDefinition (
             children: [
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Field("type"), rule: Rule("Type")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Field("value"), rule: Rule("Expression")),
             ]
         ),
@@ -429,7 +429,7 @@ LanguageDefinition (
         Rule(
             node_name: "AssignmentOrMethodCall",
             children: [
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Field("expression"), rule: Rule("Expression")),
                 (query: Field("parameters"), rule: Rule("Args")),
             ]
@@ -439,7 +439,7 @@ LanguageDefinition (
             symbol: Init(type: "Table", name_node: "Name"),
             children: [
                 (query: Field("annotation"), rule: Rule("Annotation")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Field("table"), rule: Rule("Table")),
             ]
         ),
@@ -461,7 +461,7 @@ LanguageDefinition (
             node_name: "KeyElement",
             children: [
                 (query: Field("expression"), rule: Rule("Expression")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
             ]
         ),
         Rule(
@@ -479,7 +479,7 @@ LanguageDefinition (
         Rule(
             node_name: "NameTable",
             children: [
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Field("expression"), rule: Rule("Expression")),
             ]
         ),
@@ -487,7 +487,7 @@ LanguageDefinition (
             node_name: "ParserState",
             children: [
                 (query: Field("annotation"), rule: Rule("Annotation")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Field("body"), rule: Rule("Block")),
             ]
         ),
@@ -496,7 +496,7 @@ LanguageDefinition (
             children: [
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Field("type"), rule: Rule("Type")),
-                (query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Direct("Name")),
                 (query: Field("expression"), rule: Rule("Expression")),
             ]
         ),
@@ -505,7 +505,7 @@ LanguageDefinition (
             children: [
                 // Change tree-sitter-p4 field names to combine both ?
                 (query: Field("name"), rule: Rule("NameUsage")), 
-                (query: Field("specialized"), rule: Direct(Node("Name"))),
+                (query: Field("specialized"), rule: Direct("Name")),
 
                 (query: Field("args"), rule: Rule("Args")),
             ]
@@ -544,15 +544,15 @@ LanguageDefinition (
             node_name: "Expression",
             symbol: Expression,
             children: [
-                (query: Kind("integer"), rule: Direct(Node("Integer")), highlight_type: Number),
-                (query: Kind("string"), rule: Direct(Node("String")), highlight_type: String),
-                (query: Kind("bool"), rule: Direct(Node("Bool")), highlight_type: EnumMember),
+                (query: Kind("integer"), rule: Direct("Integer"), highlight_type: Number),
+                (query: Kind("string"), rule: Direct("String"), highlight_type: String),
+                (query: Kind("bool"), rule: Direct("Bool"), highlight_type: EnumMember),
                 (query: Kind("non_type_name"), rule: Rule("NameUsage")),
                 (query: Kind("named_type"), rule: Rule("NameUsage")),
                 (query: Kind("type_name"), rule: Rule("NameUsage")),
                 (query: Kind("expression"), rule: Rule("Expression")),
                 (query: Kind("member"), rule: Rule("Member")),
-                (query: Field("operator"), rule: Direct(Node("Operator"))),
+                (query: Field("operator"), rule: Direct("Operator")),
             ]
         ),
         Rule(

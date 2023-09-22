@@ -136,7 +136,7 @@ impl RulesTranslator {
 
                         current_node_id.append(
                             self.new_node(
-                                node_kind.clone(),
+                                NodeKind::Node(node_kind.clone()),
                                 &target_node,
                                 Symbol::None,
                                 child.highlight_type.clone(),
