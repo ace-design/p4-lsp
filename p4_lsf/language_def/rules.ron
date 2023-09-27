@@ -80,8 +80,8 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "Parser",
-            is_scope: true,
             symbol: Init(type: "Function", name_node: "Name"),
+            is_scope: true,
             children: [
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Path([Field("declaration"), Field("name")]), rule: Direct("Name")),
@@ -91,8 +91,8 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "Control",
-            is_scope: true,
             symbol: Init(type: "Function", name_node: "Name"),
+            is_scope: true,
             children: [
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Path([Field("declaration"), Field("name")]), rule: Direct("Name")),
@@ -370,7 +370,7 @@ LanguageDefinition (
         Rule(
             node_name: "Transition",
             children: [
-                (query: Kind("select_expression"), rule: Rule("Select")),
+                (query: Kind("select_expression"), rule: Rule("Select")),EnumMember
             ]
         ),
         Rule(
