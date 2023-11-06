@@ -2,7 +2,7 @@ use std::env;
 use std::sync::RwLock;
 
 use crate::language_def::{self, LanguageDefinition};
-use crate::plugin_manager::PluginManager;
+use crate::plugin_manager::{self, OnState, PluginManager, PluginsResult};
 use crate::workspace::Workspace;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
@@ -32,7 +32,7 @@ impl Backend {
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
         let log_file_path = env::temp_dir().join(format!(
             "{}-lsf.log",
             LanguageDefinition::get().language.name.to_lowercase()
@@ -62,7 +62,13 @@ impl LanguageServer for Backend {
 
         info!("Initializing lsp");
 
-        self.plugin_manager.write().unwrap().load_plugins();
+        if let Some(options) = params.initialization_options {
+            info!("Init {}", options);
+            self.plugin_manager
+                .write()
+                .unwrap()
+                .load_plugins(params.root_uri, options.to_string().as_str());
+        }
 
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
@@ -154,13 +160,19 @@ impl LanguageServer for Backend {
             (*workspace).get_full_diagnostics(params.text_document.uri.clone())
         };
 
-        diagnostics.append(
-            &mut self
-                .plugin_manager
-                .write()
-                .unwrap()
-                .run_diagnostic(params.text_document.uri.path().into()),
-        );
+        let mut plugin_result: PluginsResult = self
+            .plugin_manager
+            .write()
+            .unwrap()
+            .run_plugins(params.text_document.uri.clone(), OnState::Save);
+
+        diagnostics.append(&mut plugin_result.diagnostic);
+
+        for plugin_notification in plugin_result.notification.into_iter() {
+            self.client
+                .send_notification::<plugin_manager::CustomNotification>(plugin_notification)
+                .await;
+        }
 
         self.client
             .publish_diagnostics(params.text_document.uri, diagnostics, None)
