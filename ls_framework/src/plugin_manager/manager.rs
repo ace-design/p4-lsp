@@ -142,22 +142,4 @@ impl PluginManager {
         };
         Some(result)
     }
-
-    pub fn run_diagnostic(&mut self, _file_path: String) -> Vec<Diagnostic> {
-        let diags = vec![];
-        /*for plugin in &mut self.plugins {
-            if plugin.has_function("diagnostic") {
-                let result = plugin.call("diagnostic", file_path.clone());
-                if let Ok(output) = result {
-                    let out_str = String::from_utf8(output.to_vec()).expect("Invalid string");
-
-                    info!("Plugin called: {}", out_str);
-                    let mut deserialized = serde_json::from_str(&out_str).unwrap();
-                    diags.append(&mut deserialized);
-                }
-            }
-        }*/
-
-        diags
-    }
 }

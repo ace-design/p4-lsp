@@ -127,13 +127,13 @@ impl LanguageServer for Backend {
             (*workspace).get_full_diagnostics(doc.uri.clone())
         };
 
-        diagnostics.append(
-            &mut self
-                .plugin_manager
-                .write()
-                .unwrap()
-                .run_diagnostic(doc.uri.path().into()),
-        );
+        let mut plugin_result: PluginsResult = self
+            .plugin_manager
+            .write()
+            .unwrap()
+            .run_plugins(doc.uri.clone(), OnState::Save);
+
+        diagnostics.append(&mut plugin_result.diagnostic);
 
         self.client
             .publish_diagnostics(doc.uri, diagnostics, None)
