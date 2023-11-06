@@ -39,15 +39,7 @@ impl LanguageServer for Backend {
         ));
 
         if let Ok(log_file) = File::create(log_file_path) {
-            let result = WriteLogger::init(
-                LevelFilter::Debug,
-                ConfigBuilder::new()
-                    .add_filter_ignore(String::from("cranelift"))
-                    .add_filter_ignore(String::from("wasmtime"))
-                    .add_filter_ignore(String::from("extism"))
-                    .build(),
-                log_file,
-            );
+            let result = WriteLogger::init(LevelFilter::Debug, Config::default(), log_file);
 
             if result.is_err() {
                 self.client
@@ -63,11 +55,13 @@ impl LanguageServer for Backend {
         info!("Initializing lsp");
 
         if let Some(options) = params.initialization_options {
-            info!("Init {}", options);
+            info!("Init options: {}", options);
             self.plugin_manager
                 .write()
                 .unwrap()
                 .load_plugins(params.root_uri, options.to_string().as_str());
+        } else {
+            info!("Init options: NONE");
         }
 
         Ok(InitializeResult {
