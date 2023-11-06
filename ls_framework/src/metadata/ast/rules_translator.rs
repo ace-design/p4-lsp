@@ -2,9 +2,7 @@ use indextree::{Arena, NodeId};
 
 use super::{tree::Translator, Ast, Node, NodeKind};
 use crate::{
-    language_def::{
-        DirectOrRule, LanguageDefinition, Multiplicity, Rule, Symbol, TreesitterNodeQuery,
-    },
+    language_def::{Child, DirectOrRule, LanguageDefinition, Rule, Symbol, TreesitterNodeQuery},
     lsp_mappings::HighlightType,
 };
 
@@ -51,21 +49,16 @@ impl RulesTranslator {
             None,
         );
         // TODO: has_error vs is_error
-        for error_ts_node in children.iter().filter(|node| node.has_error()) {
-            current_node_id.append(self.new_error_node(error_ts_node, None), &mut self.arena);
-        }
+        // for error_ts_node in children.iter().filter(|node| node.has_error()) {
+        //     current_node_id.append(self.new_error_node(error_ts_node, None), &mut self.arena);
+        // }
 
         for child in current_rule.children.iter() {
             self.query_parse_child(&children, child, current_node_id, current_ts_node);
         }
 
         for child in &LanguageDefinition::get().global_ast_rules {
-            self.query_parse_child(
-                &children,
-                &Multiplicity::Many(child.clone()),
-                current_node_id,
-                current_ts_node,
-            );
+            self.query_parse_child(&children, &child, current_node_id, current_ts_node);
         }
 
         current_node_id
@@ -74,14 +67,12 @@ impl RulesTranslator {
     fn query_parse_child(
         &mut self,
         children: &[tree_sitter::Node],
-        multiplicity: &Multiplicity,
+        child: &Child,
         current_node_id: NodeId,
         current_ts_node: &tree_sitter::Node,
     ) {
-        let child = multiplicity.get_child();
         let (query, node_or_rule) = (&child.query, &child.rule);
 
-        let mut counter = 0;
         for (i, ts_node) in children.iter().enumerate() {
             let target_node = if let TreesitterNodeQuery::Path(path) = query {
                 if path.is_empty() {
@@ -139,13 +130,13 @@ impl RulesTranslator {
                 match node_or_rule {
                     DirectOrRule::Direct(node_kind) => {
                         if ts_node.has_error() {
-                            current_node_id
-                                .append(self.new_error_node(ts_node, None), &mut self.arena);
+                            // current_node_id
+                            //     .append(self.new_error_node(ts_node, None), &mut self.arena);
                         }
 
                         current_node_id.append(
                             self.new_node(
-                                node_kind.clone(),
+                                NodeKind::Node(node_kind.clone()),
                                 &target_node,
                                 Symbol::None,
                                 child.highlight_type.clone(),
@@ -158,24 +149,7 @@ impl RulesTranslator {
                         current_node_id.append(self.parse(&rule, &target_node), &mut self.arena);
                     }
                 }
-
-                counter += 1;
             }
-
-            if matches!(multiplicity, Multiplicity::One(_) | Multiplicity::Maybe(_)) && counter > 1
-            {
-                current_node_id.append(
-                    self.new_error_node(ts_node, Some(format!("Too many '{:?}'.", query))),
-                    &mut self.arena,
-                );
-            }
-        }
-
-        if matches!(multiplicity, Multiplicity::One(_)) && counter == 0 {
-            current_node_id.append(
-                self.new_error_node(current_ts_node, Some(format!("Missing '{:?}'.", query))),
-                &mut self.arena,
-            );
         }
     }
 

@@ -102,7 +102,7 @@ impl File {
     ) -> Option<Vec<CompletionItem>> {
         completion::get_list(
             position,
-            &self.source_code,
+            &self.ast_manager,
             &self.symbol_table_manager,
             context,
         )
@@ -132,7 +132,6 @@ impl File {
     pub fn rename_symbol(&self, position: Position, new_name: String) -> Option<WorkspaceEdit> {
         rename::rename(
             &self.ast_manager,
-            &self.symbol_table_manager,
             &self.symbol_table_manager,
             self.uri.clone(),
             new_name,

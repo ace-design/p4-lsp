@@ -16,22 +16,7 @@ pub struct Rule {
     #[serde(default)]
     pub is_scope: bool,
     #[serde(default)]
-    pub children: Vec<Multiplicity>,
-}
-
-#[derive(Debug, Deserialize, Clone)]
-pub enum Multiplicity {
-    One(Child),
-    Maybe(Child),
-    Many(Child),
-}
-
-impl Multiplicity {
-    pub fn get_child(&self) -> &Child {
-        match self {
-            Multiplicity::One(c) | Multiplicity::Maybe(c) | Multiplicity::Many(c) => c,
-        }
-    }
+    pub children: Vec<Child>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -50,7 +35,7 @@ pub enum TreesitterNodeQuery {
 
 #[derive(Debug, Deserialize, Clone)]
 pub enum DirectOrRule {
-    Direct(NodeKind),
+    Direct(String),
     Rule(String),
 }
 
@@ -66,6 +51,8 @@ pub enum Symbol {
     Field {
         name_node: String,
     },
+    Expression,
+    MemberUsage,
     #[default]
     None,
 }
@@ -143,11 +130,7 @@ impl LanguageDefinition {
         symbol_types.insert(0, HighlightType::Keyword.get());
 
         for rule in &self.ast_rules {
-            for mult in &rule.children {
-                let child = match mult {
-                    Multiplicity::One(c) | Multiplicity::Maybe(c) | Multiplicity::Many(c) => c,
-                };
-
+            for child in &rule.children {
                 if let Some(semantic_token_type) = &child.highlight_type {
                     symbol_types.push(semantic_token_type.get());
                 }

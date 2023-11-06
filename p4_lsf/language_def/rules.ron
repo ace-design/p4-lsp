@@ -49,87 +49,87 @@ LanguageDefinition (
         (name: "Table", completion_type: Class, highlight_type: Class),
     ],
     global_ast_rules: [
-        (query: Kind("line_comment"), rule: Direct(Node("Comment")), highlight_type: Comment),
-        (query: Kind("block_comment"), rule: Direct(Node("Comment")), highlight_type: Comment),
+        (query: Kind("line_comment"), rule: Direct("Comment"), highlight_type: Comment),
+        (query: Kind("block_comment"), rule: Direct("Comment"), highlight_type: Comment),
     ],
     ast_rules: [
         Rule(
             node_name: "Root", // Name of Rule (required)
             is_scope: true, // defaults to false
             children: [
-                Many(query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
-                Many(query: Kind("parser_declaration"), rule: Rule("Parser")),
-                Many(query: Kind("control_declaration"), rule: Rule("Control")),
-                Many(query: Kind("instantiation"), rule: Rule("Instantiation")),
-                Many(query: Kind("type_declaration"), rule: Rule("TypeDeclaration")),
-                Many(query: Kind("action_declaration"), rule: Rule("ActionDeclaration")),
-                Many(query: Kind("function_declaration"), rule: Rule("FunctionDeclaration")),
-                Many(query: Kind("error_declaration"), rule: Rule("ErrorDeclaration")),
-                Many(query: Kind("extern_declaration"), rule: Rule("ExternDeclaration")),
+                (query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
+                (query: Kind("parser_declaration"), rule: Rule("Parser")),
+                (query: Kind("control_declaration"), rule: Rule("Control")),
+                (query: Kind("instantiation"), rule: Rule("Instantiation")),
+                (query: Kind("type_declaration"), rule: Rule("TypeDeclaration")),
+                (query: Kind("action_declaration"), rule: Rule("ActionDeclaration")),
+                (query: Kind("function_declaration"), rule: Rule("FunctionDeclaration")),
+                (query: Kind("error_declaration"), rule: Rule("ErrorDeclaration")),
+                (query: Kind("extern_declaration"), rule: Rule("ExternDeclaration")),
             ]
         ),
         Rule(
             node_name: "ConstantDeclaration",
             symbol: Init(type: "Constant", name_node: "Name", type_node: "Type"),
             children: [ 
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Field("type"), rule: Rule("Type")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                One(query: Field("value"), rule: Rule("Value")),
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("type"), rule: Rule("Type")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Field("value"), rule: Rule("Expression")),
             ]
         ),
         Rule(
             node_name: "Parser",
-            is_scope: true,
             symbol: Init(type: "Function", name_node: "Name"),
+            is_scope: true,
             children: [
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Path([Field("declaration"), Field("name")]), rule: Direct(Node("Name"))),
-                One(query: Path([Field("declaration"), Field("parameters")]), rule: Rule("Parameters")),
-                One(query: Field("body"), rule: Rule("Body")),
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Path([Field("declaration"), Field("name")]), rule: Direct("Name")),
+                (query: Path([Field("declaration"), Field("parameters")]), rule: Rule("Parameters")),
+                (query: Field("body"), rule: Rule("Body")),
             ]
         ),
         Rule(
             node_name: "Control",
-            is_scope: true,
             symbol: Init(type: "Function", name_node: "Name"),
+            is_scope: true,
             children: [
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Path([Field("declaration"), Field("name")]), rule: Direct(Node("Name"))),
-                One(query: Path([Field("declaration"), Field("parameters")]), rule: Rule("Parameters")),
-                One(query: Field("body"), rule: Rule("Body")),
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Path([Field("declaration"), Field("name")]), rule: Direct("Name")),
+                (query: Path([Field("declaration"), Field("parameters")]), rule: Rule("Parameters")),
+                (query: Field("body"), rule: Rule("Body")),
             ]
         ),
         Rule(
             node_name: "Instantiation",
             is_scope: true,
             children: [ 
-                Maybe(query: Kind("annotation"), rule: Rule("Annotation")),
-                One(query: Kind("type_ref"), rule: Rule("Type")),
-                One(query: Kind("name"), rule: Direct(Node("Name"))),
-                One(query: Kind("argument_list"), rule: Rule("Args")),
+                (query: Kind("annotation"), rule: Rule("Annotation")),
+                (query: Kind("type_ref"), rule: Rule("Type")),
+                (query: Kind("name"), rule: Direct("Name")),
+                (query: Kind("argument_list"), rule: Rule("Args")),
             ]
         ),
         Rule(
             node_name: "TypeDeclaration",
             children: [
-                Maybe(query: Kind("typedef_declaration"), rule: Rule("TypeDefDeclaration")),
-                Maybe(query: Kind("header_type_declaration"), rule: Rule("HeaderTypeDeclaration")),
-                Maybe(query: Kind("header_union_declaration"), rule: Rule("HeaderUnionDec")),
-                Maybe(query: Kind("struct_type_declaration"), rule: Rule("StructDeclaration")),
-                Maybe(query: Kind("enum_declaration"), rule: Rule("EnumDeclaration")),
-                Maybe(query: Kind("parser_type_declaration"), rule: Rule("ParserTypeDeclaration")),
-                Maybe(query: Kind("control_type_declaration"), rule: Rule("ControlTypeDeclaration")),
-                Maybe(query: Kind("package_type_declaration"), rule: Rule("PackageTypeDeclaration")),
+                (query: Kind("typedef_declaration"), rule: Rule("TypeDefDeclaration")),
+                (query: Kind("header_type_declaration"), rule: Rule("HeaderTypeDeclaration")),
+                (query: Kind("header_union_declaration"), rule: Rule("HeaderUnionDec")),
+                (query: Kind("struct_type_declaration"), rule: Rule("StructDeclaration")),
+                (query: Kind("enum_declaration"), rule: Rule("EnumDeclaration")),
+                (query: Kind("parser_type_declaration"), rule: Rule("ParserTypeDeclaration")),
+                (query: Kind("control_type_declaration"), rule: Rule("ControlTypeDeclaration")),
+                (query: Kind("package_type_declaration"), rule: Rule("PackageTypeDeclaration")),
             ]
         ),
         Rule(
             node_name: "TypeDefDeclaration",
             symbol: Init(type: "Type", name_node: "Name", type_node: "Type"),
             children: [ 
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Field("type"), rule: Rule("Type")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("type"), rule: Rule("Type")),
+                (query: Field("name"), rule: Direct("Name")),
             ]
         ),
         Rule(
@@ -137,9 +137,9 @@ LanguageDefinition (
             symbol: Init(type: "Type", name_node: "Name"),
             is_scope: true,
             children: [ 
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                Maybe(query: Field("field_list"), rule: Rule("FieldList"))
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Field("field_list"), rule: Rule("FieldList"))
                 // maybe type parameters
             ]
         ), 
@@ -148,9 +148,9 @@ LanguageDefinition (
             symbol: Init(type: "Type", name_node: "Name"),
             is_scope: true,
             children: [ 
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                Maybe(query: Field("field_list"), rule: Rule("FieldList"))
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Field("field_list"), rule: Rule("FieldList"))
                 // maybe type parameters
             ]
         ),
@@ -159,9 +159,9 @@ LanguageDefinition (
             symbol: Init(type: "Type", name_node: "Name"),
             is_scope: true,
             children: [ 
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                Maybe(query: Field("field_list"), rule: Rule("FieldList"))
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Field("field_list"), rule: Rule("FieldList"))
                 // maybe type parameters
             ]
         ),
@@ -169,11 +169,11 @@ LanguageDefinition (
             node_name: "EnumDeclaration", // Maybe split this to EnumDeclaration and SpecifiedEnumDeclaration ?
             symbol: Init(type: "Type", name_node: "Name", type_node: "Type"),
             children: [ 
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                Maybe(query: Field("type"), rule: Rule("Type")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                Maybe(query: Kind("identifier_list"), rule: Rule("OptionList")),
-                Maybe(query: Kind("specified_identifier_list"), rule: Rule("SpecifiedOptionList"))
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("type"), rule: Rule("Type")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Kind("identifier_list"), rule: Rule("OptionList")),
+                (query: Kind("specified_identifier_list"), rule: Rule("SpecifiedOptionList"))
                 // maybe type parameters
             ]
         ),
@@ -181,9 +181,9 @@ LanguageDefinition (
             node_name: "ParserTypeDeclaration",
             symbol: Init(type: "Function", name_node: "Name"),
             children: [ 
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                Maybe(query: Field("parameters"), rule: Rule("Parameters"))
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Field("parameters"), rule: Rule("Parameters"))
                 // maybe type parameters
             ]
         ),
@@ -191,9 +191,9 @@ LanguageDefinition (
             node_name: "ControlTypeDeclaration",
             symbol: Init(type: "Function", name_node: "Name"),
             children: [ 
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                Maybe(query: Field("parameters"), rule: Rule("Parameters"))
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Field("parameters"), rule: Rule("Parameters"))
                 // maybe type parameters
             ]
         ),
@@ -201,44 +201,44 @@ LanguageDefinition (
             node_name: "PackageTypeDeclaration",
             symbol: Init(type: "Function", name_node: "Name"),
             children: [ 
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                Maybe(query: Field("parameters"), rule: Rule("Parameters"))
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Field("parameters"), rule: Rule("Parameters"))
                 // maybe type parameters
             ]
         ),
         Rule(
             node_name: "FieldList",
             children: [
-                Many(query: Kind("struct_field"), rule: Rule("Field"))
+                (query: Kind("struct_field"), rule: Rule("Field"))
             ]
         ),
         Rule(
             node_name: "Field",
             symbol: Init(type: "Field", name_node: "Name", type_node: "Type"),
             children: [
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Field("type"), rule: Rule("Type")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("type"), rule: Rule("Type")),
+                (query: Field("name"), rule: Direct("Name")),
             ]
         ),
         Rule(
             node_name: "OptionList",
             children: [
-                Many(query: Kind("name"), rule: Direct(Node("Option"))),
+                (query: Kind("name"), rule: Direct("Option")),
             ]
         ),
         Rule(
             node_name: "SpecifiedOptionList",
             children: [
-                Many(query: Kind("name"), rule: Direct(Node("Option"))),
+                (query: Kind("name"), rule: Direct("Option")),
             ]
         ),
         Rule(
             node_name: "SpecifiedOption",
             children: [
-                One(query: Kind("name"), rule: Direct(Node("Option"))),
-                One(query: Kind("initializer"), rule: Rule("Value")),
+                (query: Kind("name"), rule: Direct("Option")),
+                (query: Kind("initializer"), rule: Rule("Expression")),
             ]
         ),
         Rule(
@@ -246,10 +246,10 @@ LanguageDefinition (
             symbol: Init(type: "Function", name_node: "Name"),
             is_scope: true,
             children: [
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                Maybe(query: Field("parameters"), rule: Rule("Parameters")),
-                One(query: Field("block"), rule: Rule("Block")),
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Field("parameters"), rule: Rule("Parameters")),
+                (query: Field("block"), rule: Rule("Block")),
             ],
         ),
         Rule(
@@ -257,269 +257,269 @@ LanguageDefinition (
             //symbol: Init(type: "Function", name_node: ["FunctionPrototype", "Name"]),
             is_scope: true,
             children: [
-                One(query: Kind("function_prototype"), rule: Rule("FunctionPrototype")),
-                One(query: Kind("block_statement"), rule: Rule("Block")),
+                (query: Kind("function_prototype"), rule: Rule("FunctionPrototype")),
+                (query: Kind("block_statement"), rule: Rule("Block")),
             ]
         ),
         Rule(
             node_name: "ErrorDeclaration",
             children: [
-                One(query: Field("option_list"), rule: Rule("Options")),
+                (query: Field("option_list"), rule: Rule("Options")),
             ]
         ),
         Rule(
             node_name: "ExternDeclaration",
             symbol: Init(type: "Function", name_node: "Name"),
             children: [
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                Maybe(query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("name"), rule: Direct("Name")),
                 // maybe type parameters
-                Maybe(query: Field("function"), rule: Rule("FunctionPrototype")),
-                Maybe(query: Field("method"), rule: Rule("MethodList")),
+                (query: Field("function"), rule: Rule("FunctionPrototype")),
+                (query: Field("method"), rule: Rule("MethodList")),
             ]
         ),
         Rule(
             node_name: "FunctionPrototype",
             children: [
-                One(query: Kind("type_or_void"), rule: Rule("Type")),
-                One(query: Kind("name"), rule: Direct(Node("Name"))),
-                One(query: Kind("parameter_list"), rule: Rule("Parameters")),
+                (query: Kind("type_or_void"), rule: Rule("Type")),
+                (query: Kind("name"), rule: Direct("Name")),
+                (query: Kind("parameter_list"), rule: Rule("Parameters")),
             ]
         ),
         Rule(
             node_name: "MethodList",
             children: [
-                Many(query: Kind("method_prototype"), rule: Rule("MethodPrototype")),
+                (query: Kind("method_prototype"), rule: Rule("MethodPrototype")),
             ]
         ),
         Rule(
             node_name: "MethodPrototype",
             children: [
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                Maybe(query: Field("function"), rule: Rule("FunctionPrototype")),
-                Maybe(query: Field("type"), rule: Rule("Type")),
-                Maybe(query: Field("parameters"), rule: Rule("Parameters")),
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("function"), rule: Rule("FunctionPrototype")),
+                (query: Field("type"), rule: Rule("Type")),
+                (query: Field("parameters"), rule: Rule("Parameters")),
             ]
         ),
         Rule(
             node_name: "Options",
             children: [
-                Many(query: Kind("name"), rule: Direct(Node("Option"))),
+                (query: Kind("name"), rule: Direct("Option")),
             ]
         ),
         Rule(
             node_name: "Args",
             children: [
-                Many(query: Kind("argument"), rule: Rule("Arg")),
+                (query: Kind("argument"), rule: Rule("Arg")),
             ]
         ),
         Rule(
             node_name: "Arg",
             children: [
-                One(query: Kind("expression"), rule: Rule("Value")),
+                (query: Kind("expression"), rule: Rule("Expression")),
             ]
         ),
         Rule(
             node_name: "Parameters",
             children: [
-                Many(query: Kind("parameter"), rule: Rule("Parameter")),
+                (query: Kind("parameter"), rule: Rule("Parameter")),
             ]
         ),
         Rule(
             node_name: "Parameter",
             symbol: Init(type: "Parameter", name_node: "Name", type_node: "Type"),
             children: [
-                Maybe(query: Field("direction"), rule: Direct(Node("Direction")), highlight_type: EnumMember),
-                One(query: Field("type"), rule: Rule("Type")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("direction"), rule: Direct("Direction"), highlight_type: EnumMember),
+                (query: Field("type"), rule: Rule("Type")),
+                (query: Field("name"), rule: Direct("Name")),
             ]
         ),
         Rule(
             node_name: "Body",
             is_scope: true,
             children: [
-                Many(query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
-                Many(query: Kind("variable_declaration"), rule: Rule("VariableDeclaration")),
-                Many(query: Kind("instantiation"), rule: Rule("Instantiation")),
-                Many(query: Kind("value_set_declaration"), rule: Rule("ValueSetDeclaration")),
+                (query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
+                (query: Kind("variable_declaration"), rule: Rule("VariableDeclaration")),
+                (query: Kind("instantiation"), rule: Rule("Instantiation")),
+                (query: Kind("value_set_declaration"), rule: Rule("ValueSetDeclaration")),
 
-                Many(query: Kind("parser_state"), rule: Rule("ParserState")),
-                Many(query: Kind("action_declaration"), rule: Rule("ActionDeclaration")),
-                Many(query: Kind("table_declaration"), rule: Rule("ControlTable")),
-                Many(query: Kind("block_statement"), rule: Rule("Block")),
+                (query: Kind("parser_state"), rule: Rule("ParserState")),
+                (query: Kind("action_declaration"), rule: Rule("ActionDeclaration")),
+                (query: Kind("table_declaration"), rule: Rule("ControlTable")),
+                (query: Kind("block_statement"), rule: Rule("Block")),
             ]
         ),
         Rule(
             node_name: "Block",
             is_scope: true,
             children: [
-                Many(query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
-                Many(query: Kind("variable_declaration"), rule: Rule("VariableDeclaration")),
-                Many(query: Kind("assignment_or_method_call_statement"), rule: Rule("AssignmentOrMethodCall")),
-                Many(query: Kind("direct_application"), rule: Rule("DirectApplication")),
-                Many(query: Kind("conditional_statement"), rule: Rule("Conditional")),
-                Many(query: Kind("empty_statement"), rule: Direct(Node("EmptyStatement"))),
-                Many(query: Kind("block_statement"), rule: Rule("Block")),
-                Many(query: Kind("parser_block_statement"), rule: Rule("Block")),
-                Many(query: Kind("exit_statement"), rule: Direct(Node("ExitStatement"))),
-                Many(query: Kind("return_statement"), rule: Rule("Return")),
-                Many(query: Kind("switch_statement"), rule: Rule("Switch")),
-                Many(query: Kind("transition_statement"), rule: Rule("Transition")),
+                (query: Kind("constant_declaration"), rule: Rule("ConstantDeclaration")),
+                (query: Kind("variable_declaration"), rule: Rule("VariableDeclaration")),
+                (query: Kind("assignment_or_method_call_statement"), rule: Rule("AssignmentOrMethodCall")),
+                (query: Kind("direct_application"), rule: Rule("DirectApplication")),
+                (query: Kind("conditional_statement"), rule: Rule("Conditional")),
+                (query: Kind("empty_statement"), rule: Direct("EmptyStatement")),
+                (query: Kind("block_statement"), rule: Rule("Block")),
+                (query: Kind("parser_block_statement"), rule: Rule("Block")),
+                (query: Kind("exit_statement"), rule: Direct("ExitStatement")),
+                (query: Kind("return_statement"), rule: Rule("Return")),
+                (query: Kind("switch_statement"), rule: Rule("Switch")),
+                (query: Kind("transition_statement"), rule: Rule("Transition")),
             ]
         ),
         Rule(
             node_name: "Transition",
             children: [
-                Maybe(query: Kind("select_expression"), rule: Rule("Select")),
+                (query: Kind("select_expression"), rule: Rule("Select")),EnumMember
             ]
         ),
         Rule(
             node_name: "Select",
             children: [
-                One(query: Path([Kind("select_expression_params"), Kind("expression_list")]), rule: Rule("ValueList")),
-                One(query: Path([Kind("select_expression_body"), Kind("select_case_list")]), rule: Rule("SelectCaseList")),
+                (query: Path([Kind("select_expression_params"), Kind("expression_list")]), rule: Rule("ValueList")),
+                (query: Path([Kind("select_expression_body"), Kind("select_case_list")]), rule: Rule("SelectCaseList")),
             ]
         ),
         Rule(
             node_name: "SelectCaseList",
             children: [
-                Many(query: Kind("select_case"), rule: Rule("SelectCase")),
+                (query: Kind("select_case"), rule: Rule("SelectCase")),
             ]
         ),
         Rule(
             node_name: "SelectCase",
             children: [
-                Many(query: Path([Kind("simple_keyset_expression"), Kind("expression")]), rule: Rule("Value")),
+                (query: Path([Kind("simple_keyset_expression"), Kind("expression")]), rule: Rule("Expression")),
                 // TODO: tuple_keyset_expression
-                One(query: Field("name"), rule: Rule("NameUsage")),
+                (query: Field("name"), rule: Rule("NameUsage")),
             ]
         ),
         Rule(
             node_name: "VariableDeclaration",
             symbol: Init(type: "Variable", name_node: "Name", type_node: "Type"),
             children: [
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Field("type"), rule: Rule("Type")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                Maybe(query: Field("value"), rule: Rule("Value")),
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("type"), rule: Rule("Type")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Field("value"), rule: Rule("Expression")),
             ]
         ),
         Rule(
             node_name: "Conditional",
             children: [
-                One(query: Field("expression"), rule: Rule("Value")),
-                One(query: Field("bodyIf"), rule: Rule("Block")),
-                Maybe(query: Field("bodyElse"), rule: Rule("Block")),
+                (query: Field("expression"), rule: Rule("Expression")),
+                (query: Field("bodyIf"), rule: Rule("Block")),
+                (query: Field("bodyElse"), rule: Rule("Block")),
             ]
         ),
         Rule(
             node_name: "Switch",
             children: [
-                One(query: Field("expression"), rule: Rule("Value")),
-                Many(query: Path([Field("body"), Field("switch_case")]), rule: Rule("SwitchCase")),
+                (query: Field("expression"), rule: Rule("Expression")),
+                (query: Path([Field("body"), Field("switch_case")]), rule: Rule("SwitchCase")),
             ]
         ),
         Rule(
             node_name: "SwitchCase",
             children: [
-                One(query: Field("name"), rule: Rule("Value")),
-                One(query: Field("value"), rule: Rule("Block")),
+                (query: Field("name"), rule: Rule("Expression")),
+                (query: Field("value"), rule: Rule("Block")),
             ]
         ),
         Rule(
             node_name: "AssignmentOrMethodCall",
             children: [
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                Maybe(query: Field("expression"), rule: Rule("Value")),
-                Maybe(query: Field("parameters"), rule: Rule("Args")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Field("expression"), rule: Rule("Expression")),
+                (query: Field("parameters"), rule: Rule("Args")),
             ]
         ),
         Rule(
             node_name: "ControlTable",
             symbol: Init(type: "Table", name_node: "Name"),
             children: [
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                One(query: Field("table"), rule: Rule("Table")),
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Field("table"), rule: Rule("Table")),
             ]
         ),
         Rule(
             node_name: "Table",
             children: [
-                One(query: Path([Kind("keys_table"), Field("keys")]), rule: Rule("KeyElementList")),
-                One(query: Path([Kind("action_table"), Field("actions")]), rule: Rule("ActionList")),
-                Many(query: Kind("name_table"), rule: Rule("NameTable")),
+                (query: Path([Kind("keys_table"), Field("keys")]), rule: Rule("KeyElementList")),
+                (query: Path([Kind("action_table"), Field("actions")]), rule: Rule("ActionList")),
+                (query: Kind("name_table"), rule: Rule("NameTable")),
             ]
         ),
         Rule(
             node_name: "KeyElementList",
             children: [
-                Many(query: Kind("key_element"), rule: Rule("KeyElement")),
+                (query: Kind("key_element"), rule: Rule("KeyElement")),
             ]
         ),
         Rule(
             node_name: "KeyElement",
             children: [
-                One(query: Field("expression"), rule: Rule("Value")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
+                (query: Field("expression"), rule: Rule("Expression")),
+                (query: Field("name"), rule: Direct("Name")),
             ]
         ),
         Rule(
             node_name: "ActionList",
             children: [
-                Many(query: Kind("action"), rule: Rule("Action")),
+                (query: Kind("action"), rule: Rule("Action")),
             ]
         ),
         Rule(
             node_name: "Action",
             children: [
-                One(query: Kind("prefixed_non_type_name"), rule: Rule("NameUsage")),
+                (query: Kind("prefixed_non_type_name"), rule: Rule("NameUsage")),
             ]
         ),
         Rule(
             node_name: "NameTable",
             children: [
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                One(query: Field("expression"), rule: Rule("Value")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Field("expression"), rule: Rule("Expression")),
             ]
         ),
         Rule(
             node_name: "ParserState",
             children: [
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                One(query: Field("body"), rule: Rule("Block")),
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Field("body"), rule: Rule("Block")),
             ]
         ),
         Rule(
             node_name: "ValueSetDeclaration",
             children: [
-                Maybe(query: Field("annotation"), rule: Rule("Annotation")),
-                One(query: Field("type"), rule: Rule("Type")),
-                One(query: Field("name"), rule: Direct(Node("Name"))),
-                One(query: Field("expression"), rule: Rule("Value")),
+                (query: Field("annotation"), rule: Rule("Annotation")),
+                (query: Field("type"), rule: Rule("Type")),
+                (query: Field("name"), rule: Direct("Name")),
+                (query: Field("expression"), rule: Rule("Expression")),
             ]
         ),
         Rule(
             node_name: "DirectApplication", // Deviates from 'translator.rs', name instead of type 
             children: [
                 // Change tree-sitter-p4 field names to combine both ?
-                Maybe(query: Field("name"), rule: Rule("NameUsage")), 
-                Maybe(query: Field("specialized"), rule: Direct(Node("Name"))),
+                (query: Field("name"), rule: Rule("NameUsage")), 
+                (query: Field("specialized"), rule: Direct("Name")),
 
-                Maybe(query: Field("args"), rule: Rule("Args")),
+                (query: Field("args"), rule: Rule("Args")),
             ]
         ),
         Rule(
             node_name: "Return",
             children: [
-                One(query: Field("value"), rule: Rule("Value")),
+                (query: Field("value"), rule: Rule("Expression")),
             ]
         ),
         Rule(
             node_name: "TypeArgumentList",
             children: [
-                Many(query: Kind("type_arg"), rule: Rule("Type")),
+                (query: Kind("type_arg"), rule: Rule("Type")),
             ]
         ),
         Rule(
@@ -532,25 +532,27 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "Member",
+            symbol: MemberUsage,
         ),
         Rule(
             node_name: "ValueList",
             children: [
-                Many(query: Kind("expression"), rule: Rule("Value")),
+                (query: Kind("expression"), rule: Rule("Expression")),
             ]
         ),
         Rule(
-            node_name: "Value",
+            node_name: "Expression",
+            symbol: Expression,
             children: [
-                Maybe(query: Kind("integer"), rule: Direct(Node("Integer")), highlight_type: Number),
-                Maybe(query: Kind("string"), rule: Direct(Node("String")), highlight_type: String),
-                Maybe(query: Kind("bool"), rule: Direct(Node("Bool")), highlight_type: EnumMember),
-                Maybe(query: Kind("non_type_name"), rule: Rule("NameUsage")),
-                Maybe(query: Kind("named_type"), rule: Rule("NameUsage")),
-                Maybe(query: Kind("type_name"), rule: Rule("NameUsage")),
-                Many(query: Kind("expression"), rule: Rule("Value")),
-                Many(query: Kind("member"), rule: Rule("Member")),
-                Many(query: Field("operator"), rule: Direct(Node("Operator"))),
+                (query: Kind("integer"), rule: Direct("Integer"), highlight_type: Number),
+                (query: Kind("string"), rule: Direct("String"), highlight_type: String),
+                (query: Kind("bool"), rule: Direct("Bool"), highlight_type: EnumMember),
+                (query: Kind("non_type_name"), rule: Rule("NameUsage")),
+                (query: Kind("named_type"), rule: Rule("NameUsage")),
+                (query: Kind("type_name"), rule: Rule("NameUsage")),
+                (query: Kind("expression"), rule: Rule("Expression")),
+                (query: Kind("member"), rule: Rule("Member")),
+                (query: Field("operator"), rule: Direct("Operator")),
             ]
         ),
         Rule(
