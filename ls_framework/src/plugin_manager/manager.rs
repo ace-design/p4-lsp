@@ -140,11 +140,11 @@ impl PluginManager {
             Ok(output) => String::from_utf8(output.stdout).unwrap(),
             Err(e) => e.to_string(),
         };
-        return Some(result);
+        Some(result)
     }
 
-    pub fn run_diagnostic(&mut self, file_path: String) -> Vec<Diagnostic> {
-        let mut diags = vec![];
+    pub fn run_diagnostic(&mut self, _file_path: String) -> Vec<Diagnostic> {
+        let diags = vec![];
         /*for plugin in &mut self.plugins {
             if plugin.has_function("diagnostic") {
                 let result = plugin.call("diagnostic", file_path.clone());
