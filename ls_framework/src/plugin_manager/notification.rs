@@ -16,4 +16,3 @@ impl Notification for CustomNotification {
     type Params = CustomParams;
     const METHOD: &'static str = "custom";
 }
-
