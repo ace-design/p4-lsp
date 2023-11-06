@@ -54,11 +54,11 @@ impl RulesTranslator {
         // }
 
         for child in current_rule.children.iter() {
-            self.query_parse_child(&children, child, current_node_id, current_ts_node);
+            self.query_parse_child(&children, child, current_node_id);
         }
 
         for child in &LanguageDefinition::get().global_ast_rules {
-            self.query_parse_child(&children, &child, current_node_id, current_ts_node);
+            self.query_parse_child(&children, child, current_node_id);
         }
 
         current_node_id
@@ -69,7 +69,6 @@ impl RulesTranslator {
         children: &[tree_sitter::Node],
         child: &Child,
         current_node_id: NodeId,
-        current_ts_node: &tree_sitter::Node,
     ) {
         let (query, node_or_rule) = (&child.query, &child.rule);
 

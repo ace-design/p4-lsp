@@ -370,7 +370,7 @@ LanguageDefinition (
         Rule(
             node_name: "Transition",
             children: [
-                (query: Kind("select_expression"), rule: Rule("Select")),EnumMember
+                (query: Kind("select_expression"), rule: Rule("Select")),
             ]
         ),
         Rule(
