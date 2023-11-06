@@ -64,23 +64,24 @@ impl PluginManager {
         }
     }
     pub fn load_plugins(&mut self, uri: Option<Url>, json_str: &str) {
-        let mut plugins: Vec<Plugin> = from_str(json_str).unwrap();
-        if let Some(url) = uri {
-            let key = String::from("workspace");
-            for plugin in plugins.iter_mut() {
-                plugin.arguments.push(Argument {
-                    key: key.clone(),
-                    value: url
-                        .to_file_path()
-                        .unwrap()
-                        .into_os_string()
-                        .into_string()
-                        .unwrap(),
-                })
+        if let Ok(mut plugins) = from_str::<Vec<Plugin>>(json_str) {
+            if let Some(url) = uri {
+                let key = String::from("workspace");
+                for plugin in plugins.iter_mut() {
+                    plugin.arguments.push(Argument {
+                        key: key.clone(),
+                        value: url
+                            .to_file_path()
+                            .unwrap()
+                            .into_os_string()
+                            .into_string()
+                            .unwrap(),
+                    })
+                }
             }
-        }
 
-        self.plugins = plugins;
+            self.plugins = plugins;
+        }
     }
 
     pub fn run_plugins(&mut self, file: Url, state: OnState) -> PluginsResult {
