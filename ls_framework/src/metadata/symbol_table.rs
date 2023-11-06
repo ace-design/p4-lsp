@@ -3,6 +3,7 @@ use std::fmt;
 
 use crate::metadata::ast::{Ast, Visitable};
 use indextree::{Arena, NodeId};
+use petgraph::graph::NodeIndex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use tower_lsp::lsp_types::{Position, Range};
 
@@ -15,24 +16,41 @@ fn get_id() -> usize {
 
 type ScopeId = NodeId;
 
+#[derive(Debug, Clone)]
+pub struct Usage {
+    pub range: Range,
+    pub symbol_name: String,
+    pub file_id: Option<NodeIndex>,
+}
+
+#[derive(Debug, Clone)]
+pub struct LinkObj {
+    pub symbol: String,
+    pub file_id: NodeIndex,
+    pub id: NodeId,
+    pub index: usize,
+}
+
 #[derive(Debug, Default, Clone)]
 pub struct SymbolTable {
     arena: Arena<ScopeSymbolTable>,
     root_id: Option<ScopeId>,
-    undefined_list: Vec<Range>,
+    pub undefined_list: Vec<Usage>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct SymbolId {
     symbol_table_id: ScopeId,
     index: usize,
+    file_id: NodeIndex,
 }
 
 impl SymbolId {
-    pub fn new(symbol_table_id: ScopeId, index: usize) -> Self {
+    pub fn new(symbol_table_id: ScopeId, index: usize, file_id: NodeIndex) -> Self {
         Self {
             symbol_table_id,
             index,
+            file_id,
         }
     }
 }
@@ -219,11 +237,12 @@ impl SymbolTableActions for SymbolTable {
 }
 
 impl SymbolTable {
-    pub fn new(ast: &mut Ast) -> SymbolTable {
+    pub fn new(ast: &mut Ast, file_id: NodeIndex) -> SymbolTable {
         let mut table = SymbolTable::default();
 
-        table.root_id = Some(table.parse_scope(ast.visit_root().get_id(), ast.get_arena()));
-        table.parse_usages(ast.get_arena());
+        table.root_id =
+            Some(table.parse_scope(ast.visit_root().get_id(), ast.get_arena(), file_id));
+        table.parse_usages(ast.get_arena(), file_id);
         table.parse_types(ast.visit_root().get_id(), ast.get_arena());
 
         table
@@ -252,7 +271,12 @@ impl SymbolTable {
         self.root_id
     }
 
-    fn parse_scope(&mut self, node_id: NodeId, ast_arena: &mut Arena<Node>) -> ScopeId {
+    fn parse_scope(
+        &mut self,
+        node_id: NodeId,
+        ast_arena: &mut Arena<Node>,
+        file_id: NodeIndex,
+    ) -> ScopeId {
         let table = ScopeSymbolTable::new(ast_arena.get(node_id).unwrap().get().range);
         let current_table_node_id = self.arena.new_node(table);
 
@@ -285,11 +309,11 @@ impl SymbolTable {
                 symbols.push(symbol);
 
                 let index = symbols.len() - 1;
-                ast_arena
-                    .get_mut(name_node_id)
-                    .unwrap()
-                    .get_mut()
-                    .link(current_table_node_id, index);
+                ast_arena.get_mut(name_node_id).unwrap().get_mut().link(
+                    current_table_node_id,
+                    index,
+                    file_id,
+                );
 
                 Some(index)
             } else {
@@ -297,7 +321,7 @@ impl SymbolTable {
             };
 
             if ast_arena.get(node_id).unwrap().get().kind.is_scope_node() {
-                let subtable = self.parse_scope(node_id, ast_arena);
+                let subtable = self.parse_scope(node_id, ast_arena, file_id);
 
                 if let Some(i) = symbol_index {
                     self.arena
@@ -317,13 +341,46 @@ impl SymbolTable {
         current_table_node_id
     }
 
-    fn parse_usages(&mut self, arena: &mut Arena<Node>) {
+    pub fn parse_undefined(&mut self, undefined: Vec<Usage>) -> Vec<LinkObj> {
+        let root_node = self.root_id.unwrap();
+        let mut array: Vec<LinkObj> = Vec::new();
+        for undefine in undefined {
+            let symbol_name = undefine.symbol_name;
+            let range = undefine.range;
+            if let Some(index) = self
+                .arena
+                .get(root_node.clone())
+                .unwrap()
+                .get()
+                .symbols
+                .iter()
+                .position(|s| &s.name == &symbol_name)
+            {
+                let symbol = &mut self.arena.get_mut(root_node).unwrap().get_mut().symbols[index];
+                let file_id = undefine.file_id.unwrap();
+
+                array.push(LinkObj {
+                    symbol: symbol_name.clone(),
+                    id: root_node,
+                    index: index,
+                    file_id: file_id,
+                });
+                symbol.add_usage(Usage {
+                    range: range,
+                    symbol_name: symbol_name.to_string(),
+                    file_id: Some(file_id),
+                });
+            }
+        }
+        array
+    }
+    fn parse_usages(&mut self, arena: &mut Arena<Node>, file_id: NodeIndex) {
         for node in arena
             .iter_mut()
             .filter(|node| matches!(node.get().symbol, language_def::Symbol::Usage))
         {
             let node = node.get_mut();
-            let symbol_name = &node.content;
+            let symbol_name = node.content.clone();
 
             let scope_id = self.get_scope_id(node.range.start).unwrap();
             let scope_ids: Vec<NodeId> = scope_id.predecessors(&self.arena).collect();
@@ -337,18 +394,26 @@ impl SymbolTable {
                     .get()
                     .symbols
                     .iter()
-                    .position(|s| &s.name == symbol_name)
+                    .position(|s| &s.name == &symbol_name)
                 {
                     let symbol = &mut self.arena.get_mut(id).unwrap().get_mut().symbols[index];
-                    node.link(id, index);
+                    node.link(id, index, file_id);
                     found = true;
-                    symbol.add_usage(node.range);
+                    symbol.add_usage(Usage {
+                        range: node.range,
+                        symbol_name: symbol_name.to_string(),
+                        file_id: Some(file_id),
+                    });
                     break;
                 }
             }
 
             if !found {
-                self.undefined_list.push(node.range);
+                self.undefined_list.push(Usage {
+                    range: node.range,
+                    symbol_name: symbol_name.to_string(),
+                    file_id: Some(file_id),
+                });
             }
         }
     }
@@ -461,7 +526,7 @@ pub struct Symbol {
     kind: String,
     type_symbol: Option<SymbolId>,
     def_position: Range,
-    usages: Vec<Range>,
+    usages: Vec<Usage>,
     field_scope_id: Option<ScopeId>,
 }
 
@@ -498,11 +563,11 @@ impl Symbol {
         self.def_position
     }
 
-    pub fn add_usage(&mut self, range: Range) {
-        self.usages.push(range);
+    pub fn add_usage(&mut self, usage: Usage) {
+        self.usages.push(usage);
     }
 
-    pub fn get_usages(&self) -> &Vec<Range> {
+    pub fn get_usages(&self) -> &Vec<Usage> {
         &self.usages
     }
 

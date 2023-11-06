@@ -3,6 +3,7 @@
 use std::fmt;
 
 use indextree::{Arena, NodeId};
+use petgraph::graph::NodeIndex;
 use serde::Deserialize;
 use tower_lsp::lsp_types::{Position, Range};
 
@@ -84,8 +85,8 @@ impl Node {
         }
     }
 
-    pub fn link(&mut self, symbol_table_id: NodeId, index: usize) {
-        self.linked_symbol = Some(SymbolId::new(symbol_table_id, index));
+    pub fn link(&mut self, symbol_table_id: NodeId, index: usize, file_id: NodeIndex) {
+        self.linked_symbol = Some(SymbolId::new(symbol_table_id, index, file_id));
     }
 }
 

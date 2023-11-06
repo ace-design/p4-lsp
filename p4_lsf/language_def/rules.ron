@@ -51,6 +51,8 @@ LanguageDefinition (
     global_ast_rules: [
         (query: Kind("line_comment"), rule: Direct(Node("Comment")), highlight_type: Comment),
         (query: Kind("block_comment"), rule: Direct(Node("Comment")), highlight_type: Comment),
+        (query: Kind("block_comment"), rule: Direct(Node("Comment")), highlight_type: Comment),
+        (query: Kind("preproc_include_declaration"), rule: Rule("Import"))
     ],
     ast_rules: [
         Rule(
@@ -66,6 +68,14 @@ LanguageDefinition (
                 Many(query: Kind("function_declaration"), rule: Rule("FunctionDeclaration")),
                 Many(query: Kind("error_declaration"), rule: Rule("ErrorDeclaration")),
                 Many(query: Kind("extern_declaration"), rule: Rule("ExternDeclaration")),
+            ]
+        ),
+        Rule(
+            node_name:"Import",
+            children:[
+                (query:Kind("file_name"),rule:Direct("FileName")),
+                (query:Kind("string"),rule:Direct("FileNameLocal")),
+
             ]
         ),
         Rule(

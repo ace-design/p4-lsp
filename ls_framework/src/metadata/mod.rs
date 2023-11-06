@@ -6,4 +6,4 @@ mod symbol_table;
 pub use ast::{Ast, Node, NodeKind, VisitNode, Visitable};
 pub use ast_manager::{AstEditor, AstManager, AstQuery};
 pub use st_manager::{SymbolTableEdit, SymbolTableEditor, SymbolTableManager, SymbolTableQuery};
-pub use symbol_table::{Symbol, SymbolTable, SymbolTableActions};
+pub use symbol_table::{LinkObj, Symbol, SymbolTable, SymbolTableActions, Usage};

@@ -148,11 +148,11 @@ pub fn get_symbols_color_data(st_query: &Arc<Mutex<impl SymbolTableQuery>>) -> V
             node_type,
         });
 
-        for range in symbol.get_usages() {
+        for usage in symbol.get_usages() {
             color_data.push(ColorData {
-                line: range.start.line,
-                start: range.start.character,
-                length: range.end.character - range.start.character,
+                line: usage.range.start.line,
+                start: usage.range.start.character,
+                length: usage.range.end.character - usage.range.start.character,
                 node_type,
             });
         }

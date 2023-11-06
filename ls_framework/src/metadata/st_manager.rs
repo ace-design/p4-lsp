@@ -3,6 +3,7 @@ use std::fmt::Debug;
 
 use super::symbol_table::{SymbolId, SymbolTable};
 use super::{Ast, Symbol};
+use petgraph::graph::NodeIndex;
 
 use tower_lsp::lsp_types::Position;
 
@@ -15,7 +16,7 @@ pub enum SymbolTableEdit {
 
 pub trait SymbolTableEditor {
     fn new_edit(&mut self, edit: SymbolTableEdit);
-    fn update(&mut self, ast: &mut Ast);
+    fn update(&mut self, ast: &mut Ast, file_id: NodeIndex);
 }
 
 pub trait SymbolTableQuery {
@@ -28,12 +29,12 @@ pub trait SymbolTableQuery {
 
 #[derive(Debug, Clone)]
 pub struct SymbolTableManager {
-    symbol_table: SymbolTable,
+    pub symbol_table: SymbolTable,
 }
 
 impl SymbolTableManager {
-    pub fn new(ast: &mut Ast) -> SymbolTableManager {
-        let symbol_table = SymbolTable::new(ast);
+    pub fn new(ast: &mut Ast, file_id: NodeIndex) -> SymbolTableManager {
+        let symbol_table = SymbolTable::new(ast, file_id);
         SymbolTableManager { symbol_table }
     }
 }
@@ -76,7 +77,7 @@ impl SymbolTableEditor for SymbolTableManager {
         }
     }
 
-    fn update(&mut self, ast: &mut Ast) {
-        *self = SymbolTableManager::new(ast)
+    fn update(&mut self, ast: &mut Ast, file_id: NodeIndex) {
+        *self = SymbolTableManager::new(ast, file_id)
     }
 }

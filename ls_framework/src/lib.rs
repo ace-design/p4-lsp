@@ -4,6 +4,7 @@ extern crate lazy_static;
 
 mod features;
 mod file;
+mod file_graph;
 mod language_def;
 mod lsp_mappings;
 mod metadata;

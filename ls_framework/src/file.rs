@@ -1,15 +1,17 @@
+use crate::features::{completion, diagnostics, goto, hover, rename, semantic_tokens};
+use crate::metadata::{
+    AstEditor, AstManager, LinkObj, SymbolTableEditor, SymbolTableManager, Usage,
+};
+use crate::{language_def, metadata::NodeKind, utils};
+use petgraph::graph::NodeIndex;
 use std::sync::{Arc, Mutex};
-
 use tower_lsp::lsp_types::{
     CompletionContext, CompletionItem, Diagnostic, HoverContents, Location, Position,
     SemanticTokensResult, TextDocumentContentChangeEvent, Url, WorkspaceEdit,
 };
 use tree_sitter::{InputEdit, Parser, Tree};
 
-use crate::features::{completion, diagnostics, goto, hover, rename, semantic_tokens};
-use crate::metadata::{AstEditor, AstManager, SymbolTableEditor, SymbolTableManager};
-use crate::utils;
-
+#[derive(Debug, Clone)]
 pub struct File {
     pub uri: Url,
     pub source_code: String,
@@ -19,7 +21,7 @@ pub struct File {
 }
 
 impl File {
-    pub fn new(uri: Url, source_code: &str, tree: &Option<Tree>) -> File {
+    pub fn new(uri: Url, source_code: &str, tree: &Option<Tree>, file_id: NodeIndex) -> File {
         let ast_manager = Arc::new(Mutex::new(AstManager::new(
             source_code,
             tree.to_owned().unwrap(),
@@ -27,7 +29,10 @@ impl File {
 
         let symbol_table_manager = {
             let mut ast_manager = ast_manager.lock().unwrap();
-            Arc::new(Mutex::new(SymbolTableManager::new(ast_manager.get_ast())))
+            Arc::new(Mutex::new(SymbolTableManager::new(
+                ast_manager.get_ast(),
+                file_id,
+            )))
         };
 
         debug!("\nAST:\n{}", ast_manager.lock().unwrap());
@@ -42,7 +47,12 @@ impl File {
         }
     }
 
-    pub fn update(&mut self, changes: Vec<TextDocumentContentChangeEvent>, parser: &mut Parser) {
+    pub fn update(
+        &mut self,
+        changes: Vec<TextDocumentContentChangeEvent>,
+        parser: &mut Parser,
+        node_index: NodeIndex,
+    ) {
         for change in changes {
             let mut old_tree: Option<&Tree> = None;
             let text: String;
@@ -81,7 +91,7 @@ impl File {
         let mut st_manager = self.symbol_table_manager.lock().unwrap();
 
         ast_manager.update(&self.source_code, self.tree.to_owned().unwrap());
-        st_manager.update(ast_manager.get_ast());
+        st_manager.update(ast_manager.get_ast(), node_index);
 
         debug!("\nAST:\n{}", ast_manager);
         debug!("\nSymbol Table:\n{}", st_manager);
@@ -138,5 +148,45 @@ impl File {
             new_name,
             position,
         )
+    }
+
+    pub fn get_undefined(&self) -> Vec<Usage> {
+        return self
+            .symbol_table_manager
+            .lock()
+            .unwrap()
+            .symbol_table
+            .undefined_list
+            .clone();
+    }
+
+    pub fn check_if_import_exist(&self, file_name: &str) -> bool {
+        //let imports = Vec<String> self.ast_manager.lock().unwrap().ast.get_imports();
+        return true;
+    }
+
+    pub fn update_symbole_table(&mut self, undefined_list: Vec<Usage>) -> Vec<LinkObj> {
+        let links: Vec<LinkObj> = self
+            .symbol_table_manager
+            .lock()
+            .unwrap()
+            .symbol_table
+            .parse_undefined(undefined_list);
+        return links;
+    }
+
+    pub fn update_nodes(&mut self, link: LinkObj) {
+        let mut binding = self.ast_manager.lock().unwrap();
+        let arena = binding.ast.get_arena();
+        for node in arena
+            .iter_mut()
+            .filter(|node| matches!(node.get().symbol, language_def::Symbol::Usage))
+        {
+            let node = node.get_mut();
+            let symbol_name = &node.content;
+            if (symbol_name == &link.symbol) {
+                node.link(link.id, link.index, link.file_id);
+            }
+        }
     }
 }
