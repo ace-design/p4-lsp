@@ -9,8 +9,9 @@ use tower_lsp::lsp_types::{
     CompletionContext, CompletionItem, Diagnostic, HoverContents, Location, Position,
     SemanticTokensResult, TextDocumentContentChangeEvent, Url, WorkspaceEdit,
 };
+use tower_lsp::lsp_types::{ Range};
 use tree_sitter::{InputEdit, Parser, Tree};
-
+use crate::file_graph::FileGraph;
 #[derive(Debug, Clone)]
 pub struct File {
     pub uri: Url,
@@ -27,6 +28,8 @@ impl File {
             tree.to_owned().unwrap(),
         )));
 
+
+        debug!("\nAST:\n{}", ast_manager.lock().unwrap());
         let symbol_table_manager = {
             let mut ast_manager = ast_manager.lock().unwrap();
             Arc::new(Mutex::new(SymbolTableManager::new(
@@ -118,8 +121,8 @@ impl File {
         )
     }
 
-    pub fn get_hover_info(&self, position: Position) -> Option<HoverContents> {
-        hover::get_hover_info(&self.ast_manager, &self.symbol_table_manager, position)
+    pub fn get_hover_info(&self, position: Position,graph: &FileGraph) -> Option<HoverContents> {
+        hover::get_hover_info(&self.ast_manager, &self.symbol_table_manager, graph,position)
     }
 
     pub fn get_semantic_tokens(&self) -> Option<SemanticTokensResult> {
@@ -133,10 +136,9 @@ impl File {
         })
     }
 
-    pub fn get_definition_location(&self, position: Position) -> Option<Location> {
-        let range =
-            goto::get_definition_range(&self.ast_manager, &self.symbol_table_manager, position)?;
-        Some(Location::new(self.uri.clone(), range))
+    pub fn get_definition_location(&self, position: Position,graph: &FileGraph) -> Option<(Range,NodeIndex)> {
+        goto::get_definition_range(&self.ast_manager, &self.symbol_table_manager,graph, position)
+
     }
 
     pub fn rename_symbol(&self, position: Position, new_name: String) -> Option<WorkspaceEdit> {
@@ -160,18 +162,30 @@ impl File {
             .clone();
     }
 
-    pub fn check_if_import_exist(&self, file_name: &str) -> bool {
-        //let imports = Vec<String> self.ast_manager.lock().unwrap().ast.get_imports();
-        return true;
+    pub fn check_if_import_exist(&self, file_name: String) -> bool {
+        let imports = self.ast_manager.lock().unwrap().ast.get_imports();
+        info!("imports {:?}",imports);
+        info!("name {:?}",file_name.clone());
+        for import in imports.iter() {
+           // info!("dimport {:?}",import);
+           // info!("d{}",import.contains(&file_name));
+            if (file_name.contains(import)) {
+                info!("pass");
+                return true;
+            }
+        }
+        return false;
     }
 
-    pub fn update_symbole_table(&mut self, undefined_list: Vec<Usage>) -> Vec<LinkObj> {
+    pub fn update_symbole_table(&mut self, undefined_list: Vec<Usage>,file_id_dest:NodeIndex) -> Vec<LinkObj> {
         let links: Vec<LinkObj> = self
             .symbol_table_manager
             .lock()
             .unwrap()
             .symbol_table
-            .parse_undefined(undefined_list);
+            .parse_undefined(undefined_list,file_id_dest);
+      
+        info!("Links {:?}",links);
         return links;
     }
 
@@ -185,8 +199,9 @@ impl File {
             let node = node.get_mut();
             let symbol_name = &node.content;
             if (symbol_name == &link.symbol) {
-                node.link(link.id, link.index, link.file_id);
+                node.link(link.id, link.index, link.file_id_dest);
             }
+            
         }
     }
 }

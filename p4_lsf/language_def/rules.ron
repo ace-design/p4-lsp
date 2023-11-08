@@ -67,15 +67,14 @@ LanguageDefinition (
                 Many(query: Kind("action_declaration"), rule: Rule("ActionDeclaration")),
                 Many(query: Kind("function_declaration"), rule: Rule("FunctionDeclaration")),
                 Many(query: Kind("error_declaration"), rule: Rule("ErrorDeclaration")),
-                Many(query: Kind("extern_declaration"), rule: Rule("ExternDeclaration")),
+                //Many(query: Kind("extern_declaration"), rule: Rule("ExternDeclaration")),
             ]
         ),
         Rule(
             node_name:"Import",
             children:[
-                (query:Kind("file_name"),rule:Direct("FileName")),
-                (query:Kind("string"),rule:Direct("FileNameLocal")),
-
+                Maybe(query:Kind("file_name"),rule:Direct(Node("FileName"))),
+                Maybe(query:Kind("string"),rule:Direct(Node("FileNameLocal"))),
             ]
         ),
         Rule(
@@ -523,7 +522,7 @@ LanguageDefinition (
         Rule(
             node_name: "Return",
             children: [
-                One(query: Field("value"), rule: Rule("Value")),
+                //One(query: Field("value"), rule: Rule("Value")),
             ]
         ),
         Rule(

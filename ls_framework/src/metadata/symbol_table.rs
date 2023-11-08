@@ -27,6 +27,7 @@ pub struct Usage {
 pub struct LinkObj {
     pub symbol: String,
     pub file_id: NodeIndex,
+    pub file_id_dest: NodeIndex,
     pub id: NodeId,
     pub index: usize,
 }
@@ -42,7 +43,7 @@ pub struct SymbolTable {
 pub struct SymbolId {
     symbol_table_id: ScopeId,
     index: usize,
-    file_id: NodeIndex,
+    pub file_id: NodeIndex,
 }
 
 impl SymbolId {
@@ -292,7 +293,9 @@ impl SymbolTable {
                 let name_node_id = node_id
                     .children(ast_arena)
                     .find(|id| {
-                        ast_arena.get(*id).unwrap().get().kind == NodeKind::Node(name_node.clone())
+                        ast_arena.get(*id).unwrap().get().kind
+                        == NodeKind::Node(name_node.clone())
+                        
                     })
                     .unwrap();
 
@@ -341,11 +344,12 @@ impl SymbolTable {
         current_table_node_id
     }
 
-    pub fn parse_undefined(&mut self, undefined: Vec<Usage>) -> Vec<LinkObj> {
+    pub fn parse_undefined(&mut self, undefined: Vec<Usage>,file_id_dest:NodeIndex) -> Vec<LinkObj> {
         let root_node = self.root_id.unwrap();
         let mut array: Vec<LinkObj> = Vec::new();
         for undefine in undefined {
             let symbol_name = undefine.symbol_name;
+            info!("curr symbol :{:?}",symbol_name.clone());
             let range = undefine.range;
             if let Some(index) = self
                 .arena
@@ -356,6 +360,8 @@ impl SymbolTable {
                 .iter()
                 .position(|s| &s.name == &symbol_name)
             {
+                
+                info!("same :{:?}",symbol_name.clone());
                 let symbol = &mut self.arena.get_mut(root_node).unwrap().get_mut().symbols[index];
                 let file_id = undefine.file_id.unwrap();
 
@@ -363,6 +369,7 @@ impl SymbolTable {
                     symbol: symbol_name.clone(),
                     id: root_node,
                     index: index,
+                    file_id_dest:file_id_dest,
                     file_id: file_id,
                 });
                 symbol.add_usage(Usage {
@@ -418,7 +425,7 @@ impl SymbolTable {
         }
     }
 
-    fn parse_types(&mut self, root_id: NodeId, ast_arena: &mut Arena<Node>) {
+    pub fn parse_types(&mut self, root_id: NodeId, ast_arena: &mut Arena<Node>) {
         for node_id in root_id.descendants(ast_arena) {
             if let language_def::Symbol::Init {
                 kind: _,
@@ -580,7 +587,7 @@ impl fmt::Display for Symbol {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt.write_str(
             format!(
-                "{0: <10} | {1: <15} | {2: <10} | {3: <10} | {4: <10}\n",
+                "{0: <10} | {1: <15} | {2: <10} | {3: <10} | {4: <10} \n",
                 self.kind,
                 self.name,
                 format!(
@@ -588,7 +595,7 @@ impl fmt::Display for Symbol {
                     self.def_position.start.line, self.def_position.start.character
                 ),
                 self.usages.len(),
-                0 // TODO
+                0,
             )
             .as_str(),
         )

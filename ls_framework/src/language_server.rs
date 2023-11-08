@@ -32,11 +32,23 @@ impl Backend {
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
+        let workspace_url = &params.workspace_folders.unwrap()[0].uri.to_string();
+        /*self.workspace
+            .write()
+            .unwrap()
+            .read_local_files(&workspace_url);*/
+            info!("Started Reading");
+           /* self.workspace
+            .write()
+            .unwrap()
+            .read_external_files();*/
+
         let log_file_path = env::temp_dir().join(format!(
             "{}-lsf.log",
             LanguageDefinition::get().language.name.to_lowercase()
         ));
+        info!("fdfd lsp");
 
         if let Ok(log_file) = File::create(log_file_path) {
             let result = WriteLogger::init(
@@ -55,10 +67,21 @@ impl LanguageServer for Backend {
                     .await;
             }
         }
+        info!("dd lsp");
 
         std::panic::set_hook(Box::new(|info| {
             error!("{info}");
         }));
+        /*self.workspace
+            .write()
+            .unwrap()
+            .read_local_files(&workspace_url);*/
+            info!("Started Reading");
+           /* self.workspace
+            .write()
+            .unwrap()
+            .read_external_files();*/
+        info!("Read lsp");
 
         info!("Initializing lsp");
 

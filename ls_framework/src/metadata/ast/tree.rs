@@ -175,7 +175,7 @@ pub trait Translator {
 #[derive(Debug, Clone)]
 pub struct Ast {
     arena: Arena<Node>,
-    root_id: NodeId,
+    pub root_id: NodeId,
 }
 
 impl fmt::Display for Ast {
@@ -208,6 +208,37 @@ impl Ast {
 
     pub fn get_arena(&mut self) -> &mut Arena<Node> {
         &mut self.arena
+    }
+
+    pub fn get_imports(&self) -> Vec<String> {
+        let mut files = Vec::new();
+        info!("node import");
+        let root = self.visit_root();
+        for child in root.get_descendants() {
+            let node_visit = child.get();
+
+            if node_visit.kind == NodeKind::Node(String::from("Import")) {
+                info!("node visit");
+                let child_child = child.get_children()[0];
+                let child_node = child_child.get();
+                info!("node visitf {:?}",child_node.content);
+                files.push(child_node.content.clone());
+            }
+        }
+        /*
+        for node in self.arena.iter() {
+            let actual_node = node.get();
+            if (actual_node.kind == NodeKind::Node("Import")) {
+                let mut children: NodeId = node.children(&self.arena).collect()[0];
+                let child_node = self.arena.get(children).unwrap().get();
+                if (child_node.kind == NodeKind::Node("file_name")) {
+                    externals.push(child_node.content);
+                } else {
+                    local.push(child_node.content);
+                }
+            }
+        }*/
+        files
     }
 
     fn _get_debug_tree(&self, node_id: NodeId, indent: &str, last: bool, result: &mut String) {
