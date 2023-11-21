@@ -137,9 +137,9 @@ impl Workspace {
         new_name: String,
     ) -> Option<WorkspaceEdit> {
         let file_id = self.graph.find_node_with_url(url.as_str()).unwrap();
-        let file = &self.graph.get_mut_node(file_id).unwrap().file;
+        let file = &self.graph.get_node(file_id).unwrap().file;
 
-        file.rename_symbol(symbol_position, new_name)
+        file.rename_symbol(symbol_position, new_name,&self.graph)
     }
 
     pub fn get_semantic_tokens(&self, url: Url) -> Option<SemanticTokensResult> {

@@ -217,6 +217,7 @@ impl SymbolTableActions for SymbolTable {
 
         for pre_id in scope_id.predecessors(&self.arena) {
             let scope = self.arena.get(pre_id)?.get();
+            scope.symbols.iter().for_each(|f | info!("List: {:?}",f)  );
 
             if let Some(symbol) = scope.symbols.iter().find(|s| s.name == name) {
                 return Some(symbol);
@@ -227,11 +228,18 @@ impl SymbolTableActions for SymbolTable {
     }
 
     fn get_all_symbols(&self) -> Vec<Symbol> {
-        let mut symbols: Vec<Symbol> = Vec::new();
+        let root_node = self.root_id.unwrap();
 
-        for child_id in self.root_id.unwrap().descendants(&self.arena) {
+        let mut symbols: Vec<Symbol> = self
+        .arena
+        .get(root_node.clone())
+        .unwrap()
+        .get()
+        .symbols.clone();
+
+        /*for child_id in self.root_id.unwrap().descendants(&self.arena) {
             symbols.append(&mut self.arena.get(child_id).unwrap().get().symbols.clone());
-        }
+        }*/
 
         symbols
     }
@@ -284,6 +292,7 @@ impl SymbolTable {
         let mut queue: Vec<NodeId> = node_id.children(ast_arena).collect();
 
         while let Some(node_id) = queue.pop() {
+            info!("Node created:{:?}",&ast_arena.get(node_id).unwrap().get());
             let symbol_index = if let crate::language_def::Symbol::Init {
                 kind,
                 name_node,
@@ -298,8 +307,9 @@ impl SymbolTable {
                         
                     })
                     .unwrap();
-
+                info!("Node ---+++:{:?}",&name_node_id);
                 let name_node = ast_arena.get(name_node_id).unwrap().get();
+                info!("Node ---:{:?}",&name_node.content.clone());
 
                 let symbol = Symbol::new(name_node.content.clone(), kind.clone(), name_node.range);
 
@@ -309,6 +319,7 @@ impl SymbolTable {
                     .unwrap()
                     .get_mut()
                     .symbols;
+                info!("Created:{:?}",symbol);
                 symbols.push(symbol);
 
                 let index = symbols.len() - 1;

@@ -90,7 +90,7 @@ impl File {
             self.tree = parser.parse(text, old_tree);
         }
 
-        let mut ast_manager = self.ast_manager.lock().unwrap();
+        let mut ast_manager: std::sync::MutexGuard<'_, AstManager> = self.ast_manager.lock().unwrap();
         let mut st_manager = self.symbol_table_manager.lock().unwrap();
 
         ast_manager.update(&self.source_code, self.tree.to_owned().unwrap());
@@ -132,6 +132,7 @@ impl File {
                 &self.symbol_table_manager,
                 ts_tree,
                 &self.source_code,
+                &self.symbol_table_manager
             )
         })
     }
@@ -141,7 +142,7 @@ impl File {
 
     }
 
-    pub fn rename_symbol(&self, position: Position, new_name: String) -> Option<WorkspaceEdit> {
+    pub fn rename_symbol(&self, position: Position, new_name: String,graph: &FileGraph) -> Option<WorkspaceEdit> {
         rename::rename(
             &self.ast_manager,
             &self.symbol_table_manager,
@@ -149,6 +150,7 @@ impl File {
             self.uri.clone(),
             new_name,
             position,
+            graph
         )
     }
 

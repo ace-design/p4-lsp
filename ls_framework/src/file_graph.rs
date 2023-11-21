@@ -68,6 +68,19 @@ impl FileGraph {
         None
     }
 
+    pub fn find_url_from_node_index(&self,index:NodeIndex) ->Option<Url>{
+        for node_index in self.graph.node_indices() {
+            if(node_index == index){
+                if let Some(node) = self.graph.node_weight(node_index) {
+                    return Some(Url::parse(node.file_name.as_str()).unwrap());
+                }
+            }
+        }
+
+        None
+
+    }
+
     pub fn get_next_node_index(&self) -> NodeIndex {
         // Find the highest index node in the graph
         let max_index = self.graph.node_indices().max();
@@ -108,6 +121,7 @@ impl FileGraph {
             }
         }
     }
+    
 
     pub fn get_all_undefined(&self, file_name: &str) -> Vec<Usage> {
         let mut undefined: Vec<Usage> = Vec::new();
