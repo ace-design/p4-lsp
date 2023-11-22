@@ -125,7 +125,7 @@ pub fn get_keyword_color_data(root_node: &tree_sitter::Node, source_code: &str,
   //  info!("Semantic node: ");
     while let Some(node) = to_visit.pop() {
         
-   // info!("{:?}",&utils::get_node_text(&node, source_code));
+    info!("{:?}",&utils::get_node_text(&node, source_code));
     
         
    // info!("{:?}",node);
@@ -135,7 +135,7 @@ pub fn get_keyword_color_data(root_node: &tree_sitter::Node, source_code: &str,
         let contains_spaces = text.chars().any(|c| c == ' ');
         
    // info!("space: {:?}",&contains_spaces);
-        if  keywords.contains(&text){ 
+        if  keywords.contains(&text) || !node.is_named(){ 
           //  info!("inside");
             color_data.push(ColorData {
                 length: (node.range().end_byte - node.range().start_byte) as u32,
@@ -151,6 +151,7 @@ pub fn get_keyword_color_data(root_node: &tree_sitter::Node, source_code: &str,
               //  info!("Value: {:?}",symbol);
                 if symbol.symbol_name == text{
                     //info!("Added symbol :{:?}",symbol.symbol_name);
+                    
                   
                     color_data.push(ColorData {
                         line: node.range().start_point.row as u32,
@@ -159,7 +160,6 @@ pub fn get_keyword_color_data(root_node: &tree_sitter::Node, source_code: &str,
                         node_type: 1,
                     });
                     exist = true;
-                    break;
                 }
             }
             let semantic_token_types_map = get_semantic_token_map();

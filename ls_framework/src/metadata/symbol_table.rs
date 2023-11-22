@@ -435,7 +435,6 @@ impl SymbolTable {
             }
         }
     }
-
     pub fn parse_types(&mut self, root_id: NodeId, ast_arena: &mut Arena<Node>) {
         for node_id in root_id.descendants(ast_arena) {
             if let language_def::Symbol::Init {
@@ -474,6 +473,10 @@ impl SymbolTable {
                         .linked_symbol
                         .clone()
                     {
+                        info!("Added Type");
+                        
+                        info!("Added d {:?}",symbol_id);
+                        
                         self.get_symbol_mut(name_symbol_id)
                             .unwrap()
                             .set_type_symbol(symbol_id);

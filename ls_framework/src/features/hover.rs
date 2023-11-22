@@ -24,7 +24,7 @@ pub fn get_hover_info(
     let x = y.file.symbol_table_manager.lock().unwrap();
     
     let binding = x.get_all_symbols();
-    binding.iter().for_each(|s| info!("T:{:?}",&s.get_name()));
+    //binding.iter().for_each(|s| info!("T:{:?}",&s.get_name()));
     let symbol_exist = binding.iter().find(|s| &s.get_name() == previous_name);
     
     info!("Symbollldfddyy{:?} ",symbol_exist);
@@ -36,6 +36,7 @@ pub fn get_hover_info(
     let mut symbol_name = String::from("");
     if let Some(symbol) = symbol_exist{
         info!("Symbollldfddyydddd{:?} ",symbol);
+        
         symbol_name = symbol.get_name();
         if let Some(symbol_type) = symbol.get_type_symbol(){
             let type_symbol = x.get_symbol(symbol_type).unwrap();
@@ -46,6 +47,7 @@ pub fn get_hover_info(
         }
     }
   
+    
     
     info!("Symbol name type: {}",type_name);
     Some(HoverContents::Scalar(MarkedString::String(format!(
