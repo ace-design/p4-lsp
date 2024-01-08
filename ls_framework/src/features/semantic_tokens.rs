@@ -81,7 +81,6 @@ pub fn get_tokens(
             tokens.extend(temp_array); //concating two vectors
             temp_array = Vec::new();
         }
-
         temp_array.push(SemanticToken {
             delta_line: line as u32,
             delta_start: item.start,
@@ -91,6 +90,7 @@ pub fn get_tokens(
         });
     }
 
+    info!("Final: {:?}",tokens);
     SemanticTokensResult::Tokens(SemanticTokens {
         result_id: None,
         data: tokens,

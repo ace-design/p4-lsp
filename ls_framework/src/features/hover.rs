@@ -13,46 +13,64 @@ pub fn get_hover_info(
     position: Position,
 
 ) -> Option<HoverContents> {
+    info!("Hover");
     let ast_query = ast_query.lock().unwrap();
     let root_visit = ast_query.visit_root();
     let node = root_visit.get_node_at_position(position)?;
-    let previous_name = &node.get().content;
-    let n = node.get().linked_symbol.clone()?;
+    let temp = { let st_query = symbol_table_query.lock().unwrap();
+        let symbol = st_query.get_symbol(node.get().linked_symbol.clone()?)?;
+        symbol.get_type_symbol()
+    };
+   
+    if let Some(temp1) = temp {
+        let st_query = symbol_table_query.lock().unwrap();
+        let symbol = st_query.get_symbol(node.get().linked_symbol.clone()?)?;
+        info!("Sylinkedmbol:{:?}",node.get().linked_symbol.clone().unwrap());
 
-    let y = graph.get_node(n.file_id).unwrap().clone();
-    let cur_url = y.file.uri.clone();
-    let x = y.file.symbol_table_manager.lock().unwrap();
-    
-    let binding = x.get_all_symbols();
-    //binding.iter().for_each(|s| info!("T:{:?}",&s.get_name()));
-    let symbol_exist = binding.iter().find(|s| &s.get_name() == previous_name);
-    
-    info!("Symbollldfddyy{:?} ",symbol_exist);
+        info!("Symbol:{}",symbol);
 
-
-    let mut type_name = String::from("");
-    
-
-    let mut symbol_name = String::from("");
-    if let Some(symbol) = symbol_exist{
-        info!("Symbollldfddyydddd{:?} ",symbol);
+        info!("Temp Hover");
+        let type_symbol = st_query.get_symbol(temp1)?;
+        Some(HoverContents::Scalar(MarkedString::String(format!(
+            "{}: {}",
+            symbol.get_name(),
+            type_symbol.get_name()
+        ))))
+    } else {
+        info!("Added Hover");
+        let previous_name = &node.get().content;
+        let linked_symbol = node.get().linked_symbol.clone()?;
         
-        symbol_name = symbol.get_name();
-        if let Some(symbol_type) = symbol.get_type_symbol(){
-            let type_symbol = x.get_symbol(symbol_type).unwrap();
-            
-            info!("Symbofffl type: {}",type_symbol);
-            type_name=type_symbol.get_name();
-            info!("Symbol type: {}",type_symbol);
-        }
+        info!("A");
+
+        info!("prev:{:?}",previous_name);
+        let linked_node = graph.get_node(linked_symbol.file_id).unwrap().clone();
+        info!("A1");
+        
+        info!("preve:{:?}",linked_node);
+        let linked_manager = linked_node.file.symbol_table_manager.lock().unwrap();
+        info!("A2");
+        let binding = linked_manager.get_all_symbols();
+        info!("A3");
+        
+        info!("list {:?}",binding);
+        let symbol_exist = binding.iter().find(|s| &s.get_name() == previous_name);
+        info!("A4");
+        info!("{:?}",symbol_exist);
+        let symbol = symbol_exist?;
+        info!("A5");
+        info!("{:?}",symbol);
+        info!("{:?}",symbol.get_type_symbol().clone().unwrap());
+        let type_symbol = linked_manager.get_symbol(symbol.get_type_symbol()?)?;
+    
+        Some(HoverContents::Scalar(MarkedString::String(format!(
+            "{}: {}",
+            symbol.get_name(),
+            type_symbol.get_name()
+        ))))
+
+    
     }
-  
-    
-    
-    info!("Symbol name type: {}",type_name);
-    Some(HoverContents::Scalar(MarkedString::String(format!(
-        "{}: {}",
-        symbol_name,
-        type_name
-    ))))
+
+
 }

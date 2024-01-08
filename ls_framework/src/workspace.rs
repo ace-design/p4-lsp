@@ -37,36 +37,27 @@ impl Workspace {
         info!("Reading local");
         let file_extension = "p4";
         let mut file_map: HashMap<Url, &str> = HashMap::new();
-        info!("{}",workspace_addr.clone());
-       // Parse the URL
-        let url = Url::parse(&String::from(r"C:\Users\Noel LAPTOP\Downloads\tutorials-master\tutorials-master\exercises\basic")).expect("Failed to parse URL");
+       
+        let url = Url::parse(workspace_addr).expect("Failed to parse URL");
 
         // Extract the path part of the URL
         let url_path = url.path();
-
+        info!("{}",url_path);
         // Convert the URL path to a Path object
         let path = Path::new(url_path);
         let walker = WalkDir::new(path).into_iter();
        
-        info!("ddddd");
         for entry in walker {
-            info!("Runnifddffdfdfdng");
             if let Ok(entry) = entry {
-                info!("Running");
                 let path = entry.path();
+                info!("{:?}",path);
                 
-                let path_as_string = path.to_string_lossy().to_string();
-                info!("{}",path_as_string);
-
                 if path.extension().unwrap_or_default() == file_extension {
-                    //info!("Stuff {:?}", path.canonicalize().unwrap().display());
                     let temp = Url::from_file_path(path.canonicalize().unwrap().as_path());
                     let file_contents = fs::read_to_string(entry.path())?;
-                    info!("{}",temp.clone().unwrap().to_string());
+                    info!("Added {}",temp.clone().unwrap().to_string());
                     self.add_file(temp.unwrap(), &file_contents.as_str())
                 }
-            } else {
-                //info!("Error");
             }
         }
         Ok(())
@@ -98,11 +89,9 @@ impl Workspace {
         Ok(())
     }
     pub fn add_file(&mut self, url: Url, content: &str) {
-        info!("Added File1");
         let tree = self.parser.parse(content, None);
         let index = self.graph.get_next_node_index();
-        info!("info :{:?}",index);
-        info!("infto :{:?}",tree.clone().unwrap());
+        info!("Added File :{:?}",url);
         
         self.graph.add_node(
             url.to_string().clone(),
@@ -124,7 +113,7 @@ impl Workspace {
         let file = &self.graph.get_node(file_id1.unwrap()).unwrap().file;
         info!("File Id {:?}",file_id1);
 
-        let (range,file_id) = file.get_definition_location(symbol_position,&self.graph).unwrap();
+        let (range,file_id) = file.get_definition_location(symbol_position,&self.graph)?;
         let uri = &self.graph.get_node(file_id).unwrap().file.uri;
         info!("uri:{:?}",uri);
         Some(Location::new(uri.clone(), range))
