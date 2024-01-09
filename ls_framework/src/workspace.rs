@@ -7,11 +7,11 @@ use tower_lsp::lsp_types::{
 };
 extern crate walkdir;
 
+use crate::file_graph::FileGraph;
 use crate::{file::File, settings::Settings};
 use std::fs;
-use walkdir::WalkDir;
 use std::path::Path;
-use crate::file_graph::FileGraph;
+use walkdir::WalkDir;
 
 use crate::file_graph;
 
@@ -36,27 +36,27 @@ impl Workspace {
     pub fn read_local_files(&mut self, workspace_addr: &String) -> Result<(), std::io::Error> {
         info!("Reading local");
         let file_extension = "p4";
-        let mut file_map: HashMap<Url, &str> = HashMap::new();
-       
+        let _file_map: HashMap<Url, &str> = HashMap::new();
+
         let url = Url::parse(workspace_addr).expect("Failed to parse URL");
 
         // Extract the path part of the URL
         let url_path = url.path();
-        info!("{}",url_path);
+        info!("{}", url_path);
         // Convert the URL path to a Path object
         let path = Path::new(url_path);
         let walker = WalkDir::new(path).into_iter();
-       
+
         for entry in walker {
             if let Ok(entry) = entry {
                 let path = entry.path();
-                info!("{:?}",path);
-                
+                info!("{:?}", path);
+
                 if path.extension().unwrap_or_default() == file_extension {
                     let temp = Url::from_file_path(path.canonicalize().unwrap().as_path());
                     let file_contents = fs::read_to_string(entry.path())?;
-                    info!("Added {}",temp.clone().unwrap().to_string());
-                    self.add_file(temp.unwrap(), &file_contents.as_str())
+                    info!("Added {}", temp.clone().unwrap().to_string());
+                    self.add_file(temp.unwrap(), file_contents.as_str())
                 }
             }
         }
@@ -66,7 +66,7 @@ impl Workspace {
     pub fn read_external_files(&mut self) -> Result<(), std::io::Error> {
         info!("Reading external");
         let file_extension = "p4";
-        let mut file_map: HashMap<Url, &str> = HashMap::new();
+        let _file_map: HashMap<Url, &str> = HashMap::new();
         let walker = WalkDir::new(String::from(r"C:\include")).into_iter();
         info!("walker");
         for entry in walker {
@@ -79,8 +79,8 @@ impl Workspace {
                     info!("Stuff {:?}", path.canonicalize().unwrap().display());
                     let temp = Url::from_file_path(path.canonicalize().unwrap().as_path());
                     let file_contents = fs::read_to_string(entry.path())?;
-                    info!("{}",temp.clone().unwrap().to_string());
-                    self.add_file(temp.unwrap(), &file_contents.as_str())
+                    info!("{}", temp.clone().unwrap().to_string());
+                    self.add_file(temp.unwrap(), file_contents.as_str())
                 }
             } else {
                 //info!("Error");
@@ -91,10 +91,10 @@ impl Workspace {
     pub fn add_file(&mut self, url: Url, content: &str) {
         let tree = self.parser.parse(content, None);
         let index = self.graph.get_next_node_index();
-        info!("Added File :{:?}",url);
-        
+        info!("Added File :{:?}", url);
+
         self.graph.add_node(
-            url.to_string().clone(),
+            url.to_string(),
             file_graph::Location::Local,
             File::new(url, content, &tree, index),
         );
@@ -111,11 +111,11 @@ impl Workspace {
     pub fn get_definition_location(&self, url: Url, symbol_position: Position) -> Option<Location> {
         let file_id1 = self.graph.find_node_with_url(url.as_str());
         let file = &self.graph.get_node(file_id1.unwrap()).unwrap().file;
-        info!("File Id {:?}",file_id1);
+        info!("File Id {:?}", file_id1);
 
-        let (range,file_id) = file.get_definition_location(symbol_position,&self.graph)?;
+        let (range, file_id) = file.get_definition_location(symbol_position, &self.graph)?;
         let uri = &self.graph.get_node(file_id).unwrap().file.uri;
-        info!("uri:{:?}",uri);
+        info!("uri:{:?}", uri);
         Some(Location::new(uri.clone(), range))
     }
 
@@ -128,7 +128,7 @@ impl Workspace {
         let file_id = self.graph.find_node_with_url(url.as_str()).unwrap();
         let file = &self.graph.get_node(file_id).unwrap().file;
 
-        file.rename_symbol(symbol_position, new_name,&self.graph)
+        file.rename_symbol(symbol_position, new_name, &self.graph)
     }
 
     pub fn get_semantic_tokens(&self, url: Url) -> Option<SemanticTokensResult> {
@@ -154,10 +154,10 @@ impl Workspace {
         let file_id = self.graph.find_node_with_url(url.as_str()).unwrap();
         let file = &self.graph.get_node(file_id).unwrap().file;
 
-        file.get_hover_info(position,&self.graph)
+        file.get_hover_info(position, &self.graph)
     }
 
-    pub fn get_quick_diagnostics(&self, url: Url) -> Vec<Diagnostic> {
+    pub fn get_quick_diagnostics(&self, _url: Url) -> Vec<Diagnostic> {
         /* let maybe_file = self.files.get(&url);
 
         if let Some(file) = maybe_file {
@@ -168,7 +168,7 @@ impl Workspace {
         vec![]
     }
 
-    pub fn get_full_diagnostics(&self, url: Url) -> Vec<Diagnostic> {
+    pub fn get_full_diagnostics(&self, _url: Url) -> Vec<Diagnostic> {
         /*let maybe_file = self.files.get(&url);
 
         if let Some(file) = maybe_file {

@@ -4,14 +4,14 @@ use crate::{
     metadata::{AstQuery, SymbolTableQuery, Visitable},
     utils,
 };
- use crate::metadata::AstManager;
+
+use crate::metadata::SymbolTableManager;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
 };
 use tower_lsp::lsp_types::{SemanticToken, SemanticTokens, SemanticTokensResult};
 use tree_sitter::Node;
-use crate::metadata::SymbolTableManager;
 #[derive(Debug)]
 pub struct ColorData {
     line: u32,
@@ -25,11 +25,11 @@ pub fn get_tokens(
     st_query: &Arc<Mutex<impl SymbolTableQuery>>,
     ts_tree: &tree_sitter::Tree,
     source_code: &str,
-    
-    st_manager: &Arc<Mutex<SymbolTableManager>>
+
+    st_manager: &Arc<Mutex<SymbolTableManager>>,
 ) -> SemanticTokensResult {
     //Getting ast data
-    let mut array = get_keyword_color_data(&ts_tree.root_node(), source_code,st_manager);
+    let mut array = get_keyword_color_data(&ts_tree.root_node(), source_code, st_manager);
     array.append(&mut get_symbols_color_data(st_query));
     array.append(&mut get_ast_color_data(ast_query));
     //sort line
@@ -90,7 +90,7 @@ pub fn get_tokens(
         });
     }
 
-    info!("Final: {:?}",tokens);
+    info!("Final: {:?}", tokens);
     SemanticTokensResult::Tokens(SemanticTokens {
         result_id: None,
         data: tokens,
@@ -110,33 +110,34 @@ fn get_semantic_token_map() -> HashMap<String, usize> {
     semantic_token_types_map
 }
 
-pub fn get_keyword_color_data(root_node: &tree_sitter::Node, source_code: &str,
-    
-    st_manager:&Arc<Mutex<SymbolTableManager>>) -> Vec<ColorData> {
+pub fn get_keyword_color_data(
+    root_node: &tree_sitter::Node,
+    source_code: &str,
+
+    st_manager: &Arc<Mutex<SymbolTableManager>>,
+) -> Vec<ColorData> {
     let keywords = crate::language_def::LanguageDefinition::get_keywords();
-    
-  //  info!("{:?}",keywords);
+
+    //  info!("{:?}",keywords);
 
     let mut cursor = root_node.walk();
     let mut to_visit = root_node.children(&mut cursor).collect::<Vec<Node>>();
 
     let mut color_data = vec![];
 
-  //  info!("Semantic node: ");
+    //  info!("Semantic node: ");
     while let Some(node) = to_visit.pop() {
-        
-    info!("{:?}",&utils::get_node_text(&node, source_code));
-    
-        
-   // info!("{:?}",node);
-   // info!("{:?}",keywords.contains(&utils::get_node_text(&node, source_code)));
-        let text =utils::get_node_text(&node, source_code);
+        info!("{:?}", &utils::get_node_text(&node, source_code));
 
-        let contains_spaces = text.chars().any(|c| c == ' ');
-        
-   // info!("space: {:?}",&contains_spaces);
-        if  keywords.contains(&text) || !node.is_named(){ 
-          //  info!("inside");
+        // info!("{:?}",node);
+        // info!("{:?}",keywords.contains(&utils::get_node_text(&node, source_code)));
+        let text = utils::get_node_text(&node, source_code);
+
+        let _contains_spaces = text.chars().any(|c| c == ' ');
+
+        // info!("space: {:?}",&contains_spaces);
+        if keywords.contains(&text) || !node.is_named() {
+            //  info!("inside");
             color_data.push(ColorData {
                 length: (node.range().end_byte - node.range().start_byte) as u32,
                 start: node.range().start_point.column as u32,
@@ -146,13 +147,17 @@ pub fn get_keyword_color_data(root_node: &tree_sitter::Node, source_code: &str,
         } else {
             //info!("outside");
             let mut exist = false;
-            let undefined = st_manager.lock().unwrap().symbol_table.undefined_list.clone();
-            for symbol in undefined{
-              //  info!("Value: {:?}",symbol);
-                if symbol.symbol_name == text{
+            let undefined = st_manager
+                .lock()
+                .unwrap()
+                .symbol_table
+                .undefined_list
+                .clone();
+            for symbol in undefined {
+                //  info!("Value: {:?}",symbol);
+                if symbol.symbol_name == text {
                     //info!("Added symbol :{:?}",symbol.symbol_name);
-                    
-                  
+
                     color_data.push(ColorData {
                         line: node.range().start_point.row as u32,
                         start: node.range().start_point.column as u32,
@@ -162,13 +167,12 @@ pub fn get_keyword_color_data(root_node: &tree_sitter::Node, source_code: &str,
                     exist = true;
                 }
             }
-            let semantic_token_types_map = get_semantic_token_map();
+            let _semantic_token_types_map = get_semantic_token_map();
             //let symbol_table = st_query.lock().unwrap();
             //let array = symbol_table.get_all_symbols();
-           
-            if(!exist){
-                to_visit.append(&mut node.children(&mut cursor).collect::<Vec<Node>>());
 
+            if !exist {
+                to_visit.append(&mut node.children(&mut cursor).collect::<Vec<Node>>());
             }
         }
     }

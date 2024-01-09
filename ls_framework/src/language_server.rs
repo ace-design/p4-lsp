@@ -64,7 +64,7 @@ impl LanguageServer for Backend {
         self.workspace
             .write()
             .unwrap()
-            .read_local_files(&workspace_url);
+            .read_local_files(workspace_url);
         info!("Read lsp");
 
         info!("Initializing lsp");

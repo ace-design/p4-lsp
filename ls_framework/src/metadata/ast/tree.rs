@@ -221,7 +221,7 @@ impl Ast {
                 info!("node visit");
                 let child_child = child.get_children()[0];
                 let child_node = child_child.get();
-                info!("node visitf {:?}",child_node.content);
+                info!("node visitf {:?}", child_node.content);
                 files.push(child_node.content.clone());
             }
         }

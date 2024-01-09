@@ -217,7 +217,7 @@ impl SymbolTableActions for SymbolTable {
 
         for pre_id in scope_id.predecessors(&self.arena) {
             let scope = self.arena.get(pre_id)?.get();
-            scope.symbols.iter().for_each(|f | info!("List: {:?}",f)  );
+            scope.symbols.iter().for_each(|f| info!("List: {:?}", f));
 
             if let Some(symbol) = scope.symbols.iter().find(|s| s.name == name) {
                 return Some(symbol);
@@ -230,12 +230,7 @@ impl SymbolTableActions for SymbolTable {
     fn get_all_symbols(&self) -> Vec<Symbol> {
         let root_node = self.root_id.unwrap();
 
-        let mut symbols: Vec<Symbol> = self
-        .arena
-        .get(root_node.clone())
-        .unwrap()
-        .get()
-        .symbols.clone();
+        let symbols: Vec<Symbol> = self.arena.get(root_node).unwrap().get().symbols.clone();
 
         /*for child_id in self.root_id.unwrap().descendants(&self.arena) {
             symbols.append(&mut self.arena.get(child_id).unwrap().get().symbols.clone());
@@ -292,7 +287,7 @@ impl SymbolTable {
         let mut queue: Vec<NodeId> = node_id.children(ast_arena).collect();
 
         while let Some(node_id) = queue.pop() {
-            info!("Node created:{:?}",&ast_arena.get(node_id).unwrap().get());
+            info!("Node created:{:?}", &ast_arena.get(node_id).unwrap().get());
             let symbol_index = if let crate::language_def::Symbol::Init {
                 kind,
                 name_node,
@@ -302,14 +297,12 @@ impl SymbolTable {
                 let name_node_id = node_id
                     .children(ast_arena)
                     .find(|id| {
-                        ast_arena.get(*id).unwrap().get().kind
-                        == NodeKind::Node(name_node.clone())
-                        
+                        ast_arena.get(*id).unwrap().get().kind == NodeKind::Node(name_node.clone())
                     })
                     .unwrap();
-                info!("Node ---+++:{:?}",&name_node_id);
+                info!("Node ---+++:{:?}", &name_node_id);
                 let name_node = ast_arena.get(name_node_id).unwrap().get();
-                info!("Node ---:{:?}",&name_node.content.clone());
+                info!("Node ---:{:?}", &name_node.content.clone());
 
                 let symbol = Symbol::new(name_node.content.clone(), kind.clone(), name_node.range);
 
@@ -319,7 +312,7 @@ impl SymbolTable {
                     .unwrap()
                     .get_mut()
                     .symbols;
-                info!("Created:{:?}",symbol);
+                info!("Created:{:?}", symbol);
                 symbols.push(symbol);
 
                 let index = symbols.len() - 1;
@@ -355,36 +348,39 @@ impl SymbolTable {
         current_table_node_id
     }
 
-    pub fn parse_undefined(&mut self, undefined: Vec<Usage>,file_id_dest:NodeIndex) -> Vec<LinkObj> {
+    pub fn parse_undefined(
+        &mut self,
+        undefined: Vec<Usage>,
+        file_id_dest: NodeIndex,
+    ) -> Vec<LinkObj> {
         let root_node = self.root_id.unwrap();
         let mut array: Vec<LinkObj> = Vec::new();
         for undefine in undefined {
             let symbol_name = undefine.symbol_name;
-            info!("curr symbol :{:?}",symbol_name.clone());
+            info!("curr symbol :{:?}", symbol_name.clone());
             let range = undefine.range;
             if let Some(index) = self
                 .arena
-                .get(root_node.clone())
+                .get(root_node)
                 .unwrap()
                 .get()
                 .symbols
                 .iter()
-                .position(|s| &s.name == &symbol_name)
+                .position(|s| s.name == symbol_name)
             {
-                
-                info!("same :{:?}",symbol_name.clone());
+                info!("same :{:?}", symbol_name.clone());
                 let symbol = &mut self.arena.get_mut(root_node).unwrap().get_mut().symbols[index];
                 let file_id = undefine.file_id.unwrap();
 
                 array.push(LinkObj {
                     symbol: symbol_name.clone(),
                     id: root_node,
-                    index: index,
-                    file_id_dest:file_id_dest,
-                    file_id: file_id,
+                    index,
+                    file_id_dest,
+                    file_id,
                 });
                 symbol.add_usage(Usage {
-                    range: range,
+                    range,
                     symbol_name: symbol_name.to_string(),
                     file_id: Some(file_id),
                 });

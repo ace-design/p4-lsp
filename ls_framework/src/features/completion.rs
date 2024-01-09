@@ -46,7 +46,7 @@ pub fn get_list(
     }
 
     let name_field = query.lock().unwrap().get_name_field(position, source_code);
-    info!("cimpletion:{:?}",name_field);
+    info!("cimpletion:{:?}", name_field);
     match name_field {
         Some(fields) => {
             return Some(
@@ -60,6 +60,6 @@ pub fn get_list(
                     .collect(),
             )
         }
-        None => None//default_list(position, query),
+        None => None, //default_list(position, query),
     }
 }

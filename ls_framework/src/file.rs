@@ -1,17 +1,17 @@
 use crate::features::{completion, diagnostics, goto, hover, rename, semantic_tokens};
+use crate::file_graph::FileGraph;
 use crate::metadata::{
     AstEditor, AstManager, LinkObj, SymbolTableEditor, SymbolTableManager, Usage,
 };
-use crate::{language_def, metadata::NodeKind, utils};
+use crate::{language_def, utils};
 use petgraph::graph::NodeIndex;
 use std::sync::{Arc, Mutex};
+use tower_lsp::lsp_types::Range;
 use tower_lsp::lsp_types::{
-    CompletionContext, CompletionItem, Diagnostic, HoverContents, Location, Position,
-    SemanticTokensResult, TextDocumentContentChangeEvent, Url, WorkspaceEdit,
+    CompletionContext, CompletionItem, Diagnostic, HoverContents, Position, SemanticTokensResult,
+    TextDocumentContentChangeEvent, Url, WorkspaceEdit,
 };
-use tower_lsp::lsp_types::{ Range};
 use tree_sitter::{InputEdit, Parser, Tree};
-use crate::file_graph::FileGraph;
 #[derive(Debug, Clone)]
 pub struct File {
     pub uri: Url,
@@ -27,7 +27,6 @@ impl File {
             source_code,
             tree.to_owned().unwrap(),
         )));
-
 
         debug!("\nAST:\n{}", ast_manager.lock().unwrap());
         let symbol_table_manager = {
@@ -90,7 +89,8 @@ impl File {
             self.tree = parser.parse(text, old_tree);
         }
 
-        let mut ast_manager: std::sync::MutexGuard<'_, AstManager> = self.ast_manager.lock().unwrap();
+        let mut ast_manager: std::sync::MutexGuard<'_, AstManager> =
+            self.ast_manager.lock().unwrap();
         let mut st_manager = self.symbol_table_manager.lock().unwrap();
 
         ast_manager.update(&self.source_code, self.tree.to_owned().unwrap());
@@ -121,8 +121,13 @@ impl File {
         )
     }
 
-    pub fn get_hover_info(&self, position: Position,graph: &FileGraph) -> Option<HoverContents> {
-        hover::get_hover_info(&self.ast_manager, &self.symbol_table_manager, graph,position)
+    pub fn get_hover_info(&self, position: Position, graph: &FileGraph) -> Option<HoverContents> {
+        hover::get_hover_info(
+            &self.ast_manager,
+            &self.symbol_table_manager,
+            graph,
+            position,
+        )
     }
 
     pub fn get_semantic_tokens(&self) -> Option<SemanticTokensResult> {
@@ -132,17 +137,30 @@ impl File {
                 &self.symbol_table_manager,
                 ts_tree,
                 &self.source_code,
-                &self.symbol_table_manager
+                &self.symbol_table_manager,
             )
         })
     }
 
-    pub fn get_definition_location(&self, position: Position,graph: &FileGraph) -> Option<(Range,NodeIndex)> {
-        goto::get_definition_range(&self.ast_manager, &self.symbol_table_manager,graph, position)
-
+    pub fn get_definition_location(
+        &self,
+        position: Position,
+        graph: &FileGraph,
+    ) -> Option<(Range, NodeIndex)> {
+        goto::get_definition_range(
+            &self.ast_manager,
+            &self.symbol_table_manager,
+            graph,
+            position,
+        )
     }
 
-    pub fn rename_symbol(&self, position: Position, new_name: String,graph: &FileGraph) -> Option<WorkspaceEdit> {
+    pub fn rename_symbol(
+        &self,
+        position: Position,
+        new_name: String,
+        graph: &FileGraph,
+    ) -> Option<WorkspaceEdit> {
         rename::rename(
             &self.ast_manager,
             &self.symbol_table_manager,
@@ -150,7 +168,7 @@ impl File {
             self.uri.clone(),
             new_name,
             position,
-            graph
+            graph,
         )
     }
 
@@ -166,29 +184,33 @@ impl File {
 
     pub fn check_if_import_exist(&self, file_name: String) -> bool {
         let imports = self.ast_manager.lock().unwrap().ast.get_imports();
-        info!("imports {:?}",imports);
-        info!("name {:?}",file_name.clone());
+        info!("imports {:?}", imports);
+        info!("name {:?}", file_name);
         for import in imports.iter() {
-           // info!("dimport {:?}",import);
-           // info!("d{}",import.contains(&file_name));
-            if (file_name.contains(import)) {
+            // info!("dimport {:?}",import);
+            // info!("d{}",import.contains(&file_name));
+            if file_name.contains(import) {
                 info!("pass");
                 return true;
             }
         }
-        return false;
+        false
     }
 
-    pub fn update_symbole_table(&mut self, undefined_list: Vec<Usage>,file_id_dest:NodeIndex) -> Vec<LinkObj> {
+    pub fn update_symbole_table(
+        &mut self,
+        undefined_list: Vec<Usage>,
+        file_id_dest: NodeIndex,
+    ) -> Vec<LinkObj> {
         let links: Vec<LinkObj> = self
             .symbol_table_manager
             .lock()
             .unwrap()
             .symbol_table
-            .parse_undefined(undefined_list,file_id_dest);
-      
-        info!("Links {:?}",links);
-        return links;
+            .parse_undefined(undefined_list, file_id_dest);
+
+        info!("Links {:?}", links);
+        links
     }
 
     pub fn update_nodes(&mut self, link: LinkObj) {
@@ -200,10 +222,9 @@ impl File {
         {
             let node = node.get_mut();
             let symbol_name = &node.content;
-            if (symbol_name == &link.symbol) {
+            if symbol_name == &link.symbol {
                 node.link(link.id, link.index, link.file_id_dest);
             }
-            
         }
     }
 }

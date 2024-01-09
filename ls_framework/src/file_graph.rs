@@ -1,10 +1,10 @@
 use crate::metadata::{LinkObj, Usage};
-use petgraph::dot::{Config, Dot};
+
 use petgraph::graph::{DiGraph, NodeIndex};
-use std::collections::HashMap;
-use tower_lsp::lsp_types::{TextDocumentContentChangeEvent, Url};
-use petgraph::visit::EdgeRef;
+
 use crate::file::File;
+use petgraph::visit::EdgeRef;
+use tower_lsp::lsp_types::{TextDocumentContentChangeEvent, Url};
 
 #[derive(Debug)]
 pub enum Location {
@@ -22,9 +22,9 @@ pub struct Node {
 impl Node {
     fn new(file_name: String, file_location: Location, file: File) -> Self {
         Node {
-            file_name: file_name.to_string(),
-            file_location: file_location,
-            file: file,
+            file_name,
+            file_location,
+            file,
         }
     }
 }
@@ -68,9 +68,9 @@ impl FileGraph {
         None
     }
 
-    pub fn find_url_from_node_index(&self,index:NodeIndex) ->Option<Url>{
+    pub fn find_url_from_node_index(&self, index: NodeIndex) -> Option<Url> {
         for node_index in self.graph.node_indices() {
-            if(node_index == index){
+            if node_index == index {
                 if let Some(node) = self.graph.node_weight(node_index) {
                     return Some(Url::parse(node.file_name.as_str()).unwrap());
                 }
@@ -78,7 +78,6 @@ impl FileGraph {
         }
 
         None
-
     }
 
     pub fn get_next_node_index(&self) -> NodeIndex {
@@ -93,14 +92,13 @@ impl FileGraph {
     }
 
     pub fn add_edge(&mut self, source_file_id: &NodeIndex, target_file_id: &NodeIndex) {
-        if (self.nodes.contains(source_file_id) && self.nodes.contains(target_file_id)) {
-            self.graph
-                .add_edge(source_file_id.clone(), target_file_id.clone(), ());
+        if self.nodes.contains(source_file_id) && self.nodes.contains(target_file_id) {
+            self.graph.add_edge(*source_file_id, *target_file_id, ());
         }
     }
 
     pub fn get_node(&self, node_index: NodeIndex) -> Option<&Node> {
-        self.graph.node_weight(node_index).map(|n| n.clone())
+        self.graph.node_weight(node_index).clone()
     }
 
     pub fn get_mut_node(&mut self, node_index: NodeIndex) -> Option<&mut Node> {
@@ -110,41 +108,44 @@ impl FileGraph {
         for node in self.graph.node_indices() {
             let file_name = &self.graph[node].file_name;
             info!("Node File Name: {}", file_name);
-    
+
             // Iterate over the edges of the current node
             for edge in self.graph.edges(node) {
                 let source_node = edge.source();
                 let target_node = edge.target();
                 let edge_weight = &edge.weight(); // Replace with the actual type of your edge weights
-    
-                info!("Edge: {} -> {} with weight {:?}", source_node.index(), target_node.index(), edge_weight);
+
+                info!(
+                    "Edge: {} -> {} with weight {:?}",
+                    source_node.index(),
+                    target_node.index(),
+                    edge_weight
+                );
             }
         }
     }
-    
 
     pub fn get_all_undefined(&self, file_name: &str) -> Vec<Usage> {
         let mut undefined: Vec<Usage> = Vec::new();
-      //  info!("inside lodddddop");
-        for node_index in &self.nodes  {
-          //  info!("inside f");
-//
+        //  info!("inside lodddddop");
+        for node_index in &self.nodes {
+            //  info!("inside f");
+            //
 
             let n = self.graph.node_weight(*node_index).unwrap();
-          //  info!("node next undfien {:?}",n.file_name.clone().as_str());
-               // info!("b loop");
-                if n.file.check_if_import_exist(file_name.to_string()) {
-                    //info!("inside chek");
-                    let mut node_undefined = n.file.get_undefined();
-                  
-                    for node in node_undefined.iter_mut() {
-                        node.file_id = Some(*node_index);
-                    }
-                    //info!("node undfien {:?}",node_undefined);
+            //  info!("node next undfien {:?}",n.file_name.clone().as_str());
+            // info!("b loop");
+            if n.file.check_if_import_exist(file_name.to_string()) {
+                //info!("inside chek");
+                let mut node_undefined = n.file.get_undefined();
 
-                    undefined.extend(node_undefined);
+                for node in node_undefined.iter_mut() {
+                    node.file_id = Some(*node_index);
                 }
-            
+                //info!("node undfien {:?}",node_undefined);
+
+                undefined.extend(node_undefined);
+            }
         }
 
         undefined
@@ -167,20 +168,19 @@ impl FileGraph {
         info!("Updating------d-----------------");
 
         for node_index in &self.nodes {
-            let temp  =node_index.clone();
+            let temp = *node_index;
             let node = self.graph.node_weight(*node_index).unwrap();
-            info!("Curr Node{:?}",node.file_name.clone().as_str());
+            info!("Curr Node{:?}", node.file_name.clone().as_str());
             let undefined = self.get_all_undefined(node.file_name.as_str());
-            info!("Curr undefined{:?}",undefined);
+            info!("Curr undefined{:?}", undefined);
             let mut_node = self.graph.node_weight_mut(*node_index).unwrap();
-            links.append(&mut mut_node.file.update_symbole_table(undefined,temp).clone())
+            links.append(&mut mut_node.file.update_symbole_table(undefined, temp).clone())
         }
 
         for link in links {
-            info!("link: {:?}",link);
+            info!("link: {:?}", link);
             let node = self.graph.node_weight_mut(link.file_id).unwrap();
             node.file.update_nodes(link);
         }
-        
     }
 }
