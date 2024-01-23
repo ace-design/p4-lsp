@@ -6,7 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ls_framework = { git = "https://github.com/ace-design/lever-framework"}
-# ls_framework = { path = "../lever-framework" }
+# ls_framework = { git = "https://github.com/ace-design/lever-framework"}
+ls_framework = { path = "../lever-framework" }
 tokio = "1.29.1"
-tree-sitter-p4 = {git = "https://github.com/ace-design/tree-sitter-p4"}
+# tree-sitter-p4 = {git = "https://github.com/ace-design/tree-sitter-p4"}
+tree-sitter-p4 = {path = "../tree-sitter-p4/"}

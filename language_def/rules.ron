@@ -1,7 +1,13 @@
 LanguageDefinition (
     language: (
         name: "P4",
-        file_extensions: ["p4", "P4"]
+        file_extensions: ["p4", "P4"],
+        library_paths: (
+            env_variables: ["P4_LIBRARY_PATH"],
+            linux: [],
+            windows: [],
+            macos: [],
+        ),
     ),
     keywords: [
         "abstract",
@@ -51,6 +57,7 @@ LanguageDefinition (
     global_ast_rules: [
         (query: Kind("line_comment"), rule: Direct("Comment"), highlight_type: Comment),
         (query: Kind("block_comment"), rule: Direct("Comment"), highlight_type: Comment),
+        (query: Kind("preproc_include_declaration"), rule: Rule("Import")),
     ],
     ast_rules: [
         Rule(
@@ -67,6 +74,21 @@ LanguageDefinition (
                 (query: Kind("error_declaration"), rule: Rule("ErrorDeclaration")),
                 (query: Kind("extern_declaration"), rule: Rule("ExternDeclaration")),
             ]
+        ),
+        Rule(
+            node_name: "Import",
+            children: [
+                (query: Kind("string"), rule: Rule("LocalImport")),
+                (query: Kind("file_name"), rule: Rule("LibraryImport")),
+            ]
+        ),
+        Rule(
+            node_name: "LibraryImport",
+            import: Library
+        ),
+        Rule(
+            node_name: "LocalImport",
+            import: Local
         ),
         Rule(
             node_name: "ConstantDeclaration",
@@ -269,10 +291,10 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "ExternDeclaration",
-            symbol: Init(type: "Function", name_node: "Name"),
+            // symbol: Init(type: "Function", name_node: "Name"),
             children: [
                 (query: Field("annotation"), rule: Rule("Annotation")),
-                (query: Field("name"), rule: Direct("Name")),
+                (query: Kind("non_type_name"), rule: Direct("Name")),
                 // maybe type parameters
                 (query: Field("function"), rule: Rule("FunctionPrototype")),
                 (query: Field("method"), rule: Rule("MethodList")),
