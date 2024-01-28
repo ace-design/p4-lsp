@@ -1,0 +1,3 @@
+[submodule "tree-sitter-p4"]
+	path = tree-sitter-p4
+	url = git@github.com:ace-design/tree-sitter-p4.git
