@@ -148,6 +148,7 @@ LanguageDefinition (
         Rule(
             node_name: "TypeDefDeclaration",
             symbol: Init(type: "Type", name_node: "Name", type_node: "Type"),
+            is_scope: true,
             children: [ 
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Field("type"), rule: Rule("Type")),
@@ -190,6 +191,7 @@ LanguageDefinition (
         Rule(
             node_name: "EnumDeclaration", // Maybe split this to EnumDeclaration and SpecifiedEnumDeclaration ?
             symbol: Init(type: "Type", name_node: "Name", type_node: "Type"),
+            is_scope: true,
             children: [ 
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Field("type"), rule: Rule("Type")),
@@ -202,6 +204,7 @@ LanguageDefinition (
         Rule(
             node_name: "ParserTypeDeclaration",
             symbol: Init(type: "Function", name_node: "Name"),
+            is_scope: true,
             children: [ 
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Field("name"), rule: Direct("Name")),
@@ -212,6 +215,7 @@ LanguageDefinition (
         Rule(
             node_name: "ControlTypeDeclaration",
             symbol: Init(type: "Function", name_node: "Name"),
+            is_scope: true,
             children: [ 
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Field("name"), rule: Direct("Name")),
@@ -222,6 +226,7 @@ LanguageDefinition (
         Rule(
             node_name: "PackageTypeDeclaration",
             symbol: Init(type: "Function", name_node: "Name"),
+            is_scope: true,
             children: [ 
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Field("name"), rule: Direct("Name")),
@@ -285,6 +290,7 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "ErrorDeclaration",
+            is_scope: true,
             children: [
                 (query: Field("option_list"), rule: Rule("Options")),
             ]
@@ -292,6 +298,7 @@ LanguageDefinition (
         Rule(
             node_name: "ExternDeclaration",
             // symbol: Init(type: "Function", name_node: "Name"),
+            is_scope: true,
             children: [
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Kind("non_type_name"), rule: Direct("Name")),
@@ -302,6 +309,7 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "FunctionPrototype",
+            is_scope: true,
             children: [
                 (query: Kind("type_or_void"), rule: Rule("Type")),
                 (query: Kind("name"), rule: Direct("Name")),
@@ -316,6 +324,7 @@ LanguageDefinition (
         ),
         Rule(
             node_name: "MethodPrototype",
+            is_scope: true,
             children: [
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Field("function"), rule: Rule("FunctionPrototype")),
