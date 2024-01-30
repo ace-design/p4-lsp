@@ -304,12 +304,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1a46d1a171d865aa5f83f92695765caa047a9b4cbae2cbf37dbd613a793fd4c"
 
 [[package]]
-name = "lazy_static"
-version = "1.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
-
-[[package]]
 name = "lever_p4"
 version = "0.1.0"
 dependencies = [
@@ -346,17 +340,13 @@ version = "0.1.0"
 dependencies = [
  "indextree",
  "itertools",
- "lazy_static",
  "log",
  "once_cell",
  "petgraph",
- "regex",
  "ron",
  "serde",
  "serde_json",
- "shell-words",
  "simplelog",
- "time",
  "tokio",
  "tower-lsp",
  "tree-sitter",
@@ -663,12 +653,6 @@ dependencies = [
  "quote",
  "syn 2.0.48",
 ]
-
-[[package]]
-name = "shell-words"
-version = "1.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "24188a676b6ae68c3b2cb3a01be17fbf7240ce009799bb56d5b1409051e78fde"
 
 [[package]]
 name = "signal-hook-registry"
