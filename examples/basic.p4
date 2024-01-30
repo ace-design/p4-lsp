@@ -53,6 +53,7 @@ parser MyParser(packet_in packet,
                 inout standard_metadata_t standard_metadata) {
     bit<4> test = hdr.ethernet;
     ethernet_t test2 = hdr.ethernet;
+    test_struct test;
 
     state start {
         transition parse_ethernet;
