@@ -1,3 +1,6 @@
+#![enable(unwrap_variant_newtypes)]
+#![enable(implicit_some)]
+
 LanguageDefinition (
     language: (
         name: "P4",
@@ -137,7 +140,7 @@ LanguageDefinition (
             children: [
                 (query: Kind("typedef_declaration"), rule: Rule("TypeDefDeclaration")),
                 (query: Kind("header_type_declaration"), rule: Rule("HeaderTypeDeclaration")),
-                (query: Kind("header_union_declaration"), rule: Rule("HeaderUnionDec")),
+                (query: Kind("header_union_declaration"), rule: Rule("HeaderUnionDeclaration")),
                 (query: Kind("struct_type_declaration"), rule: Rule("StructDeclaration")),
                 (query: Kind("enum_declaration"), rule: Rule("EnumDeclaration")),
                 (query: Kind("parser_type_declaration"), rule: Rule("ParserTypeDeclaration")),
@@ -185,7 +188,6 @@ LanguageDefinition (
                 (query: Field("annotation"), rule: Rule("Annotation")),
                 (query: Field("name"), rule: Direct("Name")),
                 (query: Field("field_list"), rule: Rule("FieldList"))
-                // maybe type parameters
             ]
         ),
         Rule(

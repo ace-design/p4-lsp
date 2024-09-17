@@ -1,6 +1,3 @@
-#[tokio::main]
-async fn main() {
-    let language_def = include_str!("../language_def/rules.ron");
+use lever_framework::*;
 
-    ls_framework::start_server(language_def, tree_sitter_p4::language()).await;
-}
+start_server!(tree_sitter_p4);
